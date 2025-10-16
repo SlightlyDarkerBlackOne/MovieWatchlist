@@ -11,7 +11,8 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
-  Button
+  Button,
+  Snackbar
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { WatchlistGrid } from '../components/watchlist';
@@ -183,24 +184,30 @@ const WatchlistPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-          My Watchlist
-        </Typography>
-        <Typography variant="body1" color="text.secondary" gutterBottom>
-          Manage your movie collection
-        </Typography>
-      </Box>
-
-      {/* Error Alert */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
+    <>
+      {/* Error Toast */}
+      <Snackbar
+        open={!!error}
+        autoHideDuration={5000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="error" variant="filled" sx={{ width: '100%' }} onClose={() => setError(null)}>
           {error}
         </Alert>
-      )}
+      </Snackbar>
 
-      {/* Filters */}
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+            My Watchlist
+          </Typography>
+          <Typography variant="body1" color="text.secondary" gutterBottom>
+            Manage your movie collection
+          </Typography>
+        </Box>
+
+        {/* Filters */}
       <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
         <FormControl size="small" sx={{ minWidth: 200 }}>
           <InputLabel id="status-filter-label">Filter by Status</InputLabel>
@@ -268,6 +275,7 @@ const WatchlistPage: React.FC = () => {
         />
       </TabPanel>
     </Container>
+    </>
   );
 };
 

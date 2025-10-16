@@ -75,6 +75,7 @@ const renderWithMocks = (
         successMessage: null,
         error: null,
         addToWatchlist: jest.fn(),
+        removeFromWatchlist: jest.fn().mockResolvedValue(undefined),
         removeFromWatchlistIds: jest.fn(),
         isInWatchlist: jest.fn(() => false),
         setStatus: jest.fn(),

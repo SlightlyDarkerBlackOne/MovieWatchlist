@@ -27,6 +27,7 @@ describe('MovieDetailsPage', () => {
   // Mock watchlist context for all tests
   const mockWatchlistContext = {
     addToWatchlist: jest.fn(),
+    removeFromWatchlist: jest.fn(),
     isInWatchlist: jest.fn(() => false),
     watchlistMovieIds: [],
     selectedMovie: null,
@@ -165,6 +166,96 @@ describe('MovieDetailsPage', () => {
 
     // Play trailer button should not be visible
     expect(screen.queryByRole('button', { name: /play trailer/i })).not.toBeInTheDocument();
+  });
+
+  it('should show "In Watchlist" button when movie is already in watchlist', async () => {
+    const customMockWatchlistContext = {
+      ...mockWatchlistContext,
+      isInWatchlist: jest.fn(() => true),
+      watchlistMovieIds: [mockMovieDetails.tmdbId],
+    };
+
+    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext: customMockWatchlistContext });
+
+    await waitFor(() => {
+      expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
+    });
+
+    const watchlistButton = screen.getByRole('button', { name: /in watchlist/i });
+    expect(watchlistButton).toBeInTheDocument();
+    expect(watchlistButton).not.toBeDisabled(); // Button should be clickable to remove from watchlist
+  });
+
+  it('should show "Add to Watchlist" button enabled when movie is not in watchlist', async () => {
+    const customMockWatchlistContext = {
+      ...mockWatchlistContext,
+      isInWatchlist: jest.fn(() => false),
+      watchlistMovieIds: [],
+    };
+
+    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext: customMockWatchlistContext });
+
+    await waitFor(() => {
+      expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
+    });
+
+    const watchlistButton = screen.getByRole('button', { name: /add to watchlist/i });
+    expect(watchlistButton).toBeInTheDocument();
+    expect(watchlistButton).not.toBeDisabled();
+  });
+
+  it('should call removeFromWatchlist when clicking "In Watchlist" button', async () => {
+    const mockRemoveFromWatchlist = jest.fn();
+    const customMockWatchlistContext = {
+      ...mockWatchlistContext,
+      removeFromWatchlist: mockRemoveFromWatchlist,
+      isInWatchlist: jest.fn(() => true),
+      watchlistMovieIds: [mockMovieDetails.tmdbId],
+    };
+
+    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext: customMockWatchlistContext });
+
+    await waitFor(() => {
+      expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
+    });
+
+    const watchlistButton = screen.getByRole('button', { name: /in watchlist/i });
+    fireEvent.click(watchlistButton);
+
+    expect(mockRemoveFromWatchlist).toHaveBeenCalledWith(mockMovieDetails.tmdbId);
+  });
+
+  it('should show "Remove from Watchlist" text when hovering over "In Watchlist" button', async () => {
+    const customMockWatchlistContext = {
+      ...mockWatchlistContext,
+      isInWatchlist: jest.fn(() => true),
+      watchlistMovieIds: [mockMovieDetails.tmdbId],
+    };
+
+    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext: customMockWatchlistContext });
+
+    await waitFor(() => {
+      expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
+    });
+
+    const watchlistButton = screen.getByRole('button', { name: /in watchlist/i });
+    expect(watchlistButton).toBeInTheDocument();
+
+    // Hover over the button
+    fireEvent.mouseEnter(watchlistButton);
+
+    // Should now show "Remove from Watchlist"
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /remove from watchlist/i })).toBeInTheDocument();
+    });
+
+    // Mouse leave
+    fireEvent.mouseLeave(watchlistButton);
+
+    // Should go back to "In Watchlist"
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /in watchlist/i })).toBeInTheDocument();
+    });
   });
 });
 

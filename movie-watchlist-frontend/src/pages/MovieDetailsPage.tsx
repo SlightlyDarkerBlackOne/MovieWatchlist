@@ -16,6 +16,7 @@ import {
   TextField,
   Button,
   Typography,
+  Snackbar,
 } from '@mui/material';
 import movieService from '../services/movieService';
 import watchlistService from '../services/watchlistService';
@@ -35,6 +36,7 @@ const MovieDetailsPage: React.FC = () => {
   const { user } = useAuth();
   const {
     addToWatchlist,
+    removeFromWatchlist,
     successMessage: watchlistSuccessMessage,
     error: watchlistError,
     addDialogOpen,
@@ -44,7 +46,8 @@ const MovieDetailsPage: React.FC = () => {
     setStatus,
     setNotes,
     handleCloseDialog,
-    handleConfirmAdd
+    handleConfirmAdd,
+    isInWatchlist
   } = useWatchlist();
   
   const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
@@ -85,6 +88,11 @@ const MovieDetailsPage: React.FC = () => {
     addToWatchlist(movieDetails);
   };
 
+  const handleRemoveFromWatchlist = async () => {
+    if (!movieDetails) return;
+    await removeFromWatchlist(movieDetails.tmdbId);
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh' }}>
@@ -113,24 +121,40 @@ const MovieDetailsPage: React.FC = () => {
 
   return (
     <>
-      {/* Success Message */}
-      {watchlistSuccessMessage && (
-        <Alert severity="success" sx={{ m: 2 }}>
+      {/* Success Toast */}
+      <Snackbar
+        open={!!watchlistSuccessMessage}
+        autoHideDuration={3000}
+        onClose={() => {}}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="success" variant="filled" sx={{ width: '100%' }}>
           {watchlistSuccessMessage}
         </Alert>
-      )}
+      </Snackbar>
 
-      {/* Error Messages */}
-      {actionError && (
-        <Alert severity="error" sx={{ m: 2 }} onClose={() => setActionError(null)}>
+      {/* Error Toasts */}
+      <Snackbar
+        open={!!actionError}
+        autoHideDuration={5000}
+        onClose={() => setActionError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="error" variant="filled" sx={{ width: '100%' }} onClose={() => setActionError(null)}>
           {actionError}
         </Alert>
-      )}
-      {watchlistError && (
-        <Alert severity="error" sx={{ m: 2 }}>
+      </Snackbar>
+
+      <Snackbar
+        open={!!watchlistError}
+        autoHideDuration={5000}
+        onClose={() => {}}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="error" variant="filled" sx={{ width: '100%' }}>
           {watchlistError}
         </Alert>
-      )}
+      </Snackbar>
 
       {/* Main Movie Details */}
       <MovieMainDetails
@@ -140,6 +164,8 @@ const MovieDetailsPage: React.FC = () => {
         showTrailer={showTrailer}
         onToggleTrailer={() => setShowTrailer(!showTrailer)}
         onAddToWatchlist={handleAddToWatchlist}
+        onRemoveFromWatchlist={handleRemoveFromWatchlist}
+        isInWatchlist={isInWatchlist(movieDetails.tmdbId)}
       />
 
       {/* Genres Section */}
