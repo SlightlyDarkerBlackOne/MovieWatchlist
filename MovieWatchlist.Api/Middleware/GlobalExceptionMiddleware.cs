@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using MovieWatchlist.Api.Constants;
 using MovieWatchlist.Core.Exceptions;
 
 namespace MovieWatchlist.Api.Middleware;
@@ -20,29 +21,36 @@ public class GlobalExceptionMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        // Skip exception handling for OPTIONS preflight requests
+        if (context.Request.Method == MiddlewareConstants.HTTP_METHOD_OPTIONS)
+        {
+            await _next(context);
+            return;
+        }
+        
         try
         {
             await _next(context);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unhandled exception occurred");
+            _logger.LogError(ex, MiddlewareConstants.ERROR_MESSAGE_UNHANDLED_EXCEPTION);
             await HandleExceptionAsync(context, ex);
         }
     }
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        context.Response.ContentType = "application/json";
+        context.Response.ContentType = MiddlewareConstants.CONTENT_TYPE_JSON;
 
         object response = exception switch
         {
             ValidationException validationEx => new
             {
-                statusCode = 400,
+                statusCode = (int)HttpStatusCode.BadRequest,
                 error = new
                 {
-                    code = "VALIDATION_ERROR",
+                    code = MiddlewareConstants.ERROR_CODE_VALIDATION_ERROR,
                     message = validationEx.Message,
                     details = validationEx.Details,
                     timestamp = DateTime.UtcNow
@@ -50,21 +58,21 @@ public class GlobalExceptionMiddleware
             },
             UnauthorizedAccessException => new
             {
-                statusCode = 401,
+                statusCode = (int)HttpStatusCode.Unauthorized,
                 error = new
                 {
-                    code = "UNAUTHORIZED",
-                    message = "Authentication required",
+                    code = MiddlewareConstants.ERROR_CODE_UNAUTHORIZED,
+                    message = MiddlewareConstants.ERROR_MESSAGE_AUTHENTICATION_REQUIRED,
                     timestamp = DateTime.UtcNow
                 }
             },
             ArgumentException => new
             {
-                statusCode = 400,
+                statusCode = (int)HttpStatusCode.BadRequest,
                 error = new
                 {
-                    code = "BAD_REQUEST",
-                    message = "Invalid request parameters",
+                    code = MiddlewareConstants.ERROR_CODE_BAD_REQUEST,
+                    message = MiddlewareConstants.ERROR_MESSAGE_INVALID_REQUEST_PARAMETERS,
                     timestamp = DateTime.UtcNow
                 }
             },
@@ -81,17 +89,17 @@ public class GlobalExceptionMiddleware
             },
             _ => new
             {
-                statusCode = 500,
+                statusCode = (int)HttpStatusCode.InternalServerError,
                 error = new
                 {
-                    code = "INTERNAL_SERVER_ERROR",
-                    message = "An unexpected error occurred",
+                    code = MiddlewareConstants.ERROR_CODE_INTERNAL_SERVER_ERROR,
+                    message = MiddlewareConstants.ERROR_MESSAGE_UNEXPECTED_ERROR,
                     timestamp = DateTime.UtcNow
                 }
             }
         };
 
-        var statusCode = response.GetType().GetProperty("statusCode")?.GetValue(response) as int? ?? 500;
+        var statusCode = response.GetType().GetProperty(MiddlewareConstants.PROPERTY_STATUS_CODE)?.GetValue(response) as int? ?? (int)HttpStatusCode.InternalServerError;
         context.Response.StatusCode = statusCode;
         var jsonResponse = JsonSerializer.Serialize(response, new JsonSerializerOptions
         {
