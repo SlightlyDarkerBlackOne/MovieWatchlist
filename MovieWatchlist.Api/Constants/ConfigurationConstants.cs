@@ -17,4 +17,5 @@ public static class ConfigurationConstants
     public const string DEFAULT_TMDB_BASE_URL = "https://api.themoviedb.org/3";
     public const string DEFAULT_TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p";
     public const string DEFAULT_FRONTEND_URL = "http://localhost:3000";
+    public const string PRODUCTION_FRONTEND_URL = "https://moviewatchlist-frontend-nkol.onrender.com";
 }

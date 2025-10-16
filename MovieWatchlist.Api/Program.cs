@@ -132,7 +132,7 @@ builder.Services.AddCors(options =>
         else
         {
             // Production: Allow specific domains
-            policy.WithOrigins("https://your-frontend-domain.com")
+            policy.WithOrigins(ConfigurationConstants.PRODUCTION_FRONTEND_URL)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
@@ -149,7 +149,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Only use HTTPS redirection in development
+// Render handles HTTPS at the load balancer level
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Add CORS middleware (must be before authentication)
 app.UseCors("ReactFrontend");
