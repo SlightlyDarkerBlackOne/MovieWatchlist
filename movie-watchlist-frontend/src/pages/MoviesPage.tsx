@@ -16,7 +16,8 @@ import {
   TextField,
   IconButton,
   Tooltip,
-  Divider
+  Divider,
+  Snackbar
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useSearchParams } from 'react-router-dom';
@@ -143,6 +144,41 @@ const MoviesPage: React.FC = () => {
 
   return (
     <>
+      {/* Success Toast */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={3000}
+        onClose={() => {}}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="success" variant="filled" sx={{ width: '100%' }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* Error Toasts */}
+      <Snackbar
+        open={!!error}
+        autoHideDuration={5000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="error" variant="filled" sx={{ width: '100%' }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!watchlistError}
+        autoHideDuration={5000}
+        onClose={() => {}}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="error" variant="filled" sx={{ width: '100%' }}>
+          {watchlistError}
+        </Alert>
+      </Snackbar>
+
       {/* Featured Movies Carousel */}
       {featuredMovies.length > 0 && (
         <FeaturedMoviesCarousel
@@ -155,25 +191,6 @@ const MoviesPage: React.FC = () => {
 
       {/* Main Content */}
       <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Success Message */}
-        {successMessage && (
-          <Alert severity="success" sx={{ mb: 3 }}>
-            {successMessage}
-          </Alert>
-        )}
-
-        {/* Error Messages */}
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
-        )}
-        {watchlistError && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {watchlistError}
-          </Alert>
-        )}
-
         {/* Search Results Section */}
         {searchResults && (
           <Box ref={searchResultsRef} sx={{ mb: 4, scrollMarginTop: '100px' }}>

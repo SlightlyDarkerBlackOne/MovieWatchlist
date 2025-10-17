@@ -42,6 +42,7 @@ describe('MovieCard', () => {
     mockedUseNavigate.mockReturnValue(mockNavigate);
     mockedUseWatchlist.mockReturnValue({
       addToWatchlist: mockAddToWatchlist,
+      removeFromWatchlist: jest.fn(),
       isInWatchlist: mockIsInWatchlist,
       watchlistMovieIds: [],
       selectedMovie: null,

@@ -28,6 +28,8 @@ interface MovieMainDetailsProps {
   showTrailer: boolean;
   onToggleTrailer: () => void;
   onAddToWatchlist: () => void;
+  onRemoveFromWatchlist: () => void;
+  isInWatchlist: boolean;
 }
 
 const MovieMainDetails: React.FC<MovieMainDetailsProps> = ({
@@ -37,8 +39,11 @@ const MovieMainDetails: React.FC<MovieMainDetailsProps> = ({
   showTrailer,
   onToggleTrailer,
   onAddToWatchlist,
+  onRemoveFromWatchlist,
+  isInWatchlist,
 }) => {
   const navigate = useNavigate();
+  const [isHoveringWatchlistBtn, setIsHoveringWatchlistBtn] = React.useState(false);
   const posterUrl = movieService.getPosterUrl(movieDetails.posterPath, 'large');
   const mainTrailer = movieService.findMainTrailer(videos);
   const director = credits?.crew.find((c: CrewMember) => c.job === 'Director');
@@ -175,19 +180,28 @@ const MovieMainDetails: React.FC<MovieMainDetailsProps> = ({
                 <Button
                   variant="outlined"
                   startIcon={<AddIcon />}
-                  onClick={onAddToWatchlist}
+                  onClick={isInWatchlist ? onRemoveFromWatchlist : onAddToWatchlist}
+                  onMouseEnter={() => setIsHoveringWatchlistBtn(true)}
+                  onMouseLeave={() => setIsHoveringWatchlistBtn(false)}
                   sx={{
                     borderColor: 'white',
                     color: 'white',
                     fontWeight: 600,
                     px: 3,
+                    opacity: isInWatchlist ? 0.7 : 1,
+                    transition: 'all 0.3s ease',
                     '&:hover': {
-                      borderColor: colors.imdb.yellow,
-                      bgcolor: colors.overlay.light,
+                      borderColor: isInWatchlist ? '#f44336' : colors.imdb.yellow,
+                      bgcolor: isInWatchlist ? 'rgba(244, 67, 54, 0.8)' : colors.overlay.light,
+                      opacity: 1,
+                      color: 'white',
                     },
                   }}
                 >
-                  Add to Watchlist
+                  {isInWatchlist 
+                    ? (isHoveringWatchlistBtn ? 'Remove from Watchlist' : 'In Watchlist')
+                    : 'Add to Watchlist'
+                  }
                 </Button>
               </Box>
 

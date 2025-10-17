@@ -16,6 +16,7 @@ export interface WatchlistContextType {
   
   // Actions
   addToWatchlist: (movie: Movie) => void;
+  removeFromWatchlist: (tmdbId: number) => Promise<void>;
   removeFromWatchlistIds: (tmdbId: number) => void;
   isInWatchlist: (tmdbId: number) => boolean;
   setStatus: (status: WatchlistStatus) => void;
@@ -82,6 +83,37 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setNotes('');
   }, []);
 
+  const removeFromWatchlist = useCallback(async (tmdbId: number) => {
+    if (!user) return;
+
+    try {
+      // First, get the watchlist to find the item ID
+      const watchlist = await watchlistService.getUserWatchlist(user.id);
+      const itemToRemove = watchlist.find(item => item.movie?.tmdbId === tmdbId);
+      
+      if (!itemToRemove) {
+        throw new Error('Movie not found in watchlist');
+      }
+
+      // Remove the item using its watchlist item ID
+      await watchlistService.removeFromWatchlist(user.id, itemToRemove.id);
+      
+      // Optimistically update watchlist IDs
+      setWatchlistMovieIds(prev => prev.filter(id => id !== tmdbId));
+      
+      setSuccessMessage('Removed from your watchlist!');
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || 'Failed to remove from watchlist');
+      
+      // Auto-hide error after 5 seconds
+      setTimeout(() => setError(null), 5000);
+    }
+  }, [user]);
+
   const handleConfirmAdd = useCallback(async () => {
     if (!selectedMovie || !user) return;
 
@@ -119,6 +151,7 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     successMessage,
     error,
     addToWatchlist,
+    removeFromWatchlist,
     removeFromWatchlistIds,
     isInWatchlist,
     setStatus,
