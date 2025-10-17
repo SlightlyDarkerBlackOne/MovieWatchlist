@@ -16,7 +16,6 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddIcon from '@mui/icons-material/Add';
 import { useNavigate } from 'react-router-dom';
 import { MovieDetails, MovieVideo, MovieCredits, CrewMember } from '../../types/movie.types';
-import { WatchlistStatus } from '../../types/watchlist.types';
 import { colors } from '../../theme/colors';
 import { formatVoteCount, formatRuntime } from '../../utils/formatters';
 import movieService from '../../services/movieService';

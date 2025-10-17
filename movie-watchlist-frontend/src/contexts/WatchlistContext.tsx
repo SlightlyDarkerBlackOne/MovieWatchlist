@@ -9,6 +9,7 @@ export interface WatchlistContextType {
   watchlistMovieIds: number[];
   selectedMovie: Movie | null;
   addDialogOpen: boolean;
+  loginRequiredDialogOpen: boolean;
   status: WatchlistStatus;
   notes: string;
   successMessage: string | null;
@@ -22,6 +23,7 @@ export interface WatchlistContextType {
   setStatus: (status: WatchlistStatus) => void;
   setNotes: (notes: string) => void;
   handleCloseDialog: () => void;
+  handleCloseLoginDialog: () => void;
   handleConfirmAdd: () => Promise<void>;
   refreshWatchlistIds: () => Promise<void>;
 }
@@ -33,6 +35,7 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [watchlistMovieIds, setWatchlistMovieIds] = useState<number[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [loginRequiredDialogOpen, setLoginRequiredDialogOpen] = useState(false);
   const [status, setStatus] = useState<WatchlistStatus>(WatchlistStatus.Planned);
   const [notes, setNotes] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -60,8 +63,7 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const addToWatchlist = useCallback((movie: Movie) => {
     if (!user) {
-      setError('Please log in to add movies to your watchlist');
-      setTimeout(() => setError(null), 5000);
+      setLoginRequiredDialogOpen(true);
       return;
     }
     setSelectedMovie(movie);
@@ -81,6 +83,10 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSelectedMovie(null);
     setStatus(WatchlistStatus.Planned);
     setNotes('');
+  }, []);
+
+  const handleCloseLoginDialog = useCallback(() => {
+    setLoginRequiredDialogOpen(false);
   }, []);
 
   const removeFromWatchlist = useCallback(async (tmdbId: number) => {
@@ -146,6 +152,7 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     watchlistMovieIds,
     selectedMovie,
     addDialogOpen,
+    loginRequiredDialogOpen,
     status,
     notes,
     successMessage,
@@ -157,6 +164,7 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setStatus,
     setNotes,
     handleCloseDialog,
+    handleCloseLoginDialog,
     handleConfirmAdd,
     refreshWatchlistIds,
   };

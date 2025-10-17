@@ -16,32 +16,31 @@ import {
   TextField,
   IconButton,
   Tooltip,
-  Divider,
   Snackbar
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useSearchParams } from 'react-router-dom';
 import { MovieList, FeaturedMoviesCarousel } from '../components/movies';
+import LoginRequiredDialog from '../components/common/LoginRequiredDialog';
 import movieService from '../services/movieService';
-import watchlistService from '../services/watchlistService';
 import { Movie, MovieSearchResult } from '../types/movie.types';
 import { WatchlistStatus } from '../types/watchlist.types';
-import { useAuth } from '../contexts/AuthContext';
 import { useWatchlist } from '../contexts/WatchlistContext';
 
 const MoviesPage: React.FC = () => {
-  const { user } = useAuth();
   const { 
     addToWatchlist,
     successMessage,
     error: watchlistError,
     addDialogOpen,
+    loginRequiredDialogOpen,
     selectedMovie,
     status,
     notes,
     setStatus,
     setNotes,
     handleCloseDialog,
+    handleCloseLoginDialog,
     handleConfirmAdd
   } = useWatchlist();
   
@@ -286,6 +285,12 @@ const MoviesPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Login Required Dialog */}
+      <LoginRequiredDialog 
+        open={loginRequiredDialogOpen} 
+        onClose={handleCloseLoginDialog} 
+      />
     </>
   );
 };

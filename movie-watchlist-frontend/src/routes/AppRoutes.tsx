@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { AuthenticatedLayout } from '../components/layout';
+import { MainLayout } from '../components/layout';
 import { LoginForm, RegisterForm, ForgotPasswordForm, ResetPasswordForm } from '../components/auth';
 import MoviesPage from '../pages/MoviesPage';
 import MovieDetailsPage from '../pages/MovieDetailsPage';
@@ -97,53 +97,39 @@ const AppRoutes: React.FC<AppRoutesProps> = ({
           } 
         />
 
-        {/* Protected Routes */}
+        {/* Public Routes */}
 
         <Route 
           path={ROUTES.MOVIES} 
           element={
-            isAuthenticated ? (
-              <AuthenticatedLayout showSearch={true}>
-                <MoviesPage />
-              </AuthenticatedLayout>
-            ) : (
-              <Navigate to={ROUTES.LOGIN} replace />
-            )
+            <MainLayout showSearch={true}>
+              <MoviesPage />
+            </MainLayout>
           } 
         />
 
         <Route 
           path="/movies/:tmdbId" 
           element={
-            isAuthenticated ? (
-              <AuthenticatedLayout showSearch={true}>
-                <MovieDetailsPage />
-              </AuthenticatedLayout>
-            ) : (
-              <Navigate to={ROUTES.LOGIN} replace />
-            )
+            <MainLayout showSearch={true}>
+              <MovieDetailsPage />
+            </MainLayout>
           } 
         />
 
         <Route 
           path={ROUTES.WATCHLIST} 
           element={
-            isAuthenticated ? (
-              <AuthenticatedLayout showSearch={true}>
-                <WatchlistPage />
-              </AuthenticatedLayout>
-            ) : (
-              <Navigate to={ROUTES.LOGIN} replace />
-            )
+            <MainLayout showSearch={true}>
+              <WatchlistPage />
+            </MainLayout>
           } 
         />
 
         {/* Default Route - Movies Page is now the home page */}
         <Route 
           path={ROUTES.HOME} 
-          element={
-            <Navigate to={isAuthenticated ? ROUTES.MOVIES : ROUTES.LOGIN} replace />
-          } 
+          element={<Navigate to={ROUTES.MOVIES} replace />} 
         />
 
         {/* Catch all - redirect to home */}

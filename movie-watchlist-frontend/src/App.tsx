@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
-import LoadingSpinner from './components/common/LoadingSpinner';
 import AppRoutes from './routes/AppRoutes';
 import { useAuth } from './contexts/AuthContext';
 import { WatchlistProvider } from './contexts/WatchlistContext';
@@ -13,33 +12,26 @@ import { appTheme } from './theme';
  */
 function AppContent() {
   const { isAuthenticated: checkIsAuthenticated, validateToken } = useAuth();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(checkIsAuthenticated());
   const [resetToken, setResetToken] = useState<string | null>(null);
 
-  const checkAuth = useCallback(async () => {
-    if (checkIsAuthenticated()) {
-      const isValid = await validateToken();
-      setIsAuthenticated(isValid);
-    }
-    setLoading(false);
-  }, [checkIsAuthenticated, validateToken]);
-
+  // Validate token in background for logged-in users
   useEffect(() => {
     let cancelled = false;
 
-    const runCheckAuth = async () => {
-      if (!cancelled) {
-        await checkAuth();
+    const validateAuth = async () => {
+      if (checkIsAuthenticated() && !cancelled) {
+        const isValid = await validateToken();
+        setIsAuthenticated(isValid);
       }
     };
 
-    runCheckAuth();
+    validateAuth();
 
     return () => {
       cancelled = true;
     };
-  }, [checkAuth]);
+  }, [checkIsAuthenticated, validateToken]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -74,10 +66,6 @@ function AppContent() {
   const handleResetPasswordSuccess = () => {
     setResetToken(null);
   };
-
-  if (loading) {
-    return <LoadingSpinner />;
-  }
 
   return (
     <WatchlistProvider>
