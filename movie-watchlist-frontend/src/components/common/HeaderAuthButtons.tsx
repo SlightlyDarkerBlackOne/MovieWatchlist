@@ -18,8 +18,7 @@ const HeaderAuthButtons: React.FC = () => {
 
   const handleLogout = async () => {
     await logout();
-    // Force a full page reload to clear all state
-    window.location.href = ROUTES.LOGIN;
+    navigate(ROUTES.MOVIES);
   };
 
   return (

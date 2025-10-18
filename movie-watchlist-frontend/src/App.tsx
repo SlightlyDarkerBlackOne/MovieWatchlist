@@ -1,37 +1,18 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import { ThemeProvider, CssBaseline, CircularProgress, Box } from '@mui/material';
 import AppRoutes from './routes/AppRoutes';
-import { useAuth } from './contexts/AuthContext';
 import { WatchlistProvider } from './contexts/WatchlistContext';
+import { useAuth } from './contexts/AuthContext';
 import { appTheme } from './theme';
 
 /**
  * App Content Component
- * Handles auth state and routing logic
+ * Handles routing logic
  */
 function AppContent() {
-  const { isAuthenticated: checkIsAuthenticated, validateToken } = useAuth();
-  const [isAuthenticated, setIsAuthenticated] = useState(checkIsAuthenticated());
+  const { isLoading } = useAuth();
   const [resetToken, setResetToken] = useState<string | null>(null);
-
-  // Validate token in background for logged-in users
-  useEffect(() => {
-    let cancelled = false;
-
-    const validateAuth = async () => {
-      if (checkIsAuthenticated() && !cancelled) {
-        const isValid = await validateToken();
-        setIsAuthenticated(isValid);
-      }
-    };
-
-    validateAuth();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [checkIsAuthenticated, validateToken]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -43,41 +24,24 @@ function AppContent() {
     }
   }, []);
 
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-  };
-
-  const handleRegister = () => {
-    // Navigation handled by React Router
-  };
-
-  const handleForgotPassword = () => {
-    // Navigation handled by React Router
-  };
-
-  const handleBackToLogin = () => {
-    // Navigation handled by React Router
-  };
-
   const handleResetPasswordSuccess = () => {
     setResetToken(null);
   };
 
+  // Show loading spinner while restoring session
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <WatchlistProvider>
       <AppRoutes
-        isAuthenticated={isAuthenticated}
-        onLoginSuccess={handleLoginSuccess}
-        onRegister={handleRegister}
-        onForgotPassword={handleForgotPassword}
-        onBackToLogin={handleBackToLogin}
-        onResetPasswordSuccess={handleResetPasswordSuccess}
-        onLogout={handleLogout}
         resetToken={resetToken}
+        onResetPasswordSuccess={handleResetPasswordSuccess}
       />
     </WatchlistProvider>
   );

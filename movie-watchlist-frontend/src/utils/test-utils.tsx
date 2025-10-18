@@ -103,6 +103,7 @@ const renderWithMocks = (
     if (mockAuthContext) {
       const defaultAuthContext: AuthContextType = {
         user: null,
+        isLoading: false,
         login: jest.fn(),
         register: jest.fn(),
         logout: jest.fn(),

@@ -17,6 +17,7 @@ import { STORAGE_KEYS } from '../utils/constants';
  */
 export interface AuthContextType {
   user: User | null;
+  isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<AuthenticationResult>;
   register: (userData: RegisterData) => Promise<AuthenticationResult>;
   logout: () => Promise<boolean>;
@@ -27,7 +28,6 @@ export interface AuthContextType {
   getToken: () => string | null;
 }
 
-// Create the context with undefined default (will be provided by AuthProvider)
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
@@ -42,21 +42,36 @@ interface AuthProviderProps {
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load user from localStorage on mount
+  // Restore user session from localStorage on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Failed to parse stored user:', error);
-        localStorage.removeItem(STORAGE_KEYS.USER);
+    const restoreSession = async () => {
+      const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
+      const token = authService.getToken();
+      
+      if (storedUser && token) {
+        try {
+          const isValid = await authService.validateToken();
+          if (isValid) {
+            const user = JSON.parse(storedUser);
+            setUser(user);
+          } else {
+            authService.logout();
+            localStorage.removeItem(STORAGE_KEYS.USER);
+          }
+        } catch (error) {
+          console.error('Failed to restore session:', error);
+          authService.logout();
+          localStorage.removeItem(STORAGE_KEYS.USER);
+        }
       }
-    }
+      setIsLoading(false);
+    };
+
+    restoreSession();
   }, []);
 
-  // Wrap authService methods to provide them through context
   const login = async (credentials: LoginCredentials): Promise<AuthenticationResult> => {
     const result = await authService.login(credentials);
     if (result.isSuccess && result.user) {
@@ -84,6 +99,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const value: AuthContextType = {
     user,
+    isLoading,
     login,
     register,
     logout,
