@@ -106,6 +106,6 @@ A comprehensive movie management platform that allows users to discover, track, 
 - 52.38% branch coverage
 
 ### Frontend (React)
-- 230 tests total
-- 67.51% line coverage
-- 54.76% branch coverage
+- 258 tests total
+- 67.68% line coverage
+- 55.84% branch coverage

@@ -51,6 +51,14 @@
     ]
   },
   "jest": {
+    "testMatch": [
+      "**/__tests__/**/*.{spec,test}.{js,jsx,ts,tsx}",
+      "**/*.{spec,test}.{js,jsx,ts,tsx}"
+    ],
+    "watchPathIgnorePatterns": [
+      "/node_modules/",
+      "/__tests__/fixtures/"
+    ],
     "moduleNameMapper": {
       "^react-router-dom$": "<rootDir>/node_modules/react-router-dom/dist/index.js",
       "^react-router/dom$": "<rootDir>/node_modules/react-router/dist/production/dom-export.js"

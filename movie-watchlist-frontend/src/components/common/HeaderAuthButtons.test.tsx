@@ -11,11 +11,18 @@ import HeaderAuthButtons from './HeaderAuthButtons';
 const mockLogout = jest.fn();
 const mockIsAuthenticated = jest.fn();
 
+const mockNavigate = jest.fn();
+
 jest.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({
     logout: mockLogout,
     isAuthenticated: mockIsAuthenticated,
   }),
+}));
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
 }));
 
 const renderWithRouter = (component: React.ReactElement) => {
@@ -25,9 +32,7 @@ const renderWithRouter = (component: React.ReactElement) => {
 describe('HeaderAuthButtons', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset window.location.href
-    delete (window as any).location;
-    window.location = { href: '' } as any;
+    mockNavigate.mockClear();
   });
 
   it('should always show My Watchlist button', () => {
@@ -60,7 +65,7 @@ describe('HeaderAuthButtons', () => {
     const watchlistButton = screen.getByRole('button', { name: /my watchlist/i });
     fireEvent.click(watchlistButton);
     
-    expect(window.location.pathname).toBe('/watchlist');
+    expect(mockNavigate).toHaveBeenCalledWith('/watchlist');
   });
 
   it('should navigate to login page when clicking Login button', () => {
@@ -70,7 +75,7 @@ describe('HeaderAuthButtons', () => {
     const loginButton = screen.getByRole('button', { name: /^login$/i });
     fireEvent.click(loginButton);
     
-    expect(window.location.pathname).toBe('/login');
+    expect(mockNavigate).toHaveBeenCalledWith('/login');
   });
 
   it('should call logout and redirect when clicking Logout button', async () => {
