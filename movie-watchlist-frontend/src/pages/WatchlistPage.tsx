@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Container,
   Box,
@@ -54,29 +54,7 @@ const WatchlistPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [statusFilter, setStatusFilter] = useState<number | 'all'>('all');
 
-  useEffect(() => {
-    if (user?.id) {
-      loadWatchlist();
-    }
-  }, [user]);
-
-  // Refresh watchlist when component mounts or becomes visible
-  useEffect(() => {
-    const handleFocus = () => {
-      if (user?.id) {
-        loadWatchlist();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [user]);
-
-  useEffect(() => {
-    filterWatchlist();
-  }, [watchlist, activeTab, statusFilter]);
-
-  const loadWatchlist = async () => {
+  const loadWatchlist = useCallback(async () => {
     if (!user?.id) return;
     
     setLoading(true);
@@ -90,9 +68,9 @@ const WatchlistPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
-  const filterWatchlist = () => {
+  const filterWatchlist = useCallback(() => {
     let filtered = [...watchlist];
 
     // Filter by tab
@@ -110,7 +88,29 @@ const WatchlistPage: React.FC = () => {
     }
 
     setFilteredItems(filtered);
-  };
+  }, [watchlist, activeTab, statusFilter]);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadWatchlist();
+    }
+  }, [user?.id, loadWatchlist]);
+
+  // Refresh watchlist when component mounts or becomes visible
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user?.id) {
+        loadWatchlist();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user?.id, loadWatchlist]);
+
+  useEffect(() => {
+    filterWatchlist();
+  }, [filterWatchlist]);
 
   const handleUpdateItem = async (updatedItem: WatchlistItem) => {
     if (!user?.id) return;

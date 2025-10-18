@@ -19,33 +19,31 @@ import {
   Snackbar,
 } from '@mui/material';
 import movieService from '../services/movieService';
-import watchlistService from '../services/watchlistService';
 import { MovieDetails, MovieVideo, MovieCredits } from '../types/movie.types';
 import { WatchlistStatus } from '../types/watchlist.types';
-import { useAuth } from '../contexts/AuthContext';
 import { useWatchlist } from '../contexts/WatchlistContext';
-import { colors } from '../theme';
 import MovieMainDetails from '../components/movies/MovieMainDetails';
 import MovieGenres from '../components/movies/MovieGenres';
 import TopCastCrew from '../components/movies/TopCastCrew';
+import LoginRequiredDialog from '../components/common/LoginRequiredDialog';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const MovieDetailsPage: React.FC = () => {
   const { tmdbId } = useParams<{ tmdbId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const {
     addToWatchlist,
     removeFromWatchlist,
     successMessage: watchlistSuccessMessage,
     error: watchlistError,
     addDialogOpen,
-    selectedMovie,
+    loginRequiredDialogOpen,
     status,
     notes,
     setStatus,
     setNotes,
     handleCloseDialog,
+    handleCloseLoginDialog,
     handleConfirmAdd,
     isInWatchlist
   } = useWatchlist();
@@ -241,6 +239,12 @@ const MovieDetailsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Login Required Dialog */}
+      <LoginRequiredDialog 
+        open={loginRequiredDialogOpen} 
+        onClose={handleCloseLoginDialog} 
+      />
     </>
   );
 };

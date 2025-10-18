@@ -5,16 +5,15 @@ import { useAuth } from './AuthContext';
 import watchlistService from '../services/watchlistService';
 
 export interface WatchlistContextType {
-  // State
   watchlistMovieIds: number[];
   selectedMovie: Movie | null;
   addDialogOpen: boolean;
+  loginRequiredDialogOpen: boolean;
   status: WatchlistStatus;
   notes: string;
   successMessage: string | null;
   error: string | null;
   
-  // Actions
   addToWatchlist: (movie: Movie) => void;
   removeFromWatchlist: (tmdbId: number) => Promise<void>;
   removeFromWatchlistIds: (tmdbId: number) => void;
@@ -22,6 +21,7 @@ export interface WatchlistContextType {
   setStatus: (status: WatchlistStatus) => void;
   setNotes: (notes: string) => void;
   handleCloseDialog: () => void;
+  handleCloseLoginDialog: () => void;
   handleConfirmAdd: () => Promise<void>;
   refreshWatchlistIds: () => Promise<void>;
 }
@@ -33,12 +33,13 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [watchlistMovieIds, setWatchlistMovieIds] = useState<number[]>([]);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [loginRequiredDialogOpen, setLoginRequiredDialogOpen] = useState(false);
   const [status, setStatus] = useState<WatchlistStatus>(WatchlistStatus.Planned);
   const [notes, setNotes] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load user's watchlist movie IDs on mount and when user changes
+  // Load user's watchlist movie IDs - called manually when needed
   const refreshWatchlistIds = useCallback(async () => {
     if (!user?.id) {
       setWatchlistMovieIds([]);
@@ -54,14 +55,18 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [user?.id]);
 
+  // Load watchlist IDs when user logs in
   useEffect(() => {
-    refreshWatchlistIds();
-  }, [refreshWatchlistIds]);
+    if (user?.id) {
+      refreshWatchlistIds();
+    } else {
+      setWatchlistMovieIds([]);
+    }
+  }, [user?.id]);
 
   const addToWatchlist = useCallback((movie: Movie) => {
     if (!user) {
-      setError('Please log in to add movies to your watchlist');
-      setTimeout(() => setError(null), 5000);
+      setLoginRequiredDialogOpen(true);
       return;
     }
     setSelectedMovie(movie);
@@ -83,11 +88,14 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setNotes('');
   }, []);
 
+  const handleCloseLoginDialog = useCallback(() => {
+    setLoginRequiredDialogOpen(false);
+  }, []);
+
   const removeFromWatchlist = useCallback(async (tmdbId: number) => {
     if (!user) return;
 
     try {
-      // First, get the watchlist to find the item ID
       const watchlist = await watchlistService.getUserWatchlist(user.id);
       const itemToRemove = watchlist.find(item => item.movie?.tmdbId === tmdbId);
       
@@ -95,7 +103,6 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         throw new Error('Movie not found in watchlist');
       }
 
-      // Remove the item using its watchlist item ID
       await watchlistService.removeFromWatchlist(user.id, itemToRemove.id);
       
       // Optimistically update watchlist IDs
@@ -103,13 +110,11 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       setSuccessMessage('Removed from your watchlist!');
       
-      // Auto-hide success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const error = err as Error;
       setError(error.message || 'Failed to remove from watchlist');
       
-      // Auto-hide error after 5 seconds
       setTimeout(() => setError(null), 5000);
     }
   }, [user]);
@@ -130,7 +135,6 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // Optimistically update watchlist IDs without making another API call
       setWatchlistMovieIds(prev => [...prev, selectedMovie.tmdbId]);
 
-      // Auto-hide success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       const error = err as Error;
@@ -146,6 +150,7 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     watchlistMovieIds,
     selectedMovie,
     addDialogOpen,
+    loginRequiredDialogOpen,
     status,
     notes,
     successMessage,
@@ -157,6 +162,7 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setStatus,
     setNotes,
     handleCloseDialog,
+    handleCloseLoginDialog,
     handleConfirmAdd,
     refreshWatchlistIds,
   };

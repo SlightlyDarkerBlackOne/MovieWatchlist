@@ -65,7 +65,7 @@ describe('WatchlistContext', () => {
     expect(result.current.selectedMovie).toEqual(mockMovie);
   });
 
-  it('should show error when adding without login', async () => {
+  it('should show login required dialog when adding without login', async () => {
     // Temporarily override the useAuth mock for this test only
     const AuthContext = require('./AuthContext');
     const originalUseAuth = AuthContext.useAuth;
@@ -94,8 +94,52 @@ describe('WatchlistContext', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.error).toContain('log in');
+      expect(result.current.loginRequiredDialogOpen).toBe(true);
     });
+
+    // Restore original mock
+    AuthContext.useAuth = originalUseAuth;
+  });
+
+  it('should close login required dialog', async () => {
+    // Temporarily override the useAuth mock for this test only
+    const AuthContext = require('./AuthContext');
+    const originalUseAuth = AuthContext.useAuth;
+    
+    // Mock useAuth to return null user for this test
+    AuthContext.useAuth = jest.fn(() => ({
+      user: null,
+      login: jest.fn(),
+      logout: jest.fn(),
+      register: jest.fn(),
+      isAuthenticated: jest.fn(() => false),
+      validateToken: jest.fn(),
+      forgotPassword: jest.fn(),
+      resetPassword: jest.fn(),
+      getToken: jest.fn(() => null),
+    }));
+
+    const wrapperWithoutAuth = ({ children }: { children: React.ReactNode }) => (
+      <WatchlistProvider>{children}</WatchlistProvider>
+    );
+
+    const { result } = renderHook(() => useWatchlist(), { wrapper: wrapperWithoutAuth });
+
+    // Open login dialog
+    act(() => {
+      result.current.addToWatchlist(mockMovie);
+    });
+
+    await waitFor(() => {
+      expect(result.current.loginRequiredDialogOpen).toBe(true);
+    });
+
+    // Close login dialog
+    act(() => {
+      result.current.handleCloseLoginDialog();
+    });
+
+    expect(result.current.loginRequiredDialogOpen).toBe(false);
 
     // Restore original mock
     AuthContext.useAuth = originalUseAuth;

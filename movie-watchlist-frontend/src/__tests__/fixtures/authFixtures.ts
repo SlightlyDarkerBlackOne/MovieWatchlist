@@ -8,10 +8,11 @@ export const mockUser: User = {
   id: 1,
   username: 'testuser',
   email: 'test@example.com',
+  createdAt: '2024-01-01T00:00:00Z',
 };
 
 export const mockLoginCredentials: LoginCredentials = {
-  username: 'testuser',
+  usernameOrEmail: 'testuser',
   password: 'Test123!@#',
 };
 
@@ -19,7 +20,6 @@ export const mockRegisterData: RegisterData = {
   username: 'newuser',
   email: 'newuser@example.com',
   password: 'NewUser123!@#',
-  confirmPassword: 'NewUser123!@#',
 };
 
 export const mockAuthenticationResult: AuthenticationResult = {

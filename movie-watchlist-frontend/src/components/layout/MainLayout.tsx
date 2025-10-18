@@ -5,24 +5,22 @@ import Header from '../common/Header';
 import { ROUTES } from '../../constants/routeConstants';
 import { colors } from '../../theme';
 
-interface AuthenticatedLayoutProps {
+interface MainLayoutProps {
   children: React.ReactNode;
   showSearch?: boolean;
 }
 
-const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ 
+const MainLayout: React.FC<MainLayoutProps> = ({ 
   children, 
-  showSearch = false 
+  showSearch = false
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const handleSearch = (query: string) => {
-    // If we're already on the movies page, just update the search param
     if (location.pathname === ROUTES.MOVIES) {
       navigate(`${ROUTES.MOVIES}?search=${encodeURIComponent(query)}`);
     } else {
-      // Otherwise, navigate to movies page with search query
       navigate(`${ROUTES.MOVIES}?search=${encodeURIComponent(query)}`);
     }
   };
@@ -35,7 +33,7 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: colors.imdb.backgroundLight }}>
       <Header 
-        showAuth={true} 
+        showAuth={true}
         onSearch={showSearch ? handleSearch : undefined} 
         showSearch={showSearch} 
       />
@@ -44,5 +42,5 @@ const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({
   );
 };
 
-export default AuthenticatedLayout;
+export default MainLayout;
 

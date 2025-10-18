@@ -43,6 +43,7 @@ describe('ForgotPasswordForm', () => {
       isAuthenticated: jest.fn(() => false),
       getToken: jest.fn(() => null),
       user: null,
+      isLoading: false,
     });
   });
 

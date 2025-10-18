@@ -70,6 +70,7 @@ const renderWithMocks = (
         watchlistMovieIds: [],
         selectedMovie: null,
         addDialogOpen: false,
+        loginRequiredDialogOpen: false,
         status: WatchlistStatus.Planned,
         notes: '',
         successMessage: null,
@@ -81,6 +82,7 @@ const renderWithMocks = (
         setStatus: jest.fn(),
         setNotes: jest.fn(),
         handleCloseDialog: jest.fn(),
+        handleCloseLoginDialog: jest.fn(),
         handleConfirmAdd: jest.fn().mockResolvedValue(undefined),
         refreshWatchlistIds: jest.fn().mockResolvedValue(undefined),
         ...mockWatchlistContext,
@@ -101,6 +103,7 @@ const renderWithMocks = (
     if (mockAuthContext) {
       const defaultAuthContext: AuthContextType = {
         user: null,
+        isLoading: false,
         login: jest.fn(),
         register: jest.fn(),
         logout: jest.fn(),
