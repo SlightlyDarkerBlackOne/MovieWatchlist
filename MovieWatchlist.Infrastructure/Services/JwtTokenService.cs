@@ -5,17 +5,10 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MovieWatchlist.Core.Configuration;
-using MovieWatchlist.Core.DTOs;
+using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
 
 namespace MovieWatchlist.Infrastructure.Services;
-
-public interface IJwtTokenService
-{
-    string GenerateToken(User user);
-    string GenerateRefreshToken();
-    ClaimsPrincipal? ValidateToken(string token);
-}
 
 public class JwtTokenService : IJwtTokenService
 {

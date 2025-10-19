@@ -1,4 +1,4 @@
-namespace MovieWatchlist.Core.Configuration;
+namespace MovieWatchlist.Infrastructure.Configuration;
 
 public class TmdbSettings
 {

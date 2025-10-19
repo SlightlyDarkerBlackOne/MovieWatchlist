@@ -32,7 +32,6 @@ public static class TestDatabaseSeeder
         var users = new[]
         {
             TestDataBuilder.User()
-                .WithId(1)
                 .WithUsername("testuser1")
                 .WithEmail("testuser1@example.com")
                 .WithPasswordHash("hashed_password_1")
@@ -41,7 +40,6 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.User()
-                .WithId(2)
                 .WithUsername("testuser2")
                 .WithEmail("testuser2@example.com")
                 .WithPasswordHash("hashed_password_2")
@@ -50,7 +48,6 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.User()
-                .WithId(3)
                 .WithUsername("inactiveuser")
                 .WithEmail("inactive@example.com")
                 .WithPasswordHash("hashed_password_3")
@@ -60,6 +57,7 @@ public static class TestDatabaseSeeder
         };
 
         await context.Users.AddRangeAsync(users);
+        await context.SaveChangesAsync(); // Save to get IDs
     }
 
     /// <summary>
@@ -73,7 +71,6 @@ public static class TestDatabaseSeeder
         var movies = new[]
         {
             TestDataBuilder.Movie()
-                .WithId(1)
                 .WithTmdbId(12345)
                 .WithTitle("The Dark Knight")
                 .WithOverview("A crime thriller about Batman")
@@ -86,7 +83,6 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.Movie()
-                .WithId(2)
                 .WithTmdbId(23456)
                 .WithTitle("Inception")
                 .WithOverview("A mind-bending thriller about dreams")
@@ -99,7 +95,6 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.Movie()
-                .WithId(3)
                 .WithTmdbId(34567)
                 .WithTitle("The Shawshank Redemption")
                 .WithOverview("A story of hope and friendship in prison")
@@ -112,7 +107,6 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.Movie()
-                .WithId(4)
                 .WithTmdbId(45678)
                 .WithTitle("Pulp Fiction")
                 .WithOverview("Interconnected stories of crime in Los Angeles")
@@ -125,7 +119,6 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.Movie()
-                .WithId(5)
                 .WithTmdbId(56789)
                 .WithTitle("The Matrix")
                 .WithOverview("A computer hacker learns about the true nature of reality")
@@ -139,6 +132,7 @@ public static class TestDatabaseSeeder
         };
 
         await context.Movies.AddRangeAsync(movies);
+        await context.SaveChangesAsync(); // Save to get IDs
     }
 
     /// <summary>
@@ -149,13 +143,16 @@ public static class TestDatabaseSeeder
         if (await context.WatchlistItems.AnyAsync())
             return;
 
+        // Get the seeded users and movies to use their actual IDs
+        var users = await context.Users.OrderBy(u => u.Id).ToListAsync();
+        var movies = await context.Movies.OrderBy(m => m.Id).ToListAsync();
+
         var watchlistItems = new[]
         {
             // User 1's watchlist
             TestDataBuilder.WatchlistItem()
-                .WithId(1)
-                .WithUserId(1)
-                .WithMovieId(1)
+                .WithUserId(users[0].Id)
+                .WithMovieId(movies[0].Id)
                 .WithStatus(WatchlistStatus.Watched)
                 .WithIsFavorite(true)
                 .WithUserRating(10)
@@ -165,9 +162,8 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.WatchlistItem()
-                .WithId(2)
-                .WithUserId(1)
-                .WithMovieId(2)
+                .WithUserId(users[0].Id)
+                .WithMovieId(movies[1].Id)
                 .WithStatus(WatchlistStatus.Watched)
                 .WithIsFavorite(false)
                 .WithUserRating(8)
@@ -177,9 +173,8 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.WatchlistItem()
-                .WithId(3)
-                .WithUserId(1)
-                .WithMovieId(3)
+                .WithUserId(users[0].Id)
+                .WithMovieId(movies[2].Id)
                 .WithStatus(WatchlistStatus.Planned)
                 .WithIsFavorite(true)
                 .WithUserRating(null)
@@ -189,9 +184,8 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.WatchlistItem()
-                .WithId(4)
-                .WithUserId(1)
-                .WithMovieId(4)
+                .WithUserId(users[0].Id)
+                .WithMovieId(movies[3].Id)
                 .WithStatus(WatchlistStatus.Watching)
                 .WithIsFavorite(false)
                 .WithUserRating(null)
@@ -202,9 +196,8 @@ public static class TestDatabaseSeeder
 
             // User 2's watchlist
             TestDataBuilder.WatchlistItem()
-                .WithId(5)
-                .WithUserId(2)
-                .WithMovieId(1)
+                .WithUserId(users[1].Id)
+                .WithMovieId(movies[0].Id)
                 .WithStatus(WatchlistStatus.Watched)
                 .WithIsFavorite(true)
                 .WithUserRating(9)
@@ -214,9 +207,8 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.WatchlistItem()
-                .WithId(6)
-                .WithUserId(2)
-                .WithMovieId(5)
+                .WithUserId(users[1].Id)
+                .WithMovieId(movies[4].Id)
                 .WithStatus(WatchlistStatus.Planned)
                 .WithIsFavorite(false)
                 .WithUserRating(null)
@@ -237,11 +229,13 @@ public static class TestDatabaseSeeder
         if (await context.RefreshTokens.AnyAsync())
             return;
 
+        // Get the seeded users to use their actual IDs
+        var users = await context.Users.OrderBy(u => u.Id).ToListAsync();
+
         var refreshTokens = new[]
         {
             TestDataBuilder.RefreshToken()
-                .WithId(1)
-                .WithUserId(1)
+                .WithUserId(users[0].Id)
                 .WithToken("valid_refresh_token_1")
                 .WithExpiresAt(TestConstants.Dates.DefaultTokenExpiresAt)
                 .WithIsRevoked(false)
@@ -249,8 +243,7 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.RefreshToken()
-                .WithId(2)
-                .WithUserId(2)
+                .WithUserId(users[1].Id)
                 .WithToken("valid_refresh_token_2")
                 .WithExpiresAt(TestConstants.Dates.DefaultTokenExpiresAt)
                 .WithIsRevoked(false)
@@ -258,8 +251,7 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.RefreshToken()
-                .WithId(3)
-                .WithUserId(1)
+                .WithUserId(users[0].Id)
                 .WithToken("expired_refresh_token")
                 .WithExpiresAt(DateTime.UtcNow.AddDays(-1))
                 .WithIsRevoked(false)
@@ -267,8 +259,7 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.RefreshToken()
-                .WithId(4)
-                .WithUserId(2)
+                .WithUserId(users[1].Id)
                 .WithToken("revoked_refresh_token")
                 .WithExpiresAt(TestConstants.Dates.DefaultTokenExpiresAt)
                 .WithIsRevoked(true)

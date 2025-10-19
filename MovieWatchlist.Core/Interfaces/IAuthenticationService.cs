@@ -1,14 +1,14 @@
-using MovieWatchlist.Core.DTOs;
+using MovieWatchlist.Core.Commands;
 
 namespace MovieWatchlist.Core.Interfaces;
 
 public interface IAuthenticationService
 {
-    Task<AuthenticationResult> RegisterAsync(RegisterDto registerDto);
-    Task<AuthenticationResult> LoginAsync(LoginDto loginDto);
+    Task<AuthenticationResult> RegisterAsync(RegisterCommand command);
+    Task<AuthenticationResult> LoginAsync(LoginCommand command);
     Task<bool> ValidateTokenAsync(string token);
     Task<string> RefreshTokenAsync(string refreshToken);
     Task<bool> LogoutAsync(string token);
-    Task<PasswordResetResponseDto> ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto);
-    Task<PasswordResetResponseDto> ResetPasswordAsync(ResetPasswordDto resetPasswordDto);
+    Task<PasswordResetResponse> ForgotPasswordAsync(ForgotPasswordCommand command);
+    Task<PasswordResetResponse> ResetPasswordAsync(ResetPasswordCommand command);
 }

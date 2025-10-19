@@ -4,9 +4,11 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Api.Constants;
 using MovieWatchlist.Core.Configuration;
+using MovieWatchlist.Infrastructure.Configuration;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Api.Middleware;
-using MovieWatchlist.Core.Validation;
+using MovieWatchlist.Application.Validation;
+using MovieWatchlist.Application.Services;
 using MovieWatchlist.Infrastructure.Data;
 using MovieWatchlist.Infrastructure.Repositories;
 using MovieWatchlist.Infrastructure.Services;
@@ -108,14 +110,17 @@ builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 builder.Services.AddScoped<IWatchlistRepository, WatchlistRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-// Register services
+// Register Application services
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
-builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IWatchlistService, WatchlistService>();
 builder.Services.AddScoped<IInputValidationService, InputValidationService>();
+
+// Register Infrastructure services
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IGenreService, GenreService>();
 builder.Services.AddHttpClient<ITmdbService, TmdbService>();
-builder.Services.AddScoped<IWatchlistService, WatchlistService>();
 
 // Add CORS services
 builder.Services.AddCors(options =>

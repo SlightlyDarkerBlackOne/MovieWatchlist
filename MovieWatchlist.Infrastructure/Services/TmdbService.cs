@@ -5,8 +5,8 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
-using MovieWatchlist.Core.Configuration;
-using MovieWatchlist.Core.DTOs;
+using MovieWatchlist.Infrastructure.Configuration;
+using MovieWatchlist.Infrastructure.DTOs;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
 

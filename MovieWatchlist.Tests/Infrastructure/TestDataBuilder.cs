@@ -33,58 +33,62 @@ public static class TestDataBuilder
 /// </summary>
 public class UserBuilder
 {
-    private readonly User _user;
-
-    public UserBuilder()
-    {
-        _user = new User
-        {
-            Username = "testuser",
-            Email = "test@example.com",
-            PasswordHash = "hashed_password",
-            CreatedAt = DateTime.UtcNow.AddDays(-30),
-            LastLoginAt = DateTime.UtcNow.AddDays(-1)
-        };
-    }
+    private string _username = "testuser";
+    private string _email = "test@example.com";
+    private string _passwordHash = "hashed_password";
+    private DateTime? _lastLoginAt = null;
 
     public UserBuilder WithId(int id)
     {
-        _user.Id = id;
+        // Note: Id is set by EF Core, cannot be set via domain methods
+        // This is kept for backward compatibility but will be ignored
         return this;
     }
 
     public UserBuilder WithUsername(string username)
     {
-        _user.Username = username;
+        _username = username;
         return this;
     }
 
     public UserBuilder WithEmail(string email)
     {
-        _user.Email = email;
+        _email = email;
         return this;
     }
 
     public UserBuilder WithPasswordHash(string passwordHash)
     {
-        _user.PasswordHash = passwordHash;
+        _passwordHash = passwordHash;
         return this;
     }
 
     public UserBuilder WithCreatedAt(DateTime createdAt)
     {
-        _user.CreatedAt = createdAt;
+        // Note: CreatedAt is set by factory method, cannot be changed via domain methods
+        // This is kept for backward compatibility but will be ignored
         return this;
     }
 
     public UserBuilder WithLastLoginAt(DateTime? lastLoginAt)
     {
-        _user.LastLoginAt = lastLoginAt;
+        _lastLoginAt = lastLoginAt;
         return this;
     }
 
-
-    public User Build() => _user;
+    public User Build()
+    {
+        // Create user using domain factory
+        var user = User.Create(_username, _email, _passwordHash);
+        
+        // Set LastLoginAt using reflection if provided
+        if (_lastLoginAt.HasValue)
+        {
+            typeof(User).GetProperty("LastLoginAt")!.SetValue(user, _lastLoginAt.Value);
+        }
+        
+        return user;
+    }
 }
 
 /// <summary>
@@ -174,88 +178,120 @@ public class MovieBuilder
 }
 
 /// <summary>
-/// Builder for creating WatchlistItem test data
+/// Builder for creating WatchlistItem test data using domain factory methods
 /// </summary>
 public class WatchlistItemBuilder
 {
-    private readonly WatchlistItem _item;
-
-    public WatchlistItemBuilder()
-    {
-        _item = new WatchlistItem
-        {
-            UserId = 1,
-            MovieId = 1,
-            Status = WatchlistStatus.Planned,
-            IsFavorite = false,
-            UserRating = null,
-            Notes = null,
-            AddedDate = DateTime.UtcNow.AddDays(-7),
-            WatchedDate = null
-        };
-    }
+    private int _userId = 1;
+    private int _movieId = 1;
+    private WatchlistStatus _status = WatchlistStatus.Planned;
+    private bool _isFavorite = false;
+    private int? _userRating = null;
+    private string? _notes = null;
+    private DateTime _addedDate = DateTime.UtcNow;
+    private DateTime? _watchedDate = null;
+    private static int _uniqueMovieCounter = 100000; // Start at high number to avoid conflicts
 
     public WatchlistItemBuilder WithId(int id)
     {
-        _item.Id = id;
+        // Note: Id is set by EF Core, cannot be set via domain methods
+        // This is kept for backward compatibility but will be ignored
         return this;
     }
 
     public WatchlistItemBuilder WithUserId(int userId)
     {
-        _item.UserId = userId;
+        _userId = userId;
         return this;
     }
 
     public WatchlistItemBuilder WithMovieId(int movieId)
     {
-        _item.MovieId = movieId;
+        _movieId = movieId;
         return this;
     }
 
     public WatchlistItemBuilder WithStatus(WatchlistStatus status)
     {
-        _item.Status = status;
+        _status = status;
         return this;
     }
 
     public WatchlistItemBuilder WithIsFavorite(bool isFavorite)
     {
-        _item.IsFavorite = isFavorite;
+        _isFavorite = isFavorite;
         return this;
     }
 
     public WatchlistItemBuilder WithUserRating(int? userRating)
     {
-        _item.UserRating = userRating;
+        _userRating = userRating;
         return this;
     }
 
     public WatchlistItemBuilder WithNotes(string? notes)
     {
-        _item.Notes = notes;
+        _notes = notes;
         return this;
     }
 
     public WatchlistItemBuilder WithAddedDate(DateTime addedDate)
     {
-        _item.AddedDate = addedDate;
+        _addedDate = addedDate;
         return this;
     }
 
     public WatchlistItemBuilder WithWatchedDate(DateTime? watchedDate)
     {
-        _item.WatchedDate = watchedDate;
+        _watchedDate = watchedDate;
         return this;
     }
 
     public WatchlistItemBuilder WithMovie(Movie movie)
     {
-        _item.Movie = movie;
+        // Note: Movie parameter is ignored - we only use MovieId for foreign key
         return this;
     }
 
-    public WatchlistItem Build() => _item;
+    public WatchlistItem Build()
+    {
+        // Create a unique movie object to satisfy the domain factory requirement
+        // This movie won't be saved to the database - only the MovieId FK is used
+        var uniqueMovie = new Movie
+        {
+            TmdbId = Interlocked.Increment(ref _uniqueMovieCounter), // Thread-safe unique ID
+            Title = $"Test Movie {_movieId}",
+            Overview = "A test movie for watchlist item",
+            PosterPath = "/test.jpg",
+            ReleaseDate = DateTime.UtcNow,
+            VoteAverage = 7.5,
+            VoteCount = 1000,
+            Popularity = 100.0,
+            Genres = new[] { "Action", "Drama" }
+        };
+
+        // Create watchlist item using domain factory
+        var item = WatchlistItem.Create(_userId, _movieId, uniqueMovie);
+
+        // Update properties that weren't set by factory
+        if (_status != WatchlistStatus.Planned)
+            item.UpdateStatus(_status);
+
+        if (_isFavorite)
+            item.ToggleFavorite();
+
+        if (_userRating.HasValue)
+            item.SetRating(_userRating.Value);
+
+        if (_notes != null)
+            item.UpdateNotes(_notes);
+
+        // Clear the navigation property to avoid tracking conflicts
+        // The MovieId foreign key is already set correctly
+        item.Movie = null!;
+
+        return item;
+    }
 }
 
 /// <summary>

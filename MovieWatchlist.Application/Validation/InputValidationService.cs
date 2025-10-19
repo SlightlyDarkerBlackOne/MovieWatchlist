@@ -1,7 +1,8 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using MovieWatchlist.Core.Constants;
 
-namespace MovieWatchlist.Core.Validation;
+namespace MovieWatchlist.Application.Validation;
 
 public interface IInputValidationService
 {
@@ -56,13 +57,13 @@ public class InputValidationService : IInputValidationService
         var errors = new List<string>();
 
         if (!IsValidUsername(username))
-            errors.Add("Username must be 3-50 characters long and contain only letters, numbers, underscores, and hyphens");
+            errors.Add(ErrorMessages.UsernameValidation);
 
         if (!IsValidEmail(email))
-            errors.Add("Email must be a valid format and not exceed 100 characters");
+            errors.Add(ErrorMessages.EmailValidation);
 
         if (!IsValidPassword(password))
-            errors.Add("Password must be at least 8 characters with uppercase, lowercase, number, and special character");
+            errors.Add(ErrorMessages.PasswordValidation);
 
         return new ValidationResult
         {
@@ -77,3 +78,5 @@ public class ValidationResult
     public bool IsValid { get; set; }
     public List<string> Errors { get; set; } = new();
 }
+
+

@@ -152,46 +152,45 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
             .Build();
 
         var testUser2 = TestDataBuilder.User()
-            .WithId(2)
             .WithUsername("testuser2")
             .WithEmail("test2@example.com")
             .WithPasswordHash("hashed_password")
             .Build();
 
         Context.Users.AddRange(testUser, testUser2);
+        await Context.SaveChangesAsync(); // Save users first to get their IDs
 
         // Create test movies
         var movie1 = TestDataBuilder.Movie()
-            .WithId(1)
             .WithTmdbId(12345)
             .WithTitle("Test Movie 1")
             .WithGenres("Action", "Drama")
             .Build();
 
         var movie2 = TestDataBuilder.Movie()
-            .WithId(2)
             .WithTmdbId(67890)
             .WithTitle("Test Movie 2")
             .WithGenres("Comedy", "Romance")
             .Build();
 
         Context.Movies.AddRange(movie1, movie2);
+        await Context.SaveChangesAsync(); // Save movies to get their IDs
 
-        // Create test watchlist items
+        // Create test watchlist items with proper movie references
         var watchlistItem1 = TestDataBuilder.WatchlistItem()
-            .WithUserId(1)
-            .WithMovieId(1)
+            .WithUserId(testUser.Id)
+            .WithMovieId(movie1.Id)
             .WithStatus(WatchlistStatus.Planned)
             .Build();
 
         var watchlistItem2 = TestDataBuilder.WatchlistItem()
-            .WithUserId(1)
-            .WithMovieId(2)
+            .WithUserId(testUser.Id)
+            .WithMovieId(movie2.Id)
             .WithStatus(WatchlistStatus.Watched)
             .WithIsFavorite(true)
             .WithUserRating(8)
             .Build();
-
+        
         Context.WatchlistItems.AddRange(watchlistItem1, watchlistItem2);
 
         await Context.SaveChangesAsync();

@@ -7,6 +7,7 @@ using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Configuration;
+using MovieWatchlist.Infrastructure.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace MovieWatchlist.Tests.Infrastructure;

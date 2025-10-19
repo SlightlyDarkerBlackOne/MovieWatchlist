@@ -2,9 +2,10 @@ using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Moq;
 using MovieWatchlist.Core.Configuration;
-using MovieWatchlist.Core.DTOs;
+using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Application.Services;
 using MovieWatchlist.Infrastructure.Services;
 using MovieWatchlist.Tests.Infrastructure;
 using System.Linq.Expressions;
@@ -24,6 +25,7 @@ public class AuthenticationServiceTests : UnitTestBase
     private readonly Mock<IJwtTokenService> _mockJwtTokenService;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IEmailService> _mockEmailService;
+    private readonly Mock<IPasswordHasher> _mockPasswordHasher;
     private readonly JwtSettings _jwtSettings;
     private readonly AuthenticationService _authenticationService;
 
@@ -35,6 +37,13 @@ public class AuthenticationServiceTests : UnitTestBase
         _mockJwtTokenService = new Mock<IJwtTokenService>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockEmailService = new Mock<IEmailService>();
+        _mockPasswordHasher = new Mock<IPasswordHasher>();
+
+        // Setup password hasher to use real implementation for testing
+        _mockPasswordHasher.Setup(x => x.HashPassword(It.IsAny<string>()))
+            .Returns<string>(pwd => new MovieWatchlist.Infrastructure.Services.PasswordHasher().HashPassword(pwd));
+        _mockPasswordHasher.Setup(x => x.VerifyPassword(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns<string, string>((pwd, hash) => new MovieWatchlist.Infrastructure.Services.PasswordHasher().VerifyPassword(pwd, hash));
 
         _jwtSettings = new JwtSettings
         {
@@ -53,7 +62,8 @@ public class AuthenticationServiceTests : UnitTestBase
             _mockJwtTokenService.Object,
             _mockUnitOfWork.Object,
             options,
-            _mockEmailService.Object);
+            _mockEmailService.Object,
+            _mockPasswordHasher.Object);
     }
 
     #region RegisterAsync Tests
@@ -62,12 +72,11 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task RegisterAsync_WithValidData_ReturnsSuccessResult()
     {
         // Arrange
-        var registerDto = new RegisterDto
-        {
-            Username = TestConstants.Users.DefaultUsername,
-            Email = TestConstants.Users.DefaultEmail,
-            Password = TestConstants.Users.DefaultPassword
-        };
+        var command = new RegisterCommand(
+            Username: TestConstants.Users.DefaultUsername,
+            Email: TestConstants.Users.DefaultEmail,
+            Password: TestConstants.Users.DefaultPassword
+        );
 
         _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
             .ReturnsAsync(new List<User>()); // No existing users
@@ -77,8 +86,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .Returns("test-refresh-token");
 
         // Act
-        
-        var result = await _authenticationService.RegisterAsync(registerDto);
+        var result = await _authenticationService.RegisterAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -97,19 +105,18 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task RegisterAsync_WithExistingEmail_ReturnsFailureResult()
     {
         // Arrange
-        var registerDto = new RegisterDto
-        {
-            Username = "testuser",
-            Email = "existing@example.com",
-            Password = "Password123!"
-        };
+        var command = new RegisterCommand(
+            Username: "testuser",
+            Email: "existing@example.com",
+            Password: "Password123!"
+        );
 
         var existingUser = CreateTestUser(email: "existing@example.com");
         _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
             .ReturnsAsync(new List<User> { existingUser }); // Existing user with same email
 
         // Act
-        var result = await _authenticationService.RegisterAsync(registerDto);
+        var result = await _authenticationService.RegisterAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeFalse();
@@ -125,12 +132,11 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task RegisterAsync_WithExistingUsername_ReturnsFailureResult()
     {
         // Arrange
-        var registerDto = new RegisterDto
-        {
-            Username = "existinguser",
-            Email = "test@example.com",
-            Password = "Password123!"
-        };
+        var command = new RegisterCommand(
+            Username: "existinguser",
+            Email: "test@example.com",
+            Password: "Password123!"
+        );
 
         // First call returns empty (email check), second call returns existing user (username check)
         _mockUserRepository.SetupSequence(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
@@ -138,7 +144,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .ReturnsAsync(new List<User> { CreateTestUser(username: "existinguser") }); // Existing username
 
         // Act
-        var result = await _authenticationService.RegisterAsync(registerDto);
+        var result = await _authenticationService.RegisterAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeFalse();
@@ -158,17 +164,16 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task LoginAsync_WithValidCredentials_ReturnsSuccessResult()
     {
         // Arrange
-        var loginDto = new LoginDto
-        {
-            UsernameOrEmail = TestConstants.Users.DefaultUsername,
-            Password = TestConstants.Users.DefaultPassword
-        };
+        var command = new LoginCommand(
+            UsernameOrEmail: TestConstants.Users.DefaultUsername,
+            Password: TestConstants.Users.DefaultPassword
+        );
 
         var user = TestDataBuilder.User()
             .WithId(1)
             .WithUsername(TestConstants.Users.DefaultUsername)
             .WithEmail(TestConstants.Users.DefaultEmail)
-            .WithPasswordHash(PasswordHasher.HashPassword(TestConstants.Users.DefaultPassword))
+            .WithPasswordHash(new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword))
             .Build();
 
         _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
@@ -179,7 +184,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .Returns("test-refresh-token");
 
         // Act
-        var result = await _authenticationService.LoginAsync(loginDto);
+        var result = await _authenticationService.LoginAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -197,17 +202,16 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task LoginAsync_WithNonExistentUser_ReturnsFailureResult()
     {
         // Arrange
-        var loginDto = new LoginDto
-        {
-            UsernameOrEmail = "nonexistent",
-            Password = "Password123!"
-        };
+        var command = new LoginCommand(
+            UsernameOrEmail: "nonexistent",
+            Password: "Password123!"
+        );
 
         _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
             .ReturnsAsync(new List<User>()); // No user found
 
         // Act
-        var result = await _authenticationService.LoginAsync(loginDto);
+        var result = await _authenticationService.LoginAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeFalse();
@@ -223,24 +227,23 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task LoginAsync_WithInvalidPassword_ReturnsFailureResult()
     {
         // Arrange
-        var loginDto = new LoginDto
-        {
-            UsernameOrEmail = TestConstants.Users.DefaultUsername,
-            Password = "WrongPassword123!"
-        };
+        var command = new LoginCommand(
+            UsernameOrEmail: TestConstants.Users.DefaultUsername,
+            Password: "WrongPassword123!"
+        );
 
         var user = TestDataBuilder.User()
             .WithId(1)
             .WithUsername(TestConstants.Users.DefaultUsername)
             .WithEmail(TestConstants.Users.DefaultEmail)
-            .WithPasswordHash(PasswordHasher.HashPassword("CorrectPassword123!"))
+            .WithPasswordHash(new PasswordHasher().HashPassword("CorrectPassword123!"))
             .Build();
 
         _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
             .ReturnsAsync(new List<User> { user });
 
         // Act
-        var result = await _authenticationService.LoginAsync(loginDto);
+        var result = await _authenticationService.LoginAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeFalse();
@@ -256,17 +259,16 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task LoginAsync_WithEmail_ReturnsSuccessResult()
     {
         // Arrange
-        var loginDto = new LoginDto
-        {
-            UsernameOrEmail = TestConstants.Users.DefaultEmail,
-            Password = TestConstants.Users.DefaultPassword
-        };
+        var command = new LoginCommand(
+            UsernameOrEmail: TestConstants.Users.DefaultEmail,
+            Password: TestConstants.Users.DefaultPassword
+        );
 
         var user = TestDataBuilder.User()
             .WithId(1)
             .WithUsername(TestConstants.Users.DefaultUsername)
             .WithEmail(TestConstants.Users.DefaultEmail)
-            .WithPasswordHash(PasswordHasher.HashPassword(TestConstants.Users.DefaultPassword))
+            .WithPasswordHash(new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword))
             .Build();
 
         _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
@@ -277,7 +279,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .Returns("test-refresh-token");
 
         // Act
-        var result = await _authenticationService.LoginAsync(loginDto);
+        var result = await _authenticationService.LoginAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -505,7 +507,7 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task ForgotPasswordAsync_WithValidEmail_ReturnsSuccessAndSendsEmail()
     {
         // Arrange
-        var forgotPasswordDto = new ForgotPasswordDto { Email = TestConstants.Users.DefaultEmail };
+        var command = new ForgotPasswordCommand(Email: TestConstants.Users.DefaultEmail);
         var testUser = CreateTestUser(email: TestConstants.Users.DefaultEmail);
 
         _mockUserRepository
@@ -521,7 +523,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .ReturnsAsync(true);
 
         // Act
-        var result = await _authenticationService.ForgotPasswordAsync(forgotPasswordDto);
+        var result = await _authenticationService.ForgotPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();
@@ -540,14 +542,14 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task ForgotPasswordAsync_WithNonExistentEmail_ReturnsSuccessButNoEmail()
     {
         // Arrange
-        var forgotPasswordDto = new ForgotPasswordDto { Email = "nonexistent@example.com" };
+        var command = new ForgotPasswordCommand(Email: "nonexistent@example.com");
 
         _mockUserRepository
             .Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
             .ReturnsAsync(new List<User>());
 
         // Act
-        var result = await _authenticationService.ForgotPasswordAsync(forgotPasswordDto);
+        var result = await _authenticationService.ForgotPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();
@@ -568,12 +570,10 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var resetToken = Guid.NewGuid().ToString();
-        var resetPasswordDto = new ResetPasswordDto 
-        { 
-            Token = resetToken,
-            NewPassword = "NewPassword123!",
-            ConfirmPassword = "NewPassword123!"
-        };
+        var command = new ResetPasswordCommand(
+            Token: resetToken,
+            NewPassword: "NewPassword123!"
+        );
         
         var testUser = CreateTestUser();
         var passwordResetToken = new PasswordResetToken
@@ -595,7 +595,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .ReturnsAsync(new[] { testUser });
 
         // Act
-        var result = await _authenticationService.ResetPasswordAsync(resetPasswordDto);
+        var result = await _authenticationService.ResetPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();
@@ -611,19 +611,17 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task ResetPasswordAsync_WithInvalidToken_ReturnsFailure()
     {
         // Arrange
-        var resetPasswordDto = new ResetPasswordDto 
-        { 
-            Token = "invalid-token",
-            NewPassword = "NewPassword123!",
-            ConfirmPassword = "NewPassword123!"
-        };
+        var command = new ResetPasswordCommand(
+            Token: "invalid-token",
+            NewPassword: "NewPassword123!"
+        );
 
         _mockPasswordResetTokenRepository
             .Setup(x => x.FindAsync(It.IsAny<Expression<Func<PasswordResetToken, bool>>>()))
             .ReturnsAsync(new List<PasswordResetToken>());
 
         // Act
-        var result = await _authenticationService.ResetPasswordAsync(resetPasswordDto);
+        var result = await _authenticationService.ResetPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();
@@ -639,12 +637,10 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var resetToken = Guid.NewGuid().ToString();
-        var resetPasswordDto = new ResetPasswordDto 
-        { 
-            Token = resetToken,
-            NewPassword = "NewPassword123!",
-            ConfirmPassword = "NewPassword123!"
-        };
+        var command = new ResetPasswordCommand(
+            Token: resetToken,
+            NewPassword: "NewPassword123!"
+        );
         
         var expiredToken = new PasswordResetToken
         {
@@ -662,7 +658,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .ReturnsAsync(new List<PasswordResetToken>());
 
         // Act
-        var result = await _authenticationService.ResetPasswordAsync(resetPasswordDto);
+        var result = await _authenticationService.ResetPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();
@@ -678,12 +674,10 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var resetToken = Guid.NewGuid().ToString();
-        var resetPasswordDto = new ResetPasswordDto 
-        { 
-            Token = resetToken,
-            NewPassword = "NewPassword123!",
-            ConfirmPassword = "NewPassword123!"
-        };
+        var command = new ResetPasswordCommand(
+            Token: resetToken,
+            NewPassword: "NewPassword123!"
+        );
         
         var usedToken = new PasswordResetToken
         {
@@ -701,7 +695,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .ReturnsAsync(new List<PasswordResetToken>());
 
         // Act
-        var result = await _authenticationService.ResetPasswordAsync(resetPasswordDto);
+        var result = await _authenticationService.ResetPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();

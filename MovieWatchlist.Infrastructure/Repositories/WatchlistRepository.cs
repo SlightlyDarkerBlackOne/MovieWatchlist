@@ -148,13 +148,9 @@ public class WatchlistRepository : EfRepository<WatchlistItem>, IWatchlistReposi
         if (item == null)
             return false;
 
-        item.Status = status;
-        
-        // Set watched date if status is Watched
-        if (status == WatchlistStatus.Watched && !item.WatchedDate.HasValue)
-        {
-            item.WatchedDate = DateTime.UtcNow;
-        }
+        // Use domain method instead of direct property assignment
+        // This automatically handles WatchedDate when status becomes Watched
+        item.UpdateStatus(status);
 
         _dbSet.Update(item);
         return true;

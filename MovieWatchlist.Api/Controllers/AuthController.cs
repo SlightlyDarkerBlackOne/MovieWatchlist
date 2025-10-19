@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
-using MovieWatchlist.Core.DTOs;
+using MovieWatchlist.Api.DTOs;
+using MovieWatchlist.Application.Validation;
+using MovieWatchlist.Core.Commands;
+using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Exceptions;
 using MovieWatchlist.Core.Interfaces;
-using MovieWatchlist.Core.Validation;
 
 namespace MovieWatchlist.Api.Controllers;
 
@@ -25,32 +27,39 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public async Task<ActionResult<AuthenticationResult>> Register([FromBody] RegisterDto registerDto)
+    public async Task<ActionResult<AuthenticationResult>> Register([FromBody] RegisterDto dto)
     {
         try
         {
             if (!ModelState.IsValid)
-                throw new ValidationException("Invalid model state", ModelState);
+                throw new ValidationException(ErrorMessages.InvalidModelState, ModelState);
 
             // Sanitize inputs
-            registerDto.Username = _validationService.SanitizeInput(registerDto.Username);
-            registerDto.Email = _validationService.SanitizeInput(registerDto.Email);
+            var sanitizedUsername = _validationService.SanitizeInput(dto.Username);
+            var sanitizedEmail = _validationService.SanitizeInput(dto.Email);
 
             // Validate inputs
             var validationResult = _validationService.ValidateRegistrationInput(
-                registerDto.Username, registerDto.Email, registerDto.Password);
+                sanitizedUsername, sanitizedEmail, dto.Password);
 
             if (!validationResult.IsValid)
-                throw new ValidationException("Validation failed", validationResult.Errors);
+                throw new ValidationException(ErrorMessages.ValidationFailed, validationResult.Errors);
 
-            _logger.LogInformation("Registration attempt for user: {Username}", registerDto.Username);
+            _logger.LogInformation("Registration attempt for user: {Username}", sanitizedUsername);
 
-            var result = await _authService.RegisterAsync(registerDto);
+            // Map DTO → Command
+            var command = new RegisterCommand(
+                Username: sanitizedUsername,
+                Email: sanitizedEmail,
+                Password: dto.Password
+            );
+
+            var result = await _authService.RegisterAsync(command);
 
             if (!result.IsSuccess)
-                throw new ConflictException(result.ErrorMessage ?? "Registration failed");
+                throw new ConflictException(result.ErrorMessage ?? ErrorMessages.RegistrationFailed);
 
-            _logger.LogInformation("User registered successfully: {Username}", registerDto.Username);
+            _logger.LogInformation("User registered successfully: {Username}", sanitizedUsername);
             return Ok(result);
         }
         catch (Exception ex) when (!(ex is ApiException))
@@ -61,12 +70,18 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public async Task<ActionResult<AuthenticationResult>> Login([FromBody] LoginDto loginDto)
+    public async Task<ActionResult<AuthenticationResult>> Login([FromBody] LoginDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var result = await _authService.LoginAsync(loginDto);
+        // Map DTO → Command
+        var command = new LoginCommand(
+            UsernameOrEmail: dto.UsernameOrEmail,
+            Password: dto.Password
+        );
+
+        var result = await _authService.LoginAsync(command);
 
         if (!result.IsSuccess)
             return Unauthorized(new { message = result.ErrorMessage });
@@ -96,13 +111,13 @@ public class AuthController : ControllerBase
     {
         var token = GetTokenFromHeader();
         if (string.IsNullOrEmpty(token))
-            return BadRequest(new { message = "Token not provided" });
+            return BadRequest(new { message = ErrorMessages.TokenNotProvided });
 
         var success = await _authService.LogoutAsync(token);
         if (!success)
-            return BadRequest(new { message = "Failed to logout" });
+            return BadRequest(new { message = ErrorMessages.LogoutFailed });
 
-        return Ok(new { message = "Logged out successfully" });
+        return Ok(new { message = ErrorMessages.LogoutSuccess });
     }
 
     [HttpPost("validate")]
@@ -110,30 +125,33 @@ public class AuthController : ControllerBase
     {
         var token = GetTokenFromHeader();
         if (string.IsNullOrEmpty(token))
-            return BadRequest(new { message = "Token not provided", isValid = false });
+            return BadRequest(new { message = ErrorMessages.TokenNotProvided, isValid = false });
 
         var isValid = await _authService.ValidateTokenAsync(token);
         return Ok(new { isValid });
     }
 
     [HttpPost("forgot-password")]
-    public async Task<ActionResult<PasswordResetResponseDto>> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
+    public async Task<ActionResult<PasswordResetResponse>> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
         try
         {
             if (!ModelState.IsValid)
-                throw new ValidationException("Invalid model state", ModelState);
+                throw new ValidationException(ErrorMessages.InvalidModelState, ModelState);
 
             // Sanitize input
-            forgotPasswordDto.Email = _validationService.SanitizeInput(forgotPasswordDto.Email);
+            var sanitizedEmail = _validationService.SanitizeInput(dto.Email);
 
             // Validate email format
-            if (!_validationService.IsValidEmail(forgotPasswordDto.Email))
-                throw new ValidationException("Invalid email format");
+            if (!_validationService.IsValidEmail(sanitizedEmail))
+                throw new ValidationException(ErrorMessages.InvalidEmailFormat);
 
-            _logger.LogInformation("Password reset requested for email: {Email}", forgotPasswordDto.Email);
+            _logger.LogInformation("Password reset requested for email: {Email}", sanitizedEmail);
 
-            var result = await _authService.ForgotPasswordAsync(forgotPasswordDto);
+            // Map DTO → Command
+            var command = new ForgotPasswordCommand(Email: sanitizedEmail);
+
+            var result = await _authService.ForgotPasswordAsync(command);
 
             return Ok(result);
         }
@@ -144,25 +162,34 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing forgot password request");
-            return StatusCode(500, new { message = "An error occurred while processing your request." });
+            return StatusCode(500, new { message = ErrorMessages.PasswordResetRequestError });
         }
     }
 
     [HttpPost("reset-password")]
-    public async Task<ActionResult<PasswordResetResponseDto>> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
+    public async Task<ActionResult<PasswordResetResponse>> ResetPassword([FromBody] ResetPasswordDto dto)
     {
         try
         {
             if (!ModelState.IsValid)
-                throw new ValidationException("Invalid model state", ModelState);
+                throw new ValidationException(ErrorMessages.InvalidModelState, ModelState);
 
-            // Validate new password
-            if (!_validationService.IsValidPassword(resetPasswordDto.NewPassword))
-                throw new ValidationException("Invalid password format");
+            // Validate token and password
+            if (string.IsNullOrWhiteSpace(dto.Token))
+                return BadRequest(new { Message = ErrorMessages.ResetTokenRequired });
+            
+            if (!_validationService.IsValidPassword(dto.NewPassword))
+                throw new ValidationException(ErrorMessages.InvalidPasswordFormat);
 
-            _logger.LogInformation("Password reset attempt with token: {Token}", resetPasswordDto.Token?.Substring(0, Math.Min(8, resetPasswordDto.Token?.Length ?? 0)) + "...");
+            _logger.LogInformation("Password reset attempt with token: {Token}", dto.Token.Substring(0, Math.Min(8, dto.Token.Length)) + "...");
 
-            var result = await _authService.ResetPasswordAsync(resetPasswordDto);
+            // Map DTO → Command
+            var command = new ResetPasswordCommand(
+                Token: dto.Token,
+                NewPassword: dto.NewPassword
+            );
+
+            var result = await _authService.ResetPasswordAsync(command);
 
             if (!result.Success)
                 return BadRequest(result);
@@ -176,7 +203,7 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing password reset request");
-            return StatusCode(500, new { message = "An error occurred while resetting your password." });
+            return StatusCode(500, new { message = ErrorMessages.PasswordResetFailed });
         }
     }
 

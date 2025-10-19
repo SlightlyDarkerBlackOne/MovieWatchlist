@@ -151,8 +151,9 @@ public class InfrastructureIntegrationTests : EnhancedIntegrationTestBase
         unratedItems.Should().HaveCount(3);
 
         // Test relationships - verify foreign keys work
+        var firstUser = await Context.Users.FirstAsync();
         var user1Watchlist = await Context.WatchlistItems
-            .Where(w => w.UserId == 1)
+            .Where(w => w.UserId == firstUser.Id)
             .Include(w => w.Movie)
             .ToListAsync();
         

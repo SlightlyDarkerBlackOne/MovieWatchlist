@@ -1,5 +1,5 @@
 using FluentAssertions;
-using MovieWatchlist.Core.Validation;
+using MovieWatchlist.Application.Validation;
 using MovieWatchlist.Tests.Infrastructure;
 using Xunit;
 

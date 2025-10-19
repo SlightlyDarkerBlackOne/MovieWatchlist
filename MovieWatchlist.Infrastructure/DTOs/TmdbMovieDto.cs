@@ -1,7 +1,7 @@
 using System;
 using System.Text.Json.Serialization;
 
-namespace MovieWatchlist.Core.DTOs;
+namespace MovieWatchlist.Infrastructure.DTOs;
 
 public class TmdbMovieDto
 {
@@ -85,4 +85,6 @@ public class TmdbGenreDto
 
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
-} 
+}
+
+

@@ -87,7 +87,8 @@ public class UserRepository : EfRepository<User>, IUserRepository
         if (user == null)
             return false;
 
-        user.LastLoginAt = DateTime.UtcNow;
+        // Use domain method instead of direct property assignment
+        user.UpdateLastLogin();
         _dbSet.Update(user);
         return true;
     }

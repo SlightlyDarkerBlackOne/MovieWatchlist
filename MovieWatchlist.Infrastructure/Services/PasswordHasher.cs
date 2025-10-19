@@ -1,15 +1,16 @@
 using System.Security.Cryptography;
 using System.Text;
+using MovieWatchlist.Core.Interfaces;
 
 namespace MovieWatchlist.Infrastructure.Services;
 
-public static class PasswordHasher
+public class PasswordHasher : IPasswordHasher
 {
     private const int SaltSize = 16;
     private const int KeySize = 32;
     private const int Iterations = 10000;
 
-    public static string HashPassword(string password)
+    public string HashPassword(string password)
     {
         using var rng = RandomNumberGenerator.Create();
         var salt = new byte[SaltSize];
@@ -25,7 +26,7 @@ public static class PasswordHasher
         return Convert.ToBase64String(hashBytes);
     }
 
-    public static bool VerifyPassword(string password, string hashedPassword)
+    public bool VerifyPassword(string password, string hashedPassword)
     {
         try
         {

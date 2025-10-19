@@ -30,7 +30,7 @@ public abstract class UnitTestBase
             .WithTitle(title)
             .WithVoteAverage(voteAverage)
             .Build();
-    }
+   }
 
     /// <summary>
     /// Creates a test watchlist item with default values
