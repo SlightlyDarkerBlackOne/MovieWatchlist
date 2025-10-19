@@ -13,9 +13,9 @@ namespace MovieWatchlist.Api.Controllers;
 public class MoviesController : ControllerBase
 {
     private readonly ITmdbService _tmdbService;
-    private readonly IRepository<Movie> _movieRepository;
+    private readonly IMovieRepository _movieRepository;
 
-    public MoviesController(ITmdbService tmdbService, IRepository<Movie> movieRepository)
+    public MoviesController(ITmdbService tmdbService, IMovieRepository movieRepository)
     {
         _tmdbService = tmdbService;
         _movieRepository = movieRepository;
@@ -68,8 +68,7 @@ public class MoviesController : ControllerBase
         try
         {
             // Check if we have cached data first
-            var cachedMovies = await _movieRepository.FindAsync(m => m.TmdbId == tmdbId);
-            var cachedMovie = cachedMovies.FirstOrDefault();
+            var cachedMovie = await _movieRepository.GetByTmdbIdAsync(tmdbId);
             
             if (cachedMovie != null && !string.IsNullOrEmpty(cachedMovie.CreditsJson) && !string.IsNullOrEmpty(cachedMovie.VideosJson))
             {

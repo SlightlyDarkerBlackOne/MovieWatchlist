@@ -10,9 +10,9 @@ namespace MovieWatchlist.Application.Services;
 
 public class AuthenticationService : IAuthenticationService
 {
-    private readonly IRepository<User> m_userRepository;
-    private readonly IRepository<RefreshToken> m_refreshTokenRepository;
-    private readonly IRepository<PasswordResetToken> m_passwordResetTokenRepository;
+    private readonly IUserRepository m_userRepository;
+    private readonly IRefreshTokenRepository m_refreshTokenRepository;
+    private readonly IPasswordResetTokenRepository m_passwordResetTokenRepository;
     private readonly IJwtTokenService m_jwtTokenService;
     private readonly IUnitOfWork m_unitOfWork;
     private readonly JwtSettings m_jwtSettings;
@@ -20,9 +20,9 @@ public class AuthenticationService : IAuthenticationService
     private readonly IPasswordHasher m_passwordHasher;
 
     public AuthenticationService(
-        IRepository<User> userRepository,
-        IRepository<RefreshToken> refreshTokenRepository,
-        IRepository<PasswordResetToken> passwordResetTokenRepository,
+        IUserRepository userRepository,
+        IRefreshTokenRepository refreshTokenRepository,
+        IPasswordResetTokenRepository passwordResetTokenRepository,
         IJwtTokenService jwtTokenService,
         IUnitOfWork unitOfWork,
         IOptions<JwtSettings> jwtSettings,
@@ -42,8 +42,8 @@ public class AuthenticationService : IAuthenticationService
     public async Task<AuthenticationResult> RegisterAsync(RegisterCommand command)
     {
         // Check if user already exists
-        var existingUserByEmail = await m_userRepository.FindAsync(u => u.Email == command.Email);
-        if (existingUserByEmail.Any())
+        var existingUserByEmail = await m_userRepository.GetByEmailAsync(command.Email);
+        if (existingUserByEmail != null)
         {
             return new AuthenticationResult(
                 IsSuccess: false,
@@ -51,8 +51,8 @@ public class AuthenticationService : IAuthenticationService
             );
         }
 
-        var existingUserByUsername = await m_userRepository.FindAsync(u => u.Username == command.Username);
-        if (existingUserByUsername.Any())
+        var existingUserByUsername = await m_userRepository.GetByUsernameAsync(command.Username);
+        if (existingUserByUsername != null)
         {
             return new AuthenticationResult(
                 IsSuccess: false,
@@ -74,14 +74,7 @@ public class AuthenticationService : IAuthenticationService
         var token = m_jwtTokenService.GenerateToken(user);
         var refreshToken = m_jwtTokenService.GenerateRefreshToken();
 
-        // Save refresh token
-        var refreshTokenEntity = new RefreshToken
-        {
-            UserId = user.Id,
-            Token = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddDays(m_jwtSettings.RefreshTokenExpirationDays),
-            CreatedAt = DateTime.UtcNow
-        };
+        var refreshTokenEntity = RefreshToken.Create(user.Id, refreshToken, m_jwtSettings.RefreshTokenExpirationDays);
 
         await m_refreshTokenRepository.AddAsync(refreshTokenEntity);
         await m_unitOfWork.SaveChangesAsync();
@@ -130,14 +123,7 @@ public class AuthenticationService : IAuthenticationService
         var token = m_jwtTokenService.GenerateToken(user);
         var refreshToken = m_jwtTokenService.GenerateRefreshToken();
 
-        // Save refresh token
-        var refreshTokenEntity = new RefreshToken
-        {
-            UserId = user.Id,
-            Token = refreshToken,
-            ExpiresAt = DateTime.UtcNow.AddDays(m_jwtSettings.RefreshTokenExpirationDays),
-            CreatedAt = DateTime.UtcNow
-        };
+        var refreshTokenEntity = RefreshToken.Create(user.Id, refreshToken, m_jwtSettings.RefreshTokenExpirationDays);
 
         await m_refreshTokenRepository.AddAsync(refreshTokenEntity);
         await m_unitOfWork.SaveChangesAsync();
@@ -164,37 +150,26 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<string> RefreshTokenAsync(string refreshToken)
     {
-        var tokenEntity = await m_refreshTokenRepository.FindAsync(rt => rt.Token == refreshToken && !rt.IsRevoked);
-        var token = tokenEntity.FirstOrDefault();
+        var token = await m_refreshTokenRepository.GetByTokenAsync(refreshToken);
 
-        if (token == null || token.ExpiresAt <= DateTime.UtcNow)
+        if (token == null)
         {
             throw new UnauthorizedAccessException("Invalid or expired refresh token");
         }
 
-        // Get user
         var user = await m_userRepository.GetByIdAsync(token.UserId);
         if (user == null)
         {
             throw new UnauthorizedAccessException("User not found");
         }
 
-        // Revoke old refresh token
-        token.IsRevoked = true;
+        token.Revoke();
         await m_refreshTokenRepository.UpdateAsync(token);
 
-        // Generate new tokens
         var newToken = m_jwtTokenService.GenerateToken(user);
         var newRefreshToken = m_jwtTokenService.GenerateRefreshToken();
 
-        // Save new refresh token
-        var newRefreshTokenEntity = new RefreshToken
-        {
-            UserId = user.Id,
-            Token = newRefreshToken,
-            ExpiresAt = DateTime.UtcNow.AddDays(m_jwtSettings.RefreshTokenExpirationDays),
-            CreatedAt = DateTime.UtcNow
-        };
+        var newRefreshTokenEntity = RefreshToken.Create(user.Id, newRefreshToken, m_jwtSettings.RefreshTokenExpirationDays);
 
         await m_refreshTokenRepository.AddAsync(newRefreshTokenEntity);
         await m_unitOfWork.SaveChangesAsync();
@@ -212,11 +187,10 @@ public class AuthenticationService : IAuthenticationService
             var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!int.TryParse(userIdClaim, out var userId)) return false;
 
-            // Revoke all refresh tokens for this user
-            var userRefreshTokens = await m_refreshTokenRepository.FindAsync(rt => rt.UserId == userId && !rt.IsRevoked);
+            var userRefreshTokens = await m_refreshTokenRepository.GetActiveByUserIdAsync(userId);
             foreach (var refreshToken in userRefreshTokens)
             {
-                refreshToken.IsRevoked = true;
+                refreshToken.Revoke();
                 await m_refreshTokenRepository.UpdateAsync(refreshToken);
             }
             
@@ -234,9 +208,7 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
-            // Find user by email
-            var users = await m_userRepository.FindAsync(u => u.Email == command.Email);
-            var user = users.FirstOrDefault();
+            var user = await m_userRepository.GetByEmailAsync(command.Email);
 
             // Always return success to prevent email enumeration attacks
             var response = new PasswordResetResponse(
@@ -249,32 +221,21 @@ public class AuthenticationService : IAuthenticationService
                 return response;
             }
 
-            // Generate reset token
             var resetToken = Guid.NewGuid().ToString();
             var expiresAt = DateTime.UtcNow.AddHours(1);
 
-            // Invalidate any existing reset tokens for this user
-            var existingTokens = await m_passwordResetTokenRepository.FindAsync(t => t.UserId == user.Id && !t.IsUsed);
+            var existingTokens = await m_passwordResetTokenRepository.GetUnusedByUserIdAsync(user.Id);
             foreach (var token in existingTokens)
             {
-                token.IsUsed = true;
+                token.MarkAsUsed();
                 await m_passwordResetTokenRepository.UpdateAsync(token);
             }
 
-            // Create new reset token
-            var passwordResetToken = new PasswordResetToken
-            {
-                UserId = user.Id,
-                Token = resetToken,
-                ExpiresAt = expiresAt,
-                CreatedAt = DateTime.UtcNow,
-                IsUsed = false
-            };
+            var passwordResetToken = PasswordResetToken.Create(user.Id, resetToken, 1); // 1 hour expiration
 
             await m_passwordResetTokenRepository.AddAsync(passwordResetToken);
             await m_unitOfWork.SaveChangesAsync();
-
-            // Send email
+    
             await m_emailService.SendPasswordResetEmailAsync(user.Email, resetToken, user.Username);
 
             return response;
@@ -293,12 +254,8 @@ public class AuthenticationService : IAuthenticationService
         try
         {
             // Find valid reset token
-            var tokens = await m_passwordResetTokenRepository.FindAsync(t => 
-                t.Token == command.Token && 
-                !t.IsUsed && 
-                t.ExpiresAt > DateTime.UtcNow);
+            var resetToken = await m_passwordResetTokenRepository.GetValidByTokenAsync(command.Token);
 
-            var resetToken = tokens.FirstOrDefault();
             if (resetToken == null)
             {
                 return new PasswordResetResponse(
@@ -308,8 +265,7 @@ public class AuthenticationService : IAuthenticationService
             }
 
             // Find user
-            var users = await m_userRepository.FindAsync(u => u.Id == resetToken.UserId);
-            var user = users.FirstOrDefault();
+            var user = await m_userRepository.GetByIdAsync(resetToken.UserId);
             if (user == null)
             {
                 return new PasswordResetResponse(
@@ -322,8 +278,7 @@ public class AuthenticationService : IAuthenticationService
             var hashedPassword = m_passwordHasher.HashPassword(command.NewPassword);
             user.ChangePassword(hashedPassword);
 
-            // Mark token as used
-            resetToken.IsUsed = true;
+            resetToken.MarkAsUsed();
 
             await m_userRepository.UpdateAsync(user);
             await m_passwordResetTokenRepository.UpdateAsync(resetToken);
@@ -345,8 +300,9 @@ public class AuthenticationService : IAuthenticationService
 
     private async Task<User?> FindUserByUsernameOrEmailAsync(string usernameOrEmail)
     {
-        var users = await m_userRepository.FindAsync(u => u.Username == usernameOrEmail || u.Email == usernameOrEmail);
-        return users.FirstOrDefault();
+        var user = await m_userRepository.GetByUsernameAsync(usernameOrEmail);
+        if (user != null) return user;
+        return await m_userRepository.GetByEmailAsync(usernameOrEmail);
     }
 }
 

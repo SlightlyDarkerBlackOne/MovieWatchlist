@@ -26,6 +26,11 @@ public static class TestDataBuilder
     /// Creates a new RefreshToken builder with default values
     /// </summary>
     public static RefreshTokenBuilder RefreshToken() => new();
+
+    /// <summary>
+    /// Creates a new PasswordResetToken builder with default values
+    /// </summary>
+    public static PasswordResetTokenBuilder PasswordResetToken() => new();
 }
 
 /// <summary>
@@ -33,6 +38,7 @@ public static class TestDataBuilder
 /// </summary>
 public class UserBuilder
 {
+    private int _id = 1;
     private string _username = "testuser";
     private string _email = "test@example.com";
     private string _passwordHash = "hashed_password";
@@ -40,8 +46,7 @@ public class UserBuilder
 
     public UserBuilder WithId(int id)
     {
-        // Note: Id is set by EF Core, cannot be set via domain methods
-        // This is kept for backward compatibility but will be ignored
+        _id = id;
         return this;
     }
 
@@ -80,6 +85,9 @@ public class UserBuilder
     {
         // Create user using domain factory
         var user = User.Create(_username, _email, _passwordHash);
+        
+        // Set Id using reflection for testing purposes
+        typeof(User).GetProperty("Id")!.SetValue(user, _id);
         
         // Set LastLoginAt using reflection if provided
         if (_lastLoginAt.HasValue)
@@ -192,13 +200,6 @@ public class WatchlistItemBuilder
     private DateTime? _watchedDate = null;
     private static int _uniqueMovieCounter = 100000; // Start at high number to avoid conflicts
 
-    public WatchlistItemBuilder WithId(int id)
-    {
-        // Note: Id is set by EF Core, cannot be set via domain methods
-        // This is kept for backward compatibility but will be ignored
-        return this;
-    }
-
     public WatchlistItemBuilder WithUserId(int userId)
     {
         _userId = userId;
@@ -295,59 +296,143 @@ public class WatchlistItemBuilder
 }
 
 /// <summary>
-/// Builder for creating RefreshToken test data
+/// Builder for creating RefreshToken test data using domain factory methods
 /// </summary>
 public class RefreshTokenBuilder
 {
-    private readonly RefreshToken _token;
-
-    public RefreshTokenBuilder()
-    {
-        _token = new RefreshToken
-        {
-            UserId = 1,
-            Token = Guid.NewGuid().ToString(),
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            IsRevoked = false,
-            CreatedAt = DateTime.UtcNow
-        };
-    }
+    private int _id = 1;
+    private int _userId = 1;
+    private string _token = Guid.NewGuid().ToString();
+    private int _expirationDays = 7;
+    private bool _isRevoked = false;
+    private DateTime? _createdAt = null;
 
     public RefreshTokenBuilder WithId(int id)
     {
-        _token.Id = id;
+        _id = id;
         return this;
     }
 
     public RefreshTokenBuilder WithUserId(int userId)
     {
-        _token.UserId = userId;
+        _userId = userId;
         return this;
     }
 
     public RefreshTokenBuilder WithToken(string token)
     {
-        _token.Token = token;
+        _token = token;
         return this;
     }
 
     public RefreshTokenBuilder WithExpiresAt(DateTime expiresAt)
     {
-        _token.ExpiresAt = expiresAt;
+        var daysUntilExpiration = (expiresAt - DateTime.UtcNow).Days;
+        _expirationDays = Math.Max(1, daysUntilExpiration);
         return this;
     }
 
     public RefreshTokenBuilder WithIsRevoked(bool isRevoked)
     {
-        _token.IsRevoked = isRevoked;
+        _isRevoked = isRevoked;
         return this;
     }
 
     public RefreshTokenBuilder WithCreatedAt(DateTime createdAt)
     {
-        _token.CreatedAt = createdAt;
+        _createdAt = createdAt;
         return this;
     }
 
-    public RefreshToken Build() => _token;
+    public RefreshToken Build()
+    {
+        var token = RefreshToken.Create(_userId, _token, _expirationDays);
+
+        // Set CreatedAt using reflection if provided
+        if (_createdAt.HasValue)
+        {
+            typeof(RefreshToken).GetProperty("CreatedAt")!.SetValue(token, _createdAt.Value);
+        }
+
+        if (_isRevoked)
+        {
+            token.Revoke();
+        }
+
+        return token;
+    }
+}
+
+/// <summary>
+/// Builder for creating PasswordResetToken test data using domain factory methods
+/// </summary>
+public class PasswordResetTokenBuilder
+{
+    private int _id = 1;
+    private int _userId = 1;
+    private string _token = Guid.NewGuid().ToString();
+    private int _expirationHours = 1;
+    private bool _isUsed = false;
+    private DateTime? _createdAt = null;
+
+    public PasswordResetTokenBuilder WithId(int id)
+    {
+        _id = id;
+        return this;
+    }
+
+    public PasswordResetTokenBuilder WithUserId(int userId)
+    {
+        _userId = userId;
+        return this;
+    }
+
+    public PasswordResetTokenBuilder WithToken(string token)
+    {
+        _token = token;
+        return this;
+    }
+
+    public PasswordResetTokenBuilder WithExpiresAt(DateTime expiresAt)
+    {
+        // Calculate expiration hours from the provided date
+        var hoursUntilExpiration = (int)(expiresAt - DateTime.UtcNow).TotalHours;
+        _expirationHours = Math.Max(1, hoursUntilExpiration);
+        return this;
+    }
+
+    public PasswordResetTokenBuilder WithIsUsed(bool isUsed)
+    {
+        _isUsed = isUsed;
+        return this;
+    }
+
+    public PasswordResetTokenBuilder WithCreatedAt(DateTime createdAt)
+    {
+        _createdAt = createdAt;
+        return this;
+    }
+
+    public PasswordResetToken Build()
+    {
+        // Create token using domain factory
+        var token = PasswordResetToken.Create(_userId, _token, _expirationHours);
+
+        // Set Id using reflection for testing purposes
+        typeof(PasswordResetToken).GetProperty("Id")!.SetValue(token, _id);
+
+        // Set CreatedAt using reflection if provided
+        if (_createdAt.HasValue)
+        {
+            typeof(PasswordResetToken).GetProperty("CreatedAt")!.SetValue(token, _createdAt.Value);
+        }
+
+        // Mark as used if needed using domain method
+        if (_isUsed)
+        {
+            token.MarkAsUsed();
+        }
+
+        return token;
+    }
 }

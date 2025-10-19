@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Infrastructure.Data;
@@ -42,16 +37,6 @@ public class EfRepository<T> : IRepository<T> where T : class
     public async Task<IEnumerable<T>> GetAllAsync()
     {
         return await _dbSet.ToListAsync();
-    }
-
-    /// <summary>
-    /// Finds entities that match the specified predicate asynchronously.
-    /// </summary>
-    /// <param name="predicate">The condition to filter entities</param>
-    /// <returns>A collection of entities matching the predicate</returns>
-    public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
-    {
-        return await _dbSet.Where(predicate).ToListAsync();
     }
 
     /// <summary>

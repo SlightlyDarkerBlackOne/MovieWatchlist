@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using Moq;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Commands;
@@ -13,7 +12,7 @@ namespace MovieWatchlist.Tests.Services;
 public class WatchlistServiceTests : UnitTestBase
 {
     private readonly Mock<IWatchlistRepository> _mockWatchlistRepository;
-    private readonly Mock<IRepository<Movie>> _mockMovieRepository;
+    private readonly Mock<IMovieRepository> _mockMovieRepository;
     private readonly Mock<ITmdbService> _mockTmdbService;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly WatchlistService _service;
@@ -21,7 +20,7 @@ public class WatchlistServiceTests : UnitTestBase
     public WatchlistServiceTests()
     {
         _mockWatchlistRepository = new Mock<IWatchlistRepository>();
-        _mockMovieRepository = new Mock<IRepository<Movie>>();
+        _mockMovieRepository = new Mock<IMovieRepository>();
         _mockTmdbService = new Mock<ITmdbService>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _service = new WatchlistService(
@@ -266,10 +265,10 @@ public class WatchlistServiceTests : UnitTestBase
             Notes: "Test note"
         );
 
-        // Mock movie not in cache (FindAsync returns empty)
+        // Mock movie not in cache (GetByTmdbIdAsync returns null)
         _mockMovieRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Movie, bool>>>()))
-            .ReturnsAsync(Enumerable.Empty<Movie>());
+            .Setup(x => x.GetByTmdbIdAsync(It.IsAny<int>()))
+            .ReturnsAsync((Movie?)null);
 
         // Mock TMDB service to return movie
         _mockTmdbService
@@ -285,8 +284,8 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(1);
 
         _mockWatchlistRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<WatchlistItem, bool>>>()))
-            .ReturnsAsync(Enumerable.Empty<WatchlistItem>());
+            .Setup(x => x.IsMovieInUserWatchlistAsync(It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(false);
 
         _mockWatchlistRepository
             .Setup(x => x.AddAsync(It.IsAny<WatchlistItem>()))
@@ -315,8 +314,8 @@ public class WatchlistServiceTests : UnitTestBase
 
         // Mock movie not in cache
         _mockMovieRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Movie, bool>>>()))
-            .ReturnsAsync(Enumerable.Empty<Movie>());
+            .Setup(x => x.GetByTmdbIdAsync(It.IsAny<int>()))
+            .ReturnsAsync((Movie?)null);
 
         // Mock TMDB service to return movie
         _mockTmdbService
@@ -332,8 +331,8 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(1);
 
         _mockWatchlistRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<WatchlistItem, bool>>>()))
-            .ReturnsAsync(Enumerable.Empty<WatchlistItem>());
+            .Setup(x => x.IsMovieInUserWatchlistAsync(It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(false);
 
         _mockWatchlistRepository
             .Setup(x => x.AddAsync(It.IsAny<WatchlistItem>()))
@@ -358,8 +357,8 @@ public class WatchlistServiceTests : UnitTestBase
         // Arrange
         // Mock movie not in cache
         _mockMovieRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Movie, bool>>>()))
-            .ReturnsAsync(Enumerable.Empty<Movie>());
+            .Setup(x => x.GetByTmdbIdAsync(It.IsAny<int>()))
+            .ReturnsAsync((Movie?)null);
 
         // Mock TMDB service to return null
         _mockTmdbService
@@ -386,13 +385,13 @@ public class WatchlistServiceTests : UnitTestBase
 
         // Mock movie in cache (return existing movie)
         _mockMovieRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<Movie, bool>>>()))
-            .ReturnsAsync(new List<Movie> { movie });
+            .Setup(x => x.GetByTmdbIdAsync(It.IsAny<int>()))
+            .ReturnsAsync(movie);
 
         // Mock watchlist to return existing item
         _mockWatchlistRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<WatchlistItem, bool>>>()))
-            .ReturnsAsync(existingWatchlist);
+            .Setup(x => x.IsMovieInUserWatchlistAsync(It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(true);
 
         // Act & Assert
         var command = new AddToWatchlistCommand(UserId: 1, MovieId: 1);
@@ -501,8 +500,8 @@ public class WatchlistServiceTests : UnitTestBase
         var existingItem = CreateTestWatchlistItem(id: 1, userId: 1, movieId: 1);
 
         _mockWatchlistRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<WatchlistItem, bool>>>()))
-            .ReturnsAsync(new List<WatchlistItem> { existingItem });
+            .Setup(x => x.GetByUserIdAndIdAsync(It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(existingItem);
 
         _mockWatchlistRepository
             .Setup(x => x.DeleteAsync(It.IsAny<WatchlistItem>()))
@@ -522,8 +521,8 @@ public class WatchlistServiceTests : UnitTestBase
     {
         // Arrange
         _mockWatchlistRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<WatchlistItem, bool>>>()))
-            .ReturnsAsync(Enumerable.Empty<WatchlistItem>());
+            .Setup(x => x.IsMovieInUserWatchlistAsync(It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(false);
 
         // Act
         var command = new RemoveFromWatchlistCommand(UserId: 1, WatchlistItemId: 999);
@@ -665,8 +664,8 @@ public class WatchlistServiceTests : UnitTestBase
     {
         // Arrange
         _mockWatchlistRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<WatchlistItem, bool>>>()))
-            .ReturnsAsync(Enumerable.Empty<WatchlistItem>());
+            .Setup(x => x.IsMovieInUserWatchlistAsync(It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(false);
 
         // Act
         var query = new GetUserStatisticsQuery(UserId: 1);
@@ -715,7 +714,7 @@ public class WatchlistServiceTests : UnitTestBase
         var allMovies = CreateTestMovies();
 
         _mockWatchlistRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<WatchlistItem, bool>>>()))
+            .Setup(x => x.GetByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(emptyWatchlist);
 
         _mockMovieRepository
@@ -736,7 +735,7 @@ public class WatchlistServiceTests : UnitTestBase
         // Arrange
         var testWatchlist = CreateTestWatchlist();
         _mockWatchlistRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<WatchlistItem, bool>>>()))
+            .Setup(x => x.GetByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(testWatchlist);
 
         // Act
@@ -753,7 +752,7 @@ public class WatchlistServiceTests : UnitTestBase
         // Arrange
         var testWatchlist = CreateTestWatchlist();
         _mockWatchlistRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<WatchlistItem, bool>>>()))
+            .Setup(x => x.GetByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(testWatchlist);
 
         // Act
@@ -773,9 +772,8 @@ public class WatchlistServiceTests : UnitTestBase
         var watchlistWithNoFavorites = new List<WatchlistItem> { item };
 
         _mockWatchlistRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<WatchlistItem, bool>>>()))
-            .ReturnsAsync((Expression<Func<WatchlistItem, bool>> predicate) => 
-                watchlistWithNoFavorites.Where(predicate.Compile()));
+            .Setup(x => x.GetFavoritesByUserIdAsync(It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(watchlistWithNoFavorites.Where(w => w.IsFavorite));
 
         // Act
         var query = new GetFavoriteMoviesQuery(UserId: 1);

@@ -146,12 +146,14 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
     {
         // Create test users
         var testUser = TestDataBuilder.User()
+            .WithId(1)
             .WithUsername("testuser")
             .WithEmail("test@example.com")
             .WithPasswordHash("hashed_password")
             .Build();
 
         var testUser2 = TestDataBuilder.User()
+            .WithId(2)
             .WithUsername("testuser2")
             .WithEmail("test2@example.com")
             .WithPasswordHash("hashed_password")

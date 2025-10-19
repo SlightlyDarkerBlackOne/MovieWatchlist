@@ -32,6 +32,7 @@ public static class TestDatabaseSeeder
         var users = new[]
         {
             TestDataBuilder.User()
+                .WithId(1)
                 .WithUsername("testuser1")
                 .WithEmail("testuser1@example.com")
                 .WithPasswordHash("hashed_password_1")
@@ -40,6 +41,7 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.User()
+                .WithId(2)
                 .WithUsername("testuser2")
                 .WithEmail("testuser2@example.com")
                 .WithPasswordHash("hashed_password_2")
@@ -48,6 +50,7 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.User()
+                .WithId(3)
                 .WithUsername("inactiveuser")
                 .WithEmail("inactive@example.com")
                 .WithPasswordHash("hashed_password_3")
@@ -235,22 +238,25 @@ public static class TestDatabaseSeeder
         var refreshTokens = new[]
         {
             TestDataBuilder.RefreshToken()
+                .WithId(1)
                 .WithUserId(users[0].Id)
                 .WithToken("valid_refresh_token_1")
-                .WithExpiresAt(TestConstants.Dates.DefaultTokenExpiresAt)
+                .WithExpiresAt(DateTime.UtcNow.AddDays(7))
                 .WithIsRevoked(false)
                 .WithCreatedAt(TestConstants.Dates.DefaultCreatedAt)
                 .Build(),
 
             TestDataBuilder.RefreshToken()
+                .WithId(2)
                 .WithUserId(users[1].Id)
                 .WithToken("valid_refresh_token_2")
-                .WithExpiresAt(TestConstants.Dates.DefaultTokenExpiresAt)
+                .WithExpiresAt(DateTime.UtcNow.AddDays(7))
                 .WithIsRevoked(false)
                 .WithCreatedAt(TestConstants.Dates.DefaultCreatedAt)
                 .Build(),
 
             TestDataBuilder.RefreshToken()
+                .WithId(3)
                 .WithUserId(users[0].Id)
                 .WithToken("expired_refresh_token")
                 .WithExpiresAt(DateTime.UtcNow.AddDays(-1))
@@ -259,9 +265,10 @@ public static class TestDatabaseSeeder
                 .Build(),
 
             TestDataBuilder.RefreshToken()
+                .WithId(4)
                 .WithUserId(users[1].Id)
                 .WithToken("revoked_refresh_token")
-                .WithExpiresAt(TestConstants.Dates.DefaultTokenExpiresAt)
+                .WithExpiresAt(DateTime.UtcNow.AddDays(7))
                 .WithIsRevoked(true)
                 .WithCreatedAt(TestConstants.Dates.DefaultCreatedAt.AddDays(-5))
                 .Build()

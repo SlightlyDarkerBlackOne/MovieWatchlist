@@ -13,13 +13,13 @@ namespace MovieWatchlist.Application.Services;
 public class WatchlistService : IWatchlistService
 {
     private readonly IWatchlistRepository m_watchlistRepository;
-    private readonly IRepository<Movie> m_movieRepository;
+    private readonly IMovieRepository m_movieRepository;
     private readonly ITmdbService m_tmdbService;
     private readonly IUnitOfWork m_unitOfWork;
 
     public WatchlistService(
         IWatchlistRepository watchlistRepository,
-        IRepository<Movie> movieRepository,
+        IMovieRepository movieRepository,
         ITmdbService tmdbService,
         IUnitOfWork unitOfWork)
     {
@@ -150,8 +150,7 @@ public class WatchlistService : IWatchlistService
     public async Task<WatchlistItem> AddToWatchlistAsync(AddToWatchlistCommand command)
     {
         // movieId parameter is the TMDB ID - check if we already have this movie cached in our database
-        var existingMovies = await m_movieRepository.FindAsync(m => m.TmdbId == command.MovieId);
-        var cachedMovie = existingMovies.FirstOrDefault();
+        var cachedMovie = await m_movieRepository.GetByTmdbIdAsync(command.MovieId);
         
         Movie movie;
         if (cachedMovie == null)
@@ -173,8 +172,8 @@ public class WatchlistService : IWatchlistService
         }
 
         // Check if already in user's watchlist
-        var existingItem = await m_watchlistRepository.FindAsync(w => w.UserId == command.UserId && w.MovieId == movie.Id);
-        if (existingItem.Any())
+        var alreadyInWatchlist = await m_watchlistRepository.IsMovieInUserWatchlistAsync(command.UserId, movie.Id);
+        if (alreadyInWatchlist)
             throw new InvalidOperationException(ErrorMessages.MovieAlreadyInWatchlist);
 
         // Use factory method to create watchlist item
@@ -239,8 +238,7 @@ public class WatchlistService : IWatchlistService
 
     public async Task<bool> RemoveFromWatchlistAsync(RemoveFromWatchlistCommand command)
     {
-        var watchlistItem = await m_watchlistRepository.FindAsync(w => w.Id == command.WatchlistItemId && w.UserId == command.UserId);
-        var item = watchlistItem.FirstOrDefault();
+        var item = await m_watchlistRepository.GetByUserIdAndIdAsync(command.UserId, command.WatchlistItemId);
         
         if (item == null)
             return false;

@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
-
 namespace MovieWatchlist.Core.Models;
 
 public class User
 {
-    // Public properties with private setters for encapsulation
     public int Id { get; private set; }
     public string Username { get; private set; } = string.Empty;
     public string Email { get; private set; } = string.Empty;
@@ -14,10 +10,8 @@ public class User
     public DateTime? LastLoginAt { get; private set; }
     public ICollection<WatchlistItem> WatchlistItems { get; set; } = new List<WatchlistItem>(); // Navigation property - kept public for EF Core
 
-    // Private parameterless constructor for EF Core
     private User() { }
 
-    // Factory method for creating new users
     public static User Create(string username, string email, string passwordHash)
     {
         if (string.IsNullOrWhiteSpace(username))
@@ -35,8 +29,6 @@ public class User
             CreatedAt = DateTime.UtcNow
         };
     }
-
-    // Domain methods for state changes
 
     /// <summary>
     /// Updates the last login timestamp to the current UTC time.

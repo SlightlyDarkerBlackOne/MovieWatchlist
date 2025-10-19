@@ -8,7 +8,6 @@ using MovieWatchlist.Core.Models;
 using MovieWatchlist.Application.Services;
 using MovieWatchlist.Infrastructure.Services;
 using MovieWatchlist.Tests.Infrastructure;
-using System.Linq.Expressions;
 using System.Security.Claims;
 using Xunit;
 
@@ -19,9 +18,9 @@ namespace MovieWatchlist.Tests.Services;
 /// </summary>
 public class AuthenticationServiceTests : UnitTestBase
 {
-    private readonly Mock<IRepository<User>> _mockUserRepository;
-    private readonly Mock<IRepository<RefreshToken>> _mockRefreshTokenRepository;
-    private readonly Mock<IRepository<PasswordResetToken>> _mockPasswordResetTokenRepository;
+    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IRefreshTokenRepository> _mockRefreshTokenRepository;
+    private readonly Mock<IPasswordResetTokenRepository> _mockPasswordResetTokenRepository;
     private readonly Mock<IJwtTokenService> _mockJwtTokenService;
     private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IEmailService> _mockEmailService;
@@ -31,9 +30,9 @@ public class AuthenticationServiceTests : UnitTestBase
 
     public AuthenticationServiceTests()
     {
-        _mockUserRepository = new Mock<IRepository<User>>();
-        _mockRefreshTokenRepository = new Mock<IRepository<RefreshToken>>();
-        _mockPasswordResetTokenRepository = new Mock<IRepository<PasswordResetToken>>();
+        _mockUserRepository = new Mock<IUserRepository>();
+        _mockRefreshTokenRepository = new Mock<IRefreshTokenRepository>();
+        _mockPasswordResetTokenRepository = new Mock<IPasswordResetTokenRepository>();
         _mockJwtTokenService = new Mock<IJwtTokenService>();
         _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockEmailService = new Mock<IEmailService>();
@@ -78,8 +77,10 @@ public class AuthenticationServiceTests : UnitTestBase
             Password: TestConstants.Users.DefaultPassword
         );
 
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User>()); // No existing users
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<string>()))
+            .ReturnsAsync((User?)null); // No existing users
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<string>()))
+            .ReturnsAsync((User?)null); // No existing users
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
             .Returns("test-jwt-token");
         _mockJwtTokenService.Setup(x => x.GenerateRefreshToken())
@@ -112,8 +113,8 @@ public class AuthenticationServiceTests : UnitTestBase
         );
 
         var existingUser = CreateTestUser(email: "existing@example.com");
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User> { existingUser }); // Existing user with same email
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(command.Email))
+            .ReturnsAsync(existingUser); // Existing user with same email
 
         // Act
         var result = await _authenticationService.RegisterAsync(command);
@@ -138,10 +139,11 @@ public class AuthenticationServiceTests : UnitTestBase
             Password: "Password123!"
         );
 
-        // First call returns empty (email check), second call returns existing user (username check)
-        _mockUserRepository.SetupSequence(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User>()) // No existing email
-            .ReturnsAsync(new List<User> { CreateTestUser(username: "existinguser") }); // Existing username
+        // First call returns null (email check), second call returns existing user (username check)
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(command.Email))
+            .ReturnsAsync((User?)null); // No existing email
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(command.Username))
+            .ReturnsAsync(CreateTestUser(username: "existinguser")); // Existing username
 
         // Act
         var result = await _authenticationService.RegisterAsync(command);
@@ -176,8 +178,8 @@ public class AuthenticationServiceTests : UnitTestBase
             .WithPasswordHash(new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword))
             .Build();
 
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User> { user });
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<string>()))
+            .ReturnsAsync(user);
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
             .Returns("test-jwt-token");
         _mockJwtTokenService.Setup(x => x.GenerateRefreshToken())
@@ -207,8 +209,10 @@ public class AuthenticationServiceTests : UnitTestBase
             Password: "Password123!"
         );
 
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User>()); // No user found
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(command.UsernameOrEmail))
+            .ReturnsAsync((User?)null); // No user found
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(command.UsernameOrEmail))
+            .ReturnsAsync((User?)null); // No user found
 
         // Act
         var result = await _authenticationService.LoginAsync(command);
@@ -239,8 +243,8 @@ public class AuthenticationServiceTests : UnitTestBase
             .WithPasswordHash(new PasswordHasher().HashPassword("CorrectPassword123!"))
             .Build();
 
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User> { user });
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(command.UsernameOrEmail))
+            .ReturnsAsync(user);
 
         // Act
         var result = await _authenticationService.LoginAsync(command);
@@ -271,8 +275,8 @@ public class AuthenticationServiceTests : UnitTestBase
             .WithPasswordHash(new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword))
             .Build();
 
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User> { user });
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<string>()))
+            .ReturnsAsync(user);
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
             .Returns("test-jwt-token");
         _mockJwtTokenService.Setup(x => x.GenerateRefreshToken())
@@ -345,8 +349,8 @@ public class AuthenticationServiceTests : UnitTestBase
             .WithIsRevoked(false)
             .Build();
 
-        _mockRefreshTokenRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<RefreshToken, bool>>>()))
-            .ReturnsAsync(new List<RefreshToken> { refreshTokenEntity });
+        _mockRefreshTokenRepository.Setup(x => x.GetByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync(refreshTokenEntity);
         _mockUserRepository.Setup(x => x.GetByIdAsync(1))
             .ReturnsAsync(user);
         _mockJwtTokenService.Setup(x => x.GenerateToken(user))
@@ -371,8 +375,8 @@ public class AuthenticationServiceTests : UnitTestBase
         // Arrange
         var invalidRefreshToken = "invalid-refresh-token";
         
-        _mockRefreshTokenRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<RefreshToken, bool>>>()))
-            .ReturnsAsync(new List<RefreshToken>()); // No token found
+        _mockRefreshTokenRepository.Setup(x => x.GetByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync((RefreshToken?)null); // No token found
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
@@ -393,8 +397,8 @@ public class AuthenticationServiceTests : UnitTestBase
             .WithIsRevoked(false)
             .Build();
 
-        _mockRefreshTokenRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<RefreshToken, bool>>>()))
-            .ReturnsAsync(new List<RefreshToken> { expiredTokenEntity });
+        _mockRefreshTokenRepository.Setup(x => x.GetByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync(expiredTokenEntity);
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
@@ -415,8 +419,8 @@ public class AuthenticationServiceTests : UnitTestBase
             .WithIsRevoked(true)
             .Build();
 
-        _mockRefreshTokenRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<RefreshToken, bool>>>()))
-            .ReturnsAsync(new List<RefreshToken> { revokedTokenEntity });
+        _mockRefreshTokenRepository.Setup(x => x.GetByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync(revokedTokenEntity);
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
@@ -446,7 +450,7 @@ public class AuthenticationServiceTests : UnitTestBase
 
         _mockJwtTokenService.Setup(x => x.ValidateToken(validToken))
             .Returns(mockPrincipal);
-        _mockRefreshTokenRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<RefreshToken, bool>>>()))
+        _mockRefreshTokenRepository.Setup(x => x.GetActiveByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(refreshTokens);
 
         // Act
@@ -511,11 +515,11 @@ public class AuthenticationServiceTests : UnitTestBase
         var testUser = CreateTestUser(email: TestConstants.Users.DefaultEmail);
 
         _mockUserRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new[] { testUser });
+            .Setup(x => x.GetByEmailAsync(It.IsAny<string>()))
+            .ReturnsAsync(testUser);
 
         _mockPasswordResetTokenRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<PasswordResetToken, bool>>>()))
+            .Setup(x => x.GetUnusedByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(new List<PasswordResetToken>());
 
         _mockEmailService
@@ -545,8 +549,8 @@ public class AuthenticationServiceTests : UnitTestBase
         var command = new ForgotPasswordCommand(Email: "nonexistent@example.com");
 
         _mockUserRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User>());
+            .Setup(x => x.GetByEmailAsync(It.IsAny<string>()))
+            .ReturnsAsync((User?)null);
 
         // Act
         var result = await _authenticationService.ForgotPasswordAsync(command);
@@ -576,23 +580,19 @@ public class AuthenticationServiceTests : UnitTestBase
         );
         
         var testUser = CreateTestUser();
-        var passwordResetToken = new PasswordResetToken
-        {
-            Id = 1,
-            UserId = testUser.Id,
-            Token = resetToken,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            CreatedAt = DateTime.UtcNow,
-            IsUsed = false
-        };
+        var passwordResetToken = TestDataBuilder.PasswordResetToken()
+            .WithUserId(testUser.Id)
+            .WithToken(resetToken)
+            .WithExpiresAt(DateTime.UtcNow.AddHours(1))
+            .Build();
 
         _mockPasswordResetTokenRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<PasswordResetToken, bool>>>()))
-            .ReturnsAsync(new[] { passwordResetToken });
+            .Setup(x => x.GetValidByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync(passwordResetToken);
 
         _mockUserRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new[] { testUser });
+            .Setup(x => x.GetByIdAsync(It.IsAny<int>()))
+            .ReturnsAsync(testUser);
 
         // Act
         var result = await _authenticationService.ResetPasswordAsync(command);
@@ -617,7 +617,7 @@ public class AuthenticationServiceTests : UnitTestBase
         );
 
         _mockPasswordResetTokenRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<PasswordResetToken, bool>>>()))
+            .Setup(x => x.GetUnusedByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(new List<PasswordResetToken>());
 
         // Act
@@ -642,19 +642,15 @@ public class AuthenticationServiceTests : UnitTestBase
             NewPassword: "NewPassword123!"
         );
         
-        var expiredToken = new PasswordResetToken
-        {
-            Id = 1,
-            UserId = 1,
-            Token = resetToken,
-            ExpiresAt = DateTime.UtcNow.AddHours(-1), // Expired
-            CreatedAt = DateTime.UtcNow.AddHours(-2),
-            IsUsed = false
-        };
+        var expiredToken = TestDataBuilder.PasswordResetToken()
+            .WithUserId(1)
+            .WithToken(resetToken)
+            .WithExpiresAt(DateTime.UtcNow.AddHours(-1)) // Expired
+            .Build();
 
         // Mock returns empty list because the token is expired (filtered out by the query)
         _mockPasswordResetTokenRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<PasswordResetToken, bool>>>()))
+            .Setup(x => x.GetUnusedByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(new List<PasswordResetToken>());
 
         // Act
@@ -679,19 +675,16 @@ public class AuthenticationServiceTests : UnitTestBase
             NewPassword: "NewPassword123!"
         );
         
-        var usedToken = new PasswordResetToken
-        {
-            Id = 1,
-            UserId = 1,
-            Token = resetToken,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            CreatedAt = DateTime.UtcNow,
-            IsUsed = true // Already used
-        };
+        var usedToken = TestDataBuilder.PasswordResetToken()
+            .WithUserId(1)
+            .WithToken(resetToken)
+            .WithExpiresAt(DateTime.UtcNow.AddHours(1))
+            .WithIsUsed(true) // Already used
+            .Build();
 
         // Mock returns empty list because the token is used (filtered out by the query)
         _mockPasswordResetTokenRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<PasswordResetToken, bool>>>()))
+            .Setup(x => x.GetUnusedByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(new List<PasswordResetToken>());
 
         // Act
