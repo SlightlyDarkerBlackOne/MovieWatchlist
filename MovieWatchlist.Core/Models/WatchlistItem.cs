@@ -1,9 +1,10 @@
 using System;
+using MovieWatchlist.Core.Events;
 using MovieWatchlist.Core.ValueObjects;
 
 namespace MovieWatchlist.Core.Models;
 
-public class WatchlistItem
+public class WatchlistItem : Entity
 {
     // Public properties with private setters for encapsulation
     public int Id { get; private set; }
@@ -66,6 +67,11 @@ public class WatchlistItem
         if (Status != WatchlistStatus.Watched)
         {
             UpdateStatus(WatchlistStatus.Watched);
+            RaiseDomainEvent(new MovieWatchedEvent(
+                UserId, 
+                MovieId, 
+                WatchedDate!.Value
+            ));
         }
     }
 
@@ -78,7 +84,15 @@ public class WatchlistItem
         if (rating == null)
             throw new ArgumentNullException(nameof(rating));
 
+        var previousRating = UserRating;
         UserRating = rating;
+        
+        RaiseDomainEvent(new MovieRatedEvent(
+            UserId,
+            MovieId,
+            rating.Value,
+            previousRating?.Value
+        ));
     }
 
     /// <summary>
@@ -102,7 +116,15 @@ public class WatchlistItem
     /// </summary>
     public void SetFavorite(bool isFavorite)
     {
-        IsFavorite = isFavorite;
+        if (IsFavorite != isFavorite)
+        {
+            IsFavorite = isFavorite;
+            RaiseDomainEvent(new MovieFavoritedEvent(
+                UserId,
+                MovieId,
+                isFavorite
+            ));
+        }
     }
 }
 

@@ -2,7 +2,7 @@ using MovieWatchlist.Core.ValueObjects;
 
 namespace MovieWatchlist.Core.Models;
 
-public class User
+public class User : Entity
 {
     public int Id { get; private set; }
     public Username Username { get; private set; } = null!;

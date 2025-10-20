@@ -9,6 +9,9 @@ using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Api.Middleware;
 using MovieWatchlist.Application.Validation;
 using MovieWatchlist.Application.Services;
+using MovieWatchlist.Application.Events;
+using MovieWatchlist.Application.Events.Handlers;
+using MovieWatchlist.Core.Events;
 using MovieWatchlist.Infrastructure.Data;
 using MovieWatchlist.Infrastructure.Repositories;
 using MovieWatchlist.Infrastructure.Services;
@@ -110,6 +113,16 @@ builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 builder.Services.AddScoped<IWatchlistRepository, WatchlistRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+
+// Register Domain Events infrastructure
+builder.Services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+
+// Register Domain Event Handlers
+builder.Services.AddScoped<IDomainEventHandler<MovieWatchedEvent>, LogActivityHandler>();
+builder.Services.AddScoped<IDomainEventHandler<MovieRatedEvent>, LogActivityHandler>();
+builder.Services.AddScoped<IDomainEventHandler<MovieFavoritedEvent>, LogActivityHandler>();
+builder.Services.AddScoped<IDomainEventHandler<MovieWatchedEvent>, UpdateStatisticsHandler>();
+
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Register Application services
