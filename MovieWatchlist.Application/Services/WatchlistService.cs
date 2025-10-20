@@ -18,15 +18,18 @@ public class WatchlistService : IWatchlistService
 {
     private readonly IWatchlistRepository m_watchlistRepository;
     private readonly IMovieRepository m_movieRepository;
+    private readonly IUserRepository m_userRepository;
     private readonly ITmdbService m_tmdbService;
 
     public WatchlistService(
         IWatchlistRepository watchlistRepository,
         IMovieRepository movieRepository,
+        IUserRepository userRepository,
         ITmdbService tmdbService)
     {
         m_watchlistRepository = watchlistRepository;
         m_movieRepository = movieRepository;
+        m_userRepository = userRepository;
         m_tmdbService = tmdbService;
     }
 
@@ -47,47 +50,23 @@ public class WatchlistService : IWatchlistService
 
     public async Task<WatchlistStatistics> GetUserStatisticsAsync(GetUserStatisticsQuery query)
     {
+        var user = await m_userRepository.GetByIdAsync(query.UserId);
+        if (user == null)
+            throw new ApiException($"User with ID {query.UserId} not found");
+
+        // Return cached statistics if available
+        var cachedStats = user.GetCachedStatistics();
+        if (cachedStats != null)
+            return cachedStats;
+
+        // Calculate and cache new statistics
         var watchlist = await m_watchlistRepository.GetByUserIdAsync(query.UserId);
-        var watchlistList = watchlist.ToList();
-
-        var totalMovies = watchlistList.Count;
-        var watchedMovies = watchlistList.Count(w => w.Status == WatchlistStatus.Watched);
-        var plannedMovies = watchlistList.Count(w => w.Status == WatchlistStatus.Planned);
-        var favoriteMovies = watchlistList.Count(w => w.IsFavorite);
-        var moviesThisYear = watchlistList.Count(w => w.AddedDate.Year == DateTime.UtcNow.Year);
-
-        var ratedMovies = watchlistList.Where(w => w.UserRating != null).ToList();
-        var averageUserRating = ratedMovies.Count != 0 ? ratedMovies.Average(w => w.UserRating!.Value) : 0;
-        var averageTmdbRating = watchlistList.Count != 0 ? watchlistList.Average(w => w.Movie.VoteAverage) : 0;
-
-        var genreGroups = watchlistList
-            .Where(w => w.Status == WatchlistStatus.Watched)
-            .SelectMany(w => w.Movie.Genres)
-            .GroupBy(g => g)
-            .OrderByDescending(g => g.Count());
-
-        var genreBreakdown = genreGroups.ToDictionary(g => g.Key, g => g.Count());
-        var mostWatchedGenre = genreGroups.FirstOrDefault()?.Key ?? string.Empty;
-
-        var yearlyGroups = watchlistList
-            .Where(w => w.Status == WatchlistStatus.Watched)
-            .GroupBy(w => w.Movie.ReleaseDate.Year)
-            .OrderByDescending(g => g.Key);
-
-        var yearlyBreakdown = yearlyGroups.ToDictionary(g => g.Key, g => g.Count());
-
-        return new WatchlistStatistics(
-            TotalMovies: totalMovies,
-            WatchedMovies: watchedMovies,
-            PlannedMovies: plannedMovies,
-            FavoriteMovies: favoriteMovies,
-            AverageUserRating: averageUserRating,
-            AverageTmdbRating: averageTmdbRating,
-            MostWatchedGenre: mostWatchedGenre,
-            MoviesThisYear: moviesThisYear,
-            GenreBreakdown: genreBreakdown,
-            YearlyBreakdown: yearlyBreakdown
-        );
+        var statistics = user.CalculateStatistics(watchlist);
+        
+        user.UpdateCachedStatistics(statistics);
+        await m_userRepository.UpdateAsync(user);
+        
+        return statistics;
     }
 
     public async Task<IEnumerable<Movie>> GetRecommendedMoviesAsync(GetRecommendedMoviesQuery query)
@@ -196,6 +175,9 @@ public class WatchlistService : IWatchlistService
         }
 
         await m_watchlistRepository.AddAsync(watchlistItem);
+        
+        await InvalidateUserStatisticsAsync(command.UserId);
+        
         return Result<WatchlistItem>.Success(watchlistItem);
     }
 
@@ -245,12 +227,25 @@ public class WatchlistService : IWatchlistService
             return Result<bool>.Failure(ErrorMessages.WatchlistItemNotFound);
 
         await m_watchlistRepository.DeleteAsync(item);
+        
+        await InvalidateUserStatisticsAsync(command.UserId);
+        
         return Result<bool>.Success(true);
     }
 
     public async Task<WatchlistItem?> GetWatchlistItemByIdAsync(GetWatchlistItemByIdQuery query)
     {
         return await m_watchlistRepository.GetByUserIdAndIdAsync(query.UserId, query.WatchlistItemId);
+    }
+
+    private async Task InvalidateUserStatisticsAsync(int userId)
+    {
+        var user = await m_userRepository.GetByIdAsync(userId);
+        if (user != null)
+        {
+            user.InvalidateStatistics();
+            await m_userRepository.UpdateAsync(user);
+        }
     }
 }
 

@@ -68,6 +68,13 @@ public class MovieWatchlistDbContext : DbContext
             
             entity.Property(e => e.LastLoginAt)
                 .HasComment("Last successful login timestamp");
+            
+            entity.Property(e => e.CachedStatisticsJson)
+                .HasColumnType("jsonb")
+                .HasComment("Cached watchlist statistics as JSONB");
+            
+            entity.Property(e => e.StatisticsLastUpdated)
+                .HasComment("When statistics were last calculated");
 
             // Indexes for performance
             entity.HasIndex(e => e.Username)
@@ -77,6 +84,9 @@ public class MovieWatchlistDbContext : DbContext
             entity.HasIndex(e => e.Email)
                 .IsUnique()
                 .HasDatabaseName("IX_Users_Email");
+            
+            entity.HasIndex(e => e.StatisticsLastUpdated)
+                .HasDatabaseName("IX_Users_StatisticsLastUpdated");
 
             // Relationships
             entity.HasMany(e => e.WatchlistItems)

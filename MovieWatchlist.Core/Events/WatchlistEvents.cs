@@ -33,3 +33,7 @@ public record MovieRemovedFromWatchlistEvent(
     WatchlistStatus FinalStatus
 ) : DomainEvent;
 
+public record StatisticsInvalidatedEvent(
+    int UserId
+) : DomainEvent;
+

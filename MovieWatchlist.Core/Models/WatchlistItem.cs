@@ -56,6 +56,8 @@ public class WatchlistItem : Entity
         {
             WatchedDate = DateTime.UtcNow;
         }
+        
+        RaiseDomainEvent(new StatisticsInvalidatedEvent(UserId));
     }
 
     /// <summary>
@@ -93,6 +95,8 @@ public class WatchlistItem : Entity
             rating.Value,
             previousRating?.Value
         ));
+        
+        RaiseDomainEvent(new StatisticsInvalidatedEvent(UserId));
     }
 
     /// <summary>
@@ -124,6 +128,8 @@ public class WatchlistItem : Entity
                 MovieId,
                 isFavorite
             ));
+            
+            RaiseDomainEvent(new StatisticsInvalidatedEvent(UserId));
         }
     }
 }

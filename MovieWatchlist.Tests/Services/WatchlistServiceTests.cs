@@ -14,6 +14,7 @@ public class WatchlistServiceTests : UnitTestBase
 {
     private readonly Mock<IWatchlistRepository> _mockWatchlistRepository;
     private readonly Mock<IMovieRepository> _mockMovieRepository;
+    private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<ITmdbService> _mockTmdbService;
     private readonly WatchlistService _service;
 
@@ -21,10 +22,12 @@ public class WatchlistServiceTests : UnitTestBase
     {
         _mockWatchlistRepository = new Mock<IWatchlistRepository>();
         _mockMovieRepository = new Mock<IMovieRepository>();
+        _mockUserRepository = new Mock<IUserRepository>();
         _mockTmdbService = new Mock<ITmdbService>();
         _service = new WatchlistService(
             _mockWatchlistRepository.Object, 
             _mockMovieRepository.Object,
+            _mockUserRepository.Object,
             _mockTmdbService.Object);
     }
 
@@ -33,6 +36,16 @@ public class WatchlistServiceTests : UnitTestBase
     {
         // Arrange
         var testWatchlist = CreateTestWatchlist().ToList();
+        var testUser = User.Create(
+            Username.Create("testuser").Value!,
+            Email.Create("test@example.com").Value!,
+            "hashedpassword"
+        );
+        
+        _mockUserRepository
+            .Setup(x => x.GetByIdAsync(1))
+            .ReturnsAsync(testUser);
+        
         _mockWatchlistRepository
             .Setup(x => x.GetByUserIdAsync(1))
             .ReturnsAsync(testWatchlist);
@@ -286,6 +299,20 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.AddAsync(It.IsAny<WatchlistItem>()))
             .Returns(Task.CompletedTask);
 
+        var testUser = User.Create(
+            Username.Create("testuser").Value!,
+            Email.Create("test@example.com").Value!,
+            "hashedpassword"
+        );
+        
+        _mockUserRepository
+            .Setup(x => x.GetByIdAsync(1))
+            .ReturnsAsync(testUser);
+        
+        _mockUserRepository
+            .Setup(x => x.UpdateAsync(It.IsAny<User>()))
+            .Returns(Task.CompletedTask);
+
         // Act
         var result = await _service.AddToWatchlistAsync(command);
 
@@ -329,6 +356,20 @@ public class WatchlistServiceTests : UnitTestBase
 
         _mockWatchlistRepository
             .Setup(x => x.AddAsync(It.IsAny<WatchlistItem>()))
+            .Returns(Task.CompletedTask);
+
+        var testUser = User.Create(
+            Username.Create("testuser").Value!,
+            Email.Create("test@example.com").Value!,
+            "hashedpassword"
+        );
+        
+        _mockUserRepository
+            .Setup(x => x.GetByIdAsync(1))
+            .ReturnsAsync(testUser);
+        
+        _mockUserRepository
+            .Setup(x => x.UpdateAsync(It.IsAny<User>()))
             .Returns(Task.CompletedTask);
 
         // Act
@@ -507,6 +548,20 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.DeleteAsync(It.IsAny<WatchlistItem>()))
             .Returns(Task.CompletedTask);
 
+        var testUser = User.Create(
+            Username.Create("testuser").Value!,
+            Email.Create("test@example.com").Value!,
+            "hashedpassword"
+        );
+        
+        _mockUserRepository
+            .Setup(x => x.GetByIdAsync(1))
+            .ReturnsAsync(testUser);
+        
+        _mockUserRepository
+            .Setup(x => x.UpdateAsync(It.IsAny<User>()))
+            .Returns(Task.CompletedTask);
+
         // Act
         var command = new RemoveFromWatchlistCommand(UserId: 1, WatchlistItemId: 1);
         var result = await _service.RemoveFromWatchlistAsync(command);
@@ -665,9 +720,19 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task GetUserStatisticsAsync_WithEmptyWatchlist_ReturnsZeroStatistics()
     {
         // Arrange
+        var testUser = User.Create(
+            Username.Create("testuser").Value!,
+            Email.Create("test@example.com").Value!,
+            "hashedpassword"
+        );
+        
+        _mockUserRepository
+            .Setup(x => x.GetByIdAsync(1))
+            .ReturnsAsync(testUser);
+        
         _mockWatchlistRepository
-            .Setup(x => x.IsMovieInUserWatchlistAsync(It.IsAny<int>(), It.IsAny<int>()))
-            .ReturnsAsync(false);
+            .Setup(x => x.GetByUserIdAsync(1))
+            .ReturnsAsync(Enumerable.Empty<WatchlistItem>());
 
         // Act
         var query = new GetUserStatisticsQuery(UserId: 1);
@@ -690,11 +755,21 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task GetUserStatisticsAsync_WithNoUserRatings_ReturnsNullAverageUserRating()
     {
         // Arrange
+        var testUser = User.Create(
+            Username.Create("testuser").Value!,
+            Email.Create("test@example.com").Value!,
+            "hashedpassword"
+        );
+        
         var movie = new Movie { Id = 1, VoteAverage = TestConstants.Ratings.DefaultTmdbRating };
         var item = WatchlistItem.Create(1, 1, movie);
         item.UpdateStatus(WatchlistStatus.Watched);
         var watchlistWithNoRatings = new List<WatchlistItem> { item };
 
+        _mockUserRepository
+            .Setup(x => x.GetByIdAsync(TestConstants.Users.DefaultUserId))
+            .ReturnsAsync(testUser);
+        
         _mockWatchlistRepository
             .Setup(x => x.GetByUserIdAsync(TestConstants.Users.DefaultUserId))
             .ReturnsAsync(watchlistWithNoRatings);
