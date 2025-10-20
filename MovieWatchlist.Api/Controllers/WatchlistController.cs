@@ -99,27 +99,20 @@ public class WatchlistController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        try
-        {
-            var command = new AddToWatchlistCommand(
-                UserId: userId,
-                MovieId: dto.MovieId,
-                Status: dto.Status,
-                Notes: dto.Notes
-            );
+        var command = new AddToWatchlistCommand(
+            UserId: userId,
+            MovieId: dto.MovieId,
+            Status: dto.Status,
+            Notes: dto.Notes
+        );
 
-            var watchlistItem = await _watchlistService.AddToWatchlistAsync(command);
-            return CreatedAtAction(nameof(GetWatchlistItemById), 
-                new { userId = userId, watchlistItemId = watchlistItem.Id }, watchlistItem);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ex.Message);
-        }
+        var result = await _watchlistService.AddToWatchlistAsync(command);
+        
+        if (result.IsFailure)
+            return BadRequest(result.Error);
+
+        return CreatedAtAction(nameof(GetWatchlistItemById), 
+            new { userId = userId, watchlistItemId = result.Value!.Id }, result.Value);
     }
 
     [HttpGet("user/{userId}/item/{watchlistItemId}")]
@@ -152,20 +145,22 @@ public class WatchlistController : ControllerBase
             WatchedDate: dto.WatchedDate
         );
 
-        var watchlistItem = await _watchlistService.UpdateWatchlistItemAsync(command);
-        if (watchlistItem == null)
-            return NotFound();
+        var result = await _watchlistService.UpdateWatchlistItemAsync(command);
+        
+        if (result.IsFailure)
+            return NotFound(result.Error);
 
-        return Ok(watchlistItem);
+        return Ok(result.Value);
     }
 
     [HttpDelete("user/{userId}/item/{watchlistItemId}")]
     public async Task<ActionResult> RemoveFromWatchlist(int userId, int watchlistItemId)
     {
         var command = new RemoveFromWatchlistCommand(UserId: userId, WatchlistItemId: watchlistItemId);
-        var removed = await _watchlistService.RemoveFromWatchlistAsync(command);
-        if (!removed)
-            return NotFound();
+        var result = await _watchlistService.RemoveFromWatchlistAsync(command);
+        
+        if (result.IsFailure)
+            return NotFound(result.Error);
 
         return NoContent();
     }

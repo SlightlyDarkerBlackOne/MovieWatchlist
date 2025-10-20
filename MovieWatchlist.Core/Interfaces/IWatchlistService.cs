@@ -1,6 +1,7 @@
 using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Queries;
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.Common;
 
 namespace MovieWatchlist.Core.Interfaces;
 
@@ -18,7 +19,7 @@ public interface IWatchlistService
     Task<WatchlistItem?> GetWatchlistItemByIdAsync(GetWatchlistItemByIdQuery query);
     
     // Commands
-    Task<WatchlistItem> AddToWatchlistAsync(AddToWatchlistCommand command);
-    Task<WatchlistItem?> UpdateWatchlistItemAsync(UpdateWatchlistItemCommand command);
-    Task<bool> RemoveFromWatchlistAsync(RemoveFromWatchlistCommand command);
+    Task<Result<WatchlistItem>> AddToWatchlistAsync(AddToWatchlistCommand command);
+    Task<Result<WatchlistItem>> UpdateWatchlistItemAsync(UpdateWatchlistItemCommand command);
+    Task<Result<bool>> RemoveFromWatchlistAsync(RemoveFromWatchlistCommand command);
 } 

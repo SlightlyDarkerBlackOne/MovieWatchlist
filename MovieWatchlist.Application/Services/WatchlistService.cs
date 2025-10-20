@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MovieWatchlist.Core.Commands;
+using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Exceptions;
 using MovieWatchlist.Core.Interfaces;
@@ -57,12 +58,10 @@ public class WatchlistService : IWatchlistService
         var favoriteMovies = watchlistList.Count(w => w.IsFavorite);
         var moviesThisYear = watchlistList.Count(w => w.AddedDate.Year == DateTime.UtcNow.Year);
 
-        // Calculate average ratings using LINQ
         var ratedMovies = watchlistList.Where(w => w.UserRating != null).ToList();
-        var averageUserRating = ratedMovies.Any() ? ratedMovies.Average(w => (int)w.UserRating!) : 0;
-        var averageTmdbRating = watchlistList.Any() ? watchlistList.Average(w => w.Movie.VoteAverage) : 0;
+        var averageUserRating = ratedMovies.Count != 0 ? ratedMovies.Average(w => w.UserRating!.Value) : 0;
+        var averageTmdbRating = watchlistList.Count != 0 ? watchlistList.Average(w => w.Movie.VoteAverage) : 0;
 
-        // Genre breakdown using LINQ GroupBy
         var genreGroups = watchlistList
             .Where(w => w.Status == WatchlistStatus.Watched)
             .SelectMany(w => w.Movie.Genres)
@@ -72,7 +71,6 @@ public class WatchlistService : IWatchlistService
         var genreBreakdown = genreGroups.ToDictionary(g => g.Key, g => g.Count());
         var mostWatchedGenre = genreGroups.FirstOrDefault()?.Key ?? string.Empty;
 
-        // Yearly breakdown using LINQ GroupBy
         var yearlyGroups = watchlistList
             .Where(w => w.Status == WatchlistStatus.Watched)
             .GroupBy(w => w.Movie.ReleaseDate.Year)
@@ -99,9 +97,8 @@ public class WatchlistService : IWatchlistService
         var userWatchlist = await m_watchlistRepository.GetByUserIdAsync(query.UserId);
         var userWatchlistList = userWatchlist.ToList();
 
-        // Get user's favorite genres based on watched movies
         var favoriteGenres = userWatchlistList
-            .Where(w => w.Status == WatchlistStatus.Watched && w.UserRating != null && (int)w.UserRating! >= 4)
+            .Where(w => w.Status == WatchlistStatus.Watched && w.UserRating != null && w.UserRating!.Value >= 4)
             .SelectMany(w => w.Movie.Genres)
             .GroupBy(g => g)
             .OrderByDescending(g => g.Count())
@@ -109,14 +106,13 @@ public class WatchlistService : IWatchlistService
             .Select(g => g.Key)
             .ToList();
 
-        // Get all movies and filter by favorite genres
         var allMovies = await m_movieRepository.GetAllAsync();
         
         var recommendedMovies = allMovies
-            .Where(m => !userWatchlistList.Any(w => w.MovieId == m.Id)) // Not in user's watchlist
-            .Where(m => m.Genres.Any(g => favoriteGenres.Contains(g))) // Matches favorite genres
-            .Where(m => m.VoteAverage >= 7.0) // High TMDB rating
-            .Where(m => m.VoteCount >= 1000) // Sufficient votes
+            .Where(m => !userWatchlistList.Any(w => w.MovieId == m.Id))
+            .Where(m => m.Genres.Any(g => favoriteGenres.Contains(g)))
+            .Where(m => m.VoteAverage >= 7.0)
+            .Where(m => m.VoteCount >= 1000) 
             .OrderByDescending(m => m.Popularity)
             .ThenByDescending(m => m.VoteAverage)
             .Take(query.Limit);
@@ -149,7 +145,7 @@ public class WatchlistService : IWatchlistService
     }
 
 
-    public async Task<WatchlistItem> AddToWatchlistAsync(AddToWatchlistCommand command)
+    public async Task<Result<WatchlistItem>> AddToWatchlistAsync(AddToWatchlistCommand command)
     {
         // movieId parameter is the TMDB ID - check if we already have this movie cached in our database
         var cachedMovie = await m_movieRepository.GetByTmdbIdAsync(command.MovieId);
@@ -160,7 +156,7 @@ public class WatchlistService : IWatchlistService
             // Not in cache - fetch from TMDB and save to database
             var tmdbMovie = await m_tmdbService.GetMovieDetailsAsync(command.MovieId);
             if (tmdbMovie == null)
-                throw new ArgumentException(string.Format(ErrorMessages.MovieNotFound, command.MovieId));
+                return Result<WatchlistItem>.Failure(string.Format(ErrorMessages.MovieNotFound, command.MovieId));
             
             // Save to database as cache and persist immediately to get the database ID
             await m_movieRepository.AddAsync(tmdbMovie);
@@ -176,7 +172,7 @@ public class WatchlistService : IWatchlistService
         // Check if already in user's watchlist
         var alreadyInWatchlist = await m_watchlistRepository.IsMovieInUserWatchlistAsync(command.UserId, movie.Id);
         if (alreadyInWatchlist)
-            throw new InvalidOperationException(ErrorMessages.MovieAlreadyInWatchlist);
+            return Result<WatchlistItem>.Failure(ErrorMessages.MovieAlreadyInWatchlist);
 
         // Use factory method to create watchlist item
         var watchlistItem = WatchlistItem.Create(command.UserId, movie.Id, movie);
@@ -195,15 +191,15 @@ public class WatchlistService : IWatchlistService
 
         await m_watchlistRepository.AddAsync(watchlistItem);
         await m_unitOfWork.SaveChangesAsync();
-        return watchlistItem;
+        return Result<WatchlistItem>.Success(watchlistItem);
     }
 
-    public async Task<WatchlistItem?> UpdateWatchlistItemAsync(UpdateWatchlistItemCommand command)
+    public async Task<Result<WatchlistItem>> UpdateWatchlistItemAsync(UpdateWatchlistItemCommand command)
     {
         var item = await m_watchlistRepository.GetByUserIdAndIdAsync(command.UserId, command.WatchlistItemId);
         
         if (item == null)
-            return null;
+            return Result<WatchlistItem>.Failure(ErrorMessages.WatchlistItemNotFound);
 
         // Update properties using domain methods
         if (command.Status.HasValue)
@@ -224,7 +220,7 @@ public class WatchlistService : IWatchlistService
         {
             var ratingResult = Rating.Create(command.UserRating.Value);
             if (ratingResult.IsFailure)
-                throw new ValidationException(ratingResult.Error);
+                return Result<WatchlistItem>.Failure(ratingResult.Error);
             
             item.SetRating(ratingResult.Value!);
         }
@@ -239,19 +235,19 @@ public class WatchlistService : IWatchlistService
 
         await m_watchlistRepository.UpdateAsync(item);
         await m_unitOfWork.SaveChangesAsync();
-        return item;
+        return Result<WatchlistItem>.Success(item);
     }
 
-    public async Task<bool> RemoveFromWatchlistAsync(RemoveFromWatchlistCommand command)
+    public async Task<Result<bool>> RemoveFromWatchlistAsync(RemoveFromWatchlistCommand command)
     {
         var item = await m_watchlistRepository.GetByUserIdAndIdAsync(command.UserId, command.WatchlistItemId);
         
         if (item == null)
-            return false;
+            return Result<bool>.Failure(ErrorMessages.WatchlistItemNotFound);
 
         await m_watchlistRepository.DeleteAsync(item);
         await m_unitOfWork.SaveChangesAsync();
-        return true;
+        return Result<bool>.Success(true);
     }
 
     public async Task<WatchlistItem?> GetWatchlistItemByIdAsync(GetWatchlistItemByIdQuery query)

@@ -296,13 +296,14 @@ public class WatchlistServiceTests : UnitTestBase
         var result = await _service.AddToWatchlistAsync(command);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(1, result.UserId);
-        Assert.Equal(1, result.MovieId);
-        Assert.Equal(WatchlistStatus.Planned, result.Status);
-        Assert.Equal("Test note", result.Notes);
-        Assert.True(result.AddedDate != default);
-        Assert.Null(result.WatchedDate);
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal(1, result.Value!.UserId);
+        Assert.Equal(1, result.Value.MovieId);
+        Assert.Equal(WatchlistStatus.Planned, result.Value.Status);
+        Assert.Equal("Test note", result.Value.Notes);
+        Assert.True(result.Value.AddedDate != default);
+        Assert.Null(result.Value.WatchedDate);
 
         _mockWatchlistRepository.Verify(x => x.AddAsync(It.IsAny<WatchlistItem>()), Times.Once);
     }
@@ -348,12 +349,14 @@ public class WatchlistServiceTests : UnitTestBase
         var result = await _service.AddToWatchlistAsync(command);
 
         // Assert
-        Assert.True(result.WatchedDate != default);
-        Assert.Equal(WatchlistStatus.Watched, result.Status);
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.True(result.Value!.WatchedDate != default);
+        Assert.Equal(WatchlistStatus.Watched, result.Value.Status);
     }
 
     [Fact]
-    public async Task AddToWatchlistAsync_WithNonExistentMovie_ThrowsArgumentException()
+    public async Task AddToWatchlistAsync_WithNonExistentMovie_ReturnsFailure()
     {
         // Arrange
         // Mock movie not in cache
@@ -366,16 +369,17 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.GetMovieDetailsAsync(999))
             .ReturnsAsync((Movie?)null);
 
-        // Act & Assert
+        // Act
         var command = new AddToWatchlistCommand(UserId: 1, MovieId: 999);
-        var exception = await Assert.ThrowsAsync<ArgumentException>(() => 
-            _service.AddToWatchlistAsync(command));
+        var result = await _service.AddToWatchlistAsync(command);
         
-        Assert.Contains("Movie with TMDB ID 999 not found", exception.Message);
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Contains(string.Format(ErrorMessages.MovieNotFound, 999), result.Error);
     }
 
     [Fact]
-    public async Task AddToWatchlistAsync_WithDuplicateMovie_ThrowsInvalidOperationException()
+    public async Task AddToWatchlistAsync_WithDuplicateMovie_ReturnsFailure()
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: GenreConstants.ActionTitle);
@@ -394,12 +398,13 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.IsMovieInUserWatchlistAsync(It.IsAny<int>(), It.IsAny<int>()))
             .ReturnsAsync(true);
 
-        // Act & Assert
+        // Act
         var command = new AddToWatchlistCommand(UserId: 1, MovieId: 1);
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => 
-            _service.AddToWatchlistAsync(command));
+        var result = await _service.AddToWatchlistAsync(command);
         
-        Assert.Contains("Movie is already in user's watchlist", exception.Message);
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorMessages.MovieAlreadyInWatchlist, result.Error);
     }
 
     [Fact]
@@ -429,18 +434,19 @@ public class WatchlistServiceTests : UnitTestBase
         var result = await _service.UpdateWatchlistItemAsync(command);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(WatchlistStatus.Watched, result.Status);
-        Assert.True(result.IsFavorite);
-        Assert.Equal(5, result.UserRating);
-        Assert.Equal("Updated notes", result.Notes);
-        Assert.True(result.WatchedDate != default);
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal(WatchlistStatus.Watched, result.Value!.Status);
+        Assert.True(result.Value.IsFavorite);
+        Assert.Equal(5, result.Value.UserRating!.Value);
+        Assert.Equal("Updated notes", result.Value.Notes);
+        Assert.True(result.Value.WatchedDate != default);
 
         _mockWatchlistRepository.Verify(x => x.UpdateAsync(It.IsAny<WatchlistItem>()), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateWatchlistItemAsync_WithNonExistentItem_ReturnsNull()
+    public async Task UpdateWatchlistItemAsync_WithNonExistentItem_ReturnsFailure()
     {
         // Arrange
         var command = new UpdateWatchlistItemCommand(
@@ -457,7 +463,8 @@ public class WatchlistServiceTests : UnitTestBase
         var result = await _service.UpdateWatchlistItemAsync(command);
 
         // Assert
-        Assert.Null(result);
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorMessages.WatchlistItemNotFound, result.Error);
         _mockWatchlistRepository.Verify(x => x.UpdateAsync(It.IsAny<WatchlistItem>()), Times.Never);
     }
 
@@ -489,9 +496,10 @@ public class WatchlistServiceTests : UnitTestBase
         var result = await _service.UpdateWatchlistItemAsync(command);
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Equal(WatchlistStatus.Watched, result.Status);
-        Assert.True(result.WatchedDate != default);
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal(WatchlistStatus.Watched, result.Value!.Status);
+        Assert.True(result.Value.WatchedDate != default);
     }
 
     [Fact]
@@ -513,24 +521,26 @@ public class WatchlistServiceTests : UnitTestBase
         var result = await _service.RemoveFromWatchlistAsync(command);
 
         // Assert
-        Assert.True(result);
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value);
         _mockWatchlistRepository.Verify(x => x.DeleteAsync(It.IsAny<WatchlistItem>()), Times.Once);
     }
 
     [Fact]
-    public async Task RemoveFromWatchlistAsync_WithNonExistentItem_ReturnsFalse()
+    public async Task RemoveFromWatchlistAsync_WithNonExistentItem_ReturnsFailure()
     {
         // Arrange
         _mockWatchlistRepository
-            .Setup(x => x.IsMovieInUserWatchlistAsync(It.IsAny<int>(), It.IsAny<int>()))
-            .ReturnsAsync(false);
+            .Setup(x => x.GetByUserIdAndIdAsync(It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync((WatchlistItem?)null);
 
         // Act
         var command = new RemoveFromWatchlistCommand(UserId: 1, WatchlistItemId: 999);
         var result = await _service.RemoveFromWatchlistAsync(command);
 
         // Assert
-        Assert.False(result);
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorMessages.WatchlistItemNotFound, result.Error);
         _mockWatchlistRepository.Verify(x => x.DeleteAsync(It.IsAny<WatchlistItem>()), Times.Never);
     }
 

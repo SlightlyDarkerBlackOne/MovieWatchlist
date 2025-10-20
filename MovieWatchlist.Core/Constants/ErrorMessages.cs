@@ -36,6 +36,7 @@ public static class ErrorMessages
     
     public const string MovieNotFound = "Movie with TMDB ID {0} not found";
     public const string MovieAlreadyInWatchlist = "Movie is already in user's watchlist";
+    public const string WatchlistItemNotFound = "Watchlist item not found";
     public const string SearchQueryRequired = "Search query is required";
     
     #endregion
