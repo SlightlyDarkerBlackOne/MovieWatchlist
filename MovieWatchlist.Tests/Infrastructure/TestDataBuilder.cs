@@ -1,4 +1,5 @@
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.ValueObjects;
 
 namespace MovieWatchlist.Tests.Infrastructure;
 
@@ -83,8 +84,12 @@ public class UserBuilder
 
     public User Build()
     {
+        // Create Value Objects
+        var username = Username.Create(_username).Value!;
+        var email = Email.Create(_email).Value!;
+        
         // Create user using domain factory
-        var user = User.Create(_username, _email, _passwordHash);
+        var user = User.Create(username, email, _passwordHash);
         
         // Set Id using reflection for testing purposes
         typeof(User).GetProperty("Id")!.SetValue(user, _id);
@@ -282,7 +287,10 @@ public class WatchlistItemBuilder
             item.ToggleFavorite();
 
         if (_userRating.HasValue)
-            item.SetRating(_userRating.Value);
+        {
+            var rating = Rating.Create(_userRating.Value).Value!;
+            item.SetRating(rating);
+        }
 
         if (_notes != null)
             item.UpdateNotes(_notes);

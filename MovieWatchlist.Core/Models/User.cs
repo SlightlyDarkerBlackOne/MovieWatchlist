@@ -1,10 +1,12 @@
+using MovieWatchlist.Core.ValueObjects;
+
 namespace MovieWatchlist.Core.Models;
 
 public class User
 {
     public int Id { get; private set; }
-    public string Username { get; private set; } = string.Empty;
-    public string Email { get; private set; } = string.Empty;
+    public Username Username { get; private set; } = null!;
+    public Email Email { get; private set; } = null!;
     public string PasswordHash { get; private set; } = string.Empty;
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
     public DateTime? LastLoginAt { get; private set; }
@@ -12,12 +14,12 @@ public class User
 
     private User() { }
 
-    public static User Create(string username, string email, string passwordHash)
+    public static User Create(Username username, Email email, string passwordHash)
     {
-        if (string.IsNullOrWhiteSpace(username))
-            throw new ArgumentException("Username cannot be null or empty", nameof(username));
-        if (string.IsNullOrWhiteSpace(email))
-            throw new ArgumentException("Email cannot be null or empty", nameof(email));
+        if (username == null)
+            throw new ArgumentNullException(nameof(username));
+        if (email == null)
+            throw new ArgumentNullException(nameof(email));
         if (string.IsNullOrWhiteSpace(passwordHash))
             throw new ArgumentException("Password hash cannot be null or empty", nameof(passwordHash));
 
@@ -53,10 +55,10 @@ public class User
     /// Updates the user's email address.
     /// Note: Validation should be performed in the service layer before calling this method.
     /// </summary>
-    public void UpdateEmail(string newEmail)
+    public void UpdateEmail(Email newEmail)
     {
-        if (string.IsNullOrWhiteSpace(newEmail))
-            throw new ArgumentException("Email cannot be null or empty", nameof(newEmail));
+        if (newEmail == null)
+            throw new ArgumentNullException(nameof(newEmail));
 
         Email = newEmail;
     }

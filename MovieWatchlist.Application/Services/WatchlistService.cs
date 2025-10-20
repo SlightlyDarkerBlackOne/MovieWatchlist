@@ -4,9 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Constants;
+using MovieWatchlist.Core.Exceptions;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.Queries;
+using MovieWatchlist.Core.ValueObjects;
 
 namespace MovieWatchlist.Application.Services;
 
@@ -56,8 +58,8 @@ public class WatchlistService : IWatchlistService
         var moviesThisYear = watchlistList.Count(w => w.AddedDate.Year == DateTime.UtcNow.Year);
 
         // Calculate average ratings using LINQ
-        var ratedMovies = watchlistList.Where(w => w.UserRating.HasValue).ToList();
-        var averageUserRating = ratedMovies.Any() ? ratedMovies.Average(w => w.UserRating!.Value) : 0;
+        var ratedMovies = watchlistList.Where(w => w.UserRating != null).ToList();
+        var averageUserRating = ratedMovies.Any() ? ratedMovies.Average(w => (int)w.UserRating!) : 0;
         var averageTmdbRating = watchlistList.Any() ? watchlistList.Average(w => w.Movie.VoteAverage) : 0;
 
         // Genre breakdown using LINQ GroupBy
@@ -99,7 +101,7 @@ public class WatchlistService : IWatchlistService
 
         // Get user's favorite genres based on watched movies
         var favoriteGenres = userWatchlistList
-            .Where(w => w.Status == WatchlistStatus.Watched && w.UserRating >= 4)
+            .Where(w => w.Status == WatchlistStatus.Watched && w.UserRating != null && (int)w.UserRating! >= 4)
             .SelectMany(w => w.Movie.Genres)
             .GroupBy(g => g)
             .OrderByDescending(g => g.Count())
@@ -220,7 +222,11 @@ public class WatchlistService : IWatchlistService
 
         if (command.UserRating.HasValue)
         {
-            item.SetRating(command.UserRating.Value);
+            var ratingResult = Rating.Create(command.UserRating.Value);
+            if (ratingResult.IsFailure)
+                throw new ValidationException(ratingResult.Error);
+            
+            item.SetRating(ratingResult.Value!);
         }
 
         if (command.Notes != null)

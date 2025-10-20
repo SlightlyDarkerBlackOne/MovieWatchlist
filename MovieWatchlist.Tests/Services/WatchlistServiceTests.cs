@@ -4,6 +4,7 @@ using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Queries;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.ValueObjects;
 using MovieWatchlist.Application.Services;
 using MovieWatchlist.Tests.Infrastructure;
 
@@ -198,12 +199,12 @@ public class WatchlistServiceTests : UnitTestBase
         var item1 = WatchlistItem.Create(1, 1, movie1);
         item1.UpdateStatus(WatchlistStatus.Watched);
         item1.ToggleFavorite();
-        item1.SetRating(5);
+        item1.SetRating(Rating.Create(5).Value!);
         SetAddedDateViaReflection(item1, DateTime.UtcNow.AddDays(-10)); // Most recent
 
         var item2 = WatchlistItem.Create(1, 2, movie2);
         item2.UpdateStatus(WatchlistStatus.Watched);
-        item2.SetRating(4);
+        item2.SetRating(Rating.Create(4).Value!);
         SetAddedDateViaReflection(item2, new DateTime(2022, 6, 15, 0, 0, 0, DateTimeKind.Utc)); // Previous year
 
         var item3 = WatchlistItem.Create(1, 3, movie3);

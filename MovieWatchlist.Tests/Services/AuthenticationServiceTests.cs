@@ -5,6 +5,7 @@ using MovieWatchlist.Core.Configuration;
 using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.ValueObjects;
 using MovieWatchlist.Application.Services;
 using MovieWatchlist.Infrastructure.Services;
 using MovieWatchlist.Tests.Infrastructure;
@@ -77,9 +78,9 @@ public class AuthenticationServiceTests : UnitTestBase
             Password: TestConstants.Users.DefaultPassword
         );
 
-        _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<string>()))
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
             .ReturnsAsync((User?)null); // No existing users
-        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<string>()))
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
             .ReturnsAsync((User?)null); // No existing users
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
             .Returns("test-jwt-token");
@@ -113,7 +114,8 @@ public class AuthenticationServiceTests : UnitTestBase
         );
 
         var existingUser = CreateTestUser(email: "existing@example.com");
-        _mockUserRepository.Setup(x => x.GetByEmailAsync(command.Email))
+        var email = Email.Create(command.Email).Value!;
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(email))
             .ReturnsAsync(existingUser); // Existing user with same email
 
         // Act
@@ -140,9 +142,11 @@ public class AuthenticationServiceTests : UnitTestBase
         );
 
         // First call returns null (email check), second call returns existing user (username check)
-        _mockUserRepository.Setup(x => x.GetByEmailAsync(command.Email))
+        var email = Email.Create(command.Email).Value!;
+        var username = Username.Create(command.Username).Value!;
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(email))
             .ReturnsAsync((User?)null); // No existing email
-        _mockUserRepository.Setup(x => x.GetByUsernameAsync(command.Username))
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(username))
             .ReturnsAsync(CreateTestUser(username: "existinguser")); // Existing username
 
         // Act
@@ -178,7 +182,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .WithPasswordHash(new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword))
             .Build();
 
-        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<string>()))
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
             .ReturnsAsync(user);
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
             .Returns("test-jwt-token");
@@ -209,9 +213,9 @@ public class AuthenticationServiceTests : UnitTestBase
             Password: "Password123!"
         );
 
-        _mockUserRepository.Setup(x => x.GetByUsernameAsync(command.UsernameOrEmail))
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
             .ReturnsAsync((User?)null); // No user found
-        _mockUserRepository.Setup(x => x.GetByEmailAsync(command.UsernameOrEmail))
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
             .ReturnsAsync((User?)null); // No user found
 
         // Act
@@ -243,7 +247,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .WithPasswordHash(new PasswordHasher().HashPassword("CorrectPassword123!"))
             .Build();
 
-        _mockUserRepository.Setup(x => x.GetByUsernameAsync(command.UsernameOrEmail))
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
             .ReturnsAsync(user);
 
         // Act
@@ -275,7 +279,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .WithPasswordHash(new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword))
             .Build();
 
-        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<string>()))
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
             .ReturnsAsync(user);
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
             .Returns("test-jwt-token");
@@ -515,7 +519,7 @@ public class AuthenticationServiceTests : UnitTestBase
         var testUser = CreateTestUser(email: TestConstants.Users.DefaultEmail);
 
         _mockUserRepository
-            .Setup(x => x.GetByEmailAsync(It.IsAny<string>()))
+            .Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
             .ReturnsAsync(testUser);
 
         _mockPasswordResetTokenRepository
@@ -549,7 +553,7 @@ public class AuthenticationServiceTests : UnitTestBase
         var command = new ForgotPasswordCommand(Email: "nonexistent@example.com");
 
         _mockUserRepository
-            .Setup(x => x.GetByEmailAsync(It.IsAny<string>()))
+            .Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
             .ReturnsAsync((User?)null);
 
         // Act

@@ -82,8 +82,8 @@ public class InfrastructureIntegrationTests : EnhancedIntegrationTestBase
         var savedMovie = await Context.Movies.FirstOrDefaultAsync(m => m.Title == "Builder Movie");
         
         savedUser.Should().NotBeNull();
-        savedUser!.Username.Should().Be("builderuser");
-        savedUser.Email.Should().Be("builder@example.com");
+        savedUser!.Username.Value.Should().Be("builderuser");
+        savedUser.Email.Value.Should().Be("builder@example.com");
         
         savedMovie.Should().NotBeNull();
         savedMovie!.Title.Should().Be("Builder Movie");

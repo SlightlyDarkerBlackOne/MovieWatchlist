@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.ValueObjects;
 using MovieWatchlist.Infrastructure.Data;
 
 namespace MovieWatchlist.Tests.Infrastructure;
@@ -158,7 +159,7 @@ public static class TestDatabaseSeeder
                 .WithMovieId(movies[0].Id)
                 .WithStatus(WatchlistStatus.Watched)
                 .WithIsFavorite(true)
-                .WithUserRating(10)
+                .WithUserRating(Rating.Create(10).Value!)
                 .WithNotes("Amazing movie!")
                 .WithAddedDate(TestConstants.Dates.DefaultAddedDate)
                 .WithWatchedDate(TestConstants.Dates.DefaultWatchedDate)
@@ -169,7 +170,7 @@ public static class TestDatabaseSeeder
                 .WithMovieId(movies[1].Id)
                 .WithStatus(WatchlistStatus.Watched)
                 .WithIsFavorite(false)
-                .WithUserRating(8)
+                .WithUserRating(Rating.Create(8).Value!)
                 .WithNotes("Confusing but good")
                 .WithAddedDate(TestConstants.Dates.DefaultAddedDate.AddDays(-5))
                 .WithWatchedDate(TestConstants.Dates.DefaultWatchedDate.AddDays(-1))
@@ -203,7 +204,7 @@ public static class TestDatabaseSeeder
                 .WithMovieId(movies[0].Id)
                 .WithStatus(WatchlistStatus.Watched)
                 .WithIsFavorite(true)
-                .WithUserRating(9)
+                .WithUserRating(Rating.Create(9).Value!)
                 .WithNotes("Great superhero movie")
                 .WithAddedDate(TestConstants.Dates.DefaultAddedDate.AddDays(-10))
                 .WithWatchedDate(TestConstants.Dates.DefaultWatchedDate.AddDays(-5))

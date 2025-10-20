@@ -56,9 +56,9 @@ public static class ErrorMessages
 
     #region Validation Messages
     
-    public const string UsernameValidation = "Username must be 3-50 characters long and contain only letters, numbers, underscores, and hyphens";
-    public const string EmailValidation = "Email must be a valid format and not exceed 100 characters";
-    public const string PasswordValidation = "Password must be at least 8 characters with uppercase, lowercase, number, and special character";
+    public static string UsernameValidation => ValidationConstants.Username.InvalidFormatMessage;
+    public static string EmailValidation => ValidationConstants.Email.InvalidFormatMessage;
+    public static string PasswordValidation => ValidationConstants.Password.InvalidFormatMessage;
     
     #endregion
 }

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using MovieWatchlist.Application.Validation;
+using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Tests.Infrastructure;
 using Xunit;
 
@@ -223,7 +224,7 @@ public class InputValidationServiceTests : UnitTestBase
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain("Username must be 3-50 characters long and contain only letters, numbers, underscores, and hyphens");
+        result.Errors.Should().Contain(ValidationConstants.Username.InvalidFormatMessage);
     }
 
     [Fact]
@@ -239,7 +240,7 @@ public class InputValidationServiceTests : UnitTestBase
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain("Email must be a valid format and not exceed 100 characters");
+        result.Errors.Should().Contain(ValidationConstants.Email.InvalidFormatMessage);
     }
 
     [Fact]
@@ -255,7 +256,7 @@ public class InputValidationServiceTests : UnitTestBase
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain("Password must be at least 8 characters with uppercase, lowercase, number, and special character");
+        result.Errors.Should().Contain(ValidationConstants.Password.InvalidFormatMessage);
     }
 
     [Fact]
@@ -272,9 +273,9 @@ public class InputValidationServiceTests : UnitTestBase
         // Assert
         result.IsValid.Should().BeFalse();
         result.Errors.Should().HaveCount(3);
-        result.Errors.Should().Contain("Username must be 3-50 characters long and contain only letters, numbers, underscores, and hyphens");
-        result.Errors.Should().Contain("Email must be a valid format and not exceed 100 characters");
-        result.Errors.Should().Contain("Password must be at least 8 characters with uppercase, lowercase, number, and special character");
+        result.Errors.Should().Contain(ValidationConstants.Username.InvalidFormatMessage);
+        result.Errors.Should().Contain(ValidationConstants.Email.InvalidFormatMessage);
+        result.Errors.Should().Contain(ValidationConstants.Password.InvalidFormatMessage);
     }
 
     #endregion

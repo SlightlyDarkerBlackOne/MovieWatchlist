@@ -27,10 +27,10 @@ public class JwtTokenService : IJwtTokenService
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.Username),
-            new(ClaimTypes.Email, user.Email),
-            new("username", user.Username),
-            new("email", user.Email)
+            new(ClaimTypes.Name, user.Username.Value),
+            new(ClaimTypes.Email, user.Email.Value),
+            new("username", user.Username.Value),
+            new("email", user.Email.Value)
         };
 
         var tokenDescriptor = new SecurityTokenDescriptor

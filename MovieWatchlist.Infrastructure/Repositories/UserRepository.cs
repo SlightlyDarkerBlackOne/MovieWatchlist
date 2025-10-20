@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.ValueObjects;
 using MovieWatchlist.Infrastructure.Data;
 
 namespace MovieWatchlist.Infrastructure.Repositories;
@@ -23,7 +24,7 @@ public class UserRepository : EfRepository<User>, IUserRepository
     /// </summary>
     /// <param name="username">The username to search for</param>
     /// <returns>The user if found, null otherwise</returns>
-    public async Task<User?> GetByUsernameAsync(string username)
+    public async Task<User?> GetByUsernameAsync(Username username)
     {
         return await _dbSet
             .FirstOrDefaultAsync(u => u.Username == username);
@@ -34,7 +35,7 @@ public class UserRepository : EfRepository<User>, IUserRepository
     /// </summary>
     /// <param name="email">The email address to search for</param>
     /// <returns>The user if found, null otherwise</returns>
-    public async Task<User?> GetByEmailAsync(string email)
+    public async Task<User?> GetByEmailAsync(Email email)
     {
         return await _dbSet
             .FirstOrDefaultAsync(u => u.Email == email);
@@ -46,7 +47,7 @@ public class UserRepository : EfRepository<User>, IUserRepository
     /// <param name="username">The username to check</param>
     /// <param name="excludeUserId">Optional user ID to exclude from the check (for updates)</param>
     /// <returns>True if username is taken, false otherwise</returns>
-    public async Task<bool> IsUsernameTakenAsync(string username, int? excludeUserId = null)
+    public async Task<bool> IsUsernameTakenAsync(Username username, int? excludeUserId = null)
     {
         var query = _dbSet.Where(u => u.Username == username);
         
@@ -64,7 +65,7 @@ public class UserRepository : EfRepository<User>, IUserRepository
     /// <param name="email">The email address to check</param>
     /// <param name="excludeUserId">Optional user ID to exclude from the check (for updates)</param>
     /// <returns>True if email is taken, false otherwise</returns>
-    public async Task<bool> IsEmailTakenAsync(string email, int? excludeUserId = null)
+    public async Task<bool> IsEmailTakenAsync(Email email, int? excludeUserId = null)
     {
         var query = _dbSet.Where(u => u.Email == email);
         

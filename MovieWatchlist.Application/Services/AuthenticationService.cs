@@ -5,6 +5,7 @@ using MovieWatchlist.Core.Configuration;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.ValueObjects;
 
 namespace MovieWatchlist.Application.Services;
 
@@ -41,8 +42,26 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<AuthenticationResult> RegisterAsync(RegisterCommand command)
     {
+        var usernameResult = Username.Create(command.Username);
+        if (usernameResult.IsFailure)
+        {
+            return new AuthenticationResult(
+                IsSuccess: false,
+                ErrorMessage: usernameResult.Error
+            );
+        }
+
+        var emailResult = Email.Create(command.Email);
+        if (emailResult.IsFailure)
+        {
+            return new AuthenticationResult(
+                IsSuccess: false,
+                ErrorMessage: emailResult.Error
+            );
+        }
+
         // Check if user already exists
-        var existingUserByEmail = await m_userRepository.GetByEmailAsync(command.Email);
+        var existingUserByEmail = await m_userRepository.GetByEmailAsync(emailResult.Value!);
         if (existingUserByEmail != null)
         {
             return new AuthenticationResult(
@@ -51,7 +70,7 @@ public class AuthenticationService : IAuthenticationService
             );
         }
 
-        var existingUserByUsername = await m_userRepository.GetByUsernameAsync(command.Username);
+        var existingUserByUsername = await m_userRepository.GetByUsernameAsync(usernameResult.Value!);
         if (existingUserByUsername != null)
         {
             return new AuthenticationResult(
@@ -62,8 +81,8 @@ public class AuthenticationService : IAuthenticationService
 
         // Create new user using factory method
         var user = User.Create(
-            command.Username,
-            command.Email,
+            usernameResult.Value!,
+            emailResult.Value!,
             m_passwordHasher.HashPassword(command.Password)
         );
 
@@ -86,8 +105,8 @@ public class AuthenticationService : IAuthenticationService
             ExpiresAt: DateTime.UtcNow.AddMinutes(m_jwtSettings.ExpirationMinutes),
             User: new UserInfo(
                 Id: user.Id,
-                Username: user.Username,
-                Email: user.Email,
+                Username: user.Username.Value,
+                Email: user.Email.Value,
                 CreatedAt: user.CreatedAt
             )
         );
@@ -135,8 +154,8 @@ public class AuthenticationService : IAuthenticationService
             ExpiresAt: DateTime.UtcNow.AddMinutes(m_jwtSettings.ExpirationMinutes),
             User: new UserInfo(
                 Id: user.Id,
-                Username: user.Username,
-                Email: user.Email,
+                Username: user.Username.Value,
+                Email: user.Email.Value,
                 CreatedAt: user.CreatedAt
             )
         );
@@ -208,17 +227,25 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
-            var user = await m_userRepository.GetByEmailAsync(command.Email);
+            var emailResult = Email.Create(command.Email);
+            if (emailResult.IsFailure)
+            {
+                // Return success to prevent email enumeration attacks
+                return new PasswordResetResponse(
+                    Success: true,
+                    Message: "If the email exists, a password reset link has been sent."
+                );
+            }
+
+            var user = await m_userRepository.GetByEmailAsync(emailResult.Value!);
 
             // Always return success to prevent email enumeration attacks
-            var response = new PasswordResetResponse(
-                Success: true,
-                Message: "If the email exists, a password reset link has been sent."
-            );
-
             if (user == null)
             {
-                return response;
+                return new PasswordResetResponse(
+                    Success: true,
+                    Message: "If the email exists, a password reset link has been sent."
+                );
             }
 
             var resetToken = Guid.NewGuid().ToString();
@@ -236,9 +263,12 @@ public class AuthenticationService : IAuthenticationService
             await m_passwordResetTokenRepository.AddAsync(passwordResetToken);
             await m_unitOfWork.SaveChangesAsync();
     
-            await m_emailService.SendPasswordResetEmailAsync(user.Email, resetToken, user.Username);
+            await m_emailService.SendPasswordResetEmailAsync(user.Email.Value, resetToken, user.Username.Value);
 
-            return response;
+            return new PasswordResetResponse(
+                Success: true,
+                Message: "If the email exists, a password reset link has been sent."
+            );
         }
         catch (Exception)
         {
@@ -300,9 +330,22 @@ public class AuthenticationService : IAuthenticationService
 
     private async Task<User?> FindUserByUsernameOrEmailAsync(string usernameOrEmail)
     {
-        var user = await m_userRepository.GetByUsernameAsync(usernameOrEmail);
-        if (user != null) return user;
-        return await m_userRepository.GetByEmailAsync(usernameOrEmail);
+        // Try as email first
+        var emailResult = Email.Create(usernameOrEmail);
+        if (emailResult.IsSuccess)
+        {
+            var user = await m_userRepository.GetByEmailAsync(emailResult.Value!);
+            if (user != null) return user;
+        }
+
+        // Try as username
+        var usernameResult = Username.Create(usernameOrEmail);
+        if (usernameResult.IsSuccess)
+        {
+            return await m_userRepository.GetByUsernameAsync(usernameResult.Value!);
+        }
+
+        return null;
     }
 }
 

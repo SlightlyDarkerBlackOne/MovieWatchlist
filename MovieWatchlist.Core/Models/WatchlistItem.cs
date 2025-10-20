@@ -1,4 +1,5 @@
 using System;
+using MovieWatchlist.Core.ValueObjects;
 
 namespace MovieWatchlist.Core.Models;
 
@@ -11,7 +12,7 @@ public class WatchlistItem
     public Movie Movie { get; set; } = null!; // Navigation property - kept public for EF Core
     public WatchlistStatus Status { get; private set; } = WatchlistStatus.Planned;
     public bool IsFavorite { get; private set; }
-    public int? UserRating { get; private set; }
+    public Rating? UserRating { get; private set; }
     public string? Notes { get; private set; }
     public DateTime AddedDate { get; private set; } = DateTime.UtcNow;
     public DateTime? WatchedDate { get; private set; }
@@ -72,10 +73,10 @@ public class WatchlistItem
     /// Sets the user's rating for this movie.
     /// Validates that rating is between 1 and 10.
     /// </summary>
-    public void SetRating(int rating)
+    public void SetRating(Rating rating)
     {
-        if (rating < 1 || rating > 10)
-            throw new ArgumentException("Rating must be between 1 and 10", nameof(rating));
+        if (rating == null)
+            throw new ArgumentNullException(nameof(rating));
 
         UserRating = rating;
     }

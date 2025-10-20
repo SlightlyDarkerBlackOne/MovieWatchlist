@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.ValueObjects;
 
 namespace MovieWatchlist.Infrastructure.Data;
 
@@ -42,11 +43,17 @@ public class MovieWatchlistDbContext : DbContext
             entity.Property(e => e.Username)
                 .IsRequired()
                 .HasMaxLength(50)
+                .HasConversion(
+                    v => v.Value,
+                    v => Username.Create(v).Value!)
                 .HasComment("Unique username for the user");
             
             entity.Property(e => e.Email)
                 .IsRequired()
                 .HasMaxLength(255)
+                .HasConversion(
+                    v => v.Value,
+                    v => Email.Create(v).Value!)
                 .HasComment("User's email address");
             
             entity.Property(e => e.PasswordHash)
@@ -187,6 +194,9 @@ public class MovieWatchlistDbContext : DbContext
                 .HasComment("Whether this movie is marked as favorite");
             
             entity.Property(e => e.UserRating)
+                .HasConversion(
+                    v => v != null ? v.Value : (int?)null,
+                    v => v.HasValue ? Rating.Create(v.Value).Value! : null!)
                 .HasComment("User's personal rating (1-10)");
             
             entity.Property(e => e.Notes)
