@@ -26,8 +26,7 @@ public class WatchlistItemEventTests : UnitTestBase
         var watchedEvent = (MovieWatchedEvent)events[0];
         Assert.Equal(1, watchedEvent.UserId);
         Assert.Equal(1, watchedEvent.MovieId);
-        Assert.NotNull(watchedEvent.WatchedDate);
-        Assert.NotNull(watchedEvent.EventId);
+        Assert.NotEqual(default(DateTime), watchedEvent.WatchedDate);
         Assert.NotEqual(Guid.Empty, watchedEvent.EventId);
     }
     

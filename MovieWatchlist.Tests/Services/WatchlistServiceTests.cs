@@ -15,7 +15,6 @@ public class WatchlistServiceTests : UnitTestBase
     private readonly Mock<IWatchlistRepository> _mockWatchlistRepository;
     private readonly Mock<IMovieRepository> _mockMovieRepository;
     private readonly Mock<ITmdbService> _mockTmdbService;
-    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly WatchlistService _service;
 
     public WatchlistServiceTests()
@@ -23,12 +22,10 @@ public class WatchlistServiceTests : UnitTestBase
         _mockWatchlistRepository = new Mock<IWatchlistRepository>();
         _mockMovieRepository = new Mock<IMovieRepository>();
         _mockTmdbService = new Mock<ITmdbService>();
-        _mockUnitOfWork = new Mock<IUnitOfWork>();
         _service = new WatchlistService(
             _mockWatchlistRepository.Object, 
             _mockMovieRepository.Object,
-            _mockTmdbService.Object,
-            _mockUnitOfWork.Object);
+            _mockTmdbService.Object);
     }
 
     [Fact]
@@ -280,9 +277,6 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.AddAsync(It.IsAny<Movie>()))
             .Returns(Task.CompletedTask);
 
-        _mockUnitOfWork
-            .Setup(x => x.SaveChangesAsync())
-            .ReturnsAsync(1);
 
         _mockWatchlistRepository
             .Setup(x => x.IsMovieInUserWatchlistAsync(It.IsAny<int>(), It.IsAny<int>()))
@@ -328,9 +322,6 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.AddAsync(It.IsAny<Movie>()))
             .Returns(Task.CompletedTask);
 
-        _mockUnitOfWork
-            .Setup(x => x.SaveChangesAsync())
-            .ReturnsAsync(1);
 
         _mockWatchlistRepository
             .Setup(x => x.IsMovieInUserWatchlistAsync(It.IsAny<int>(), It.IsAny<int>()))

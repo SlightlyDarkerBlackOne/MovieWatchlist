@@ -195,6 +195,8 @@ else
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseTransactionPerRequest();
+
 app.MapControllers();
 
 app.MapHealthChecks("/health");

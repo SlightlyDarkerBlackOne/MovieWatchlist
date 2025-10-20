@@ -15,7 +15,6 @@ public class AuthenticationService : IAuthenticationService
     private readonly IRefreshTokenRepository m_refreshTokenRepository;
     private readonly IPasswordResetTokenRepository m_passwordResetTokenRepository;
     private readonly IJwtTokenService m_jwtTokenService;
-    private readonly IUnitOfWork m_unitOfWork;
     private readonly JwtSettings m_jwtSettings;
     private readonly IEmailService m_emailService;
     private readonly IPasswordHasher m_passwordHasher;
@@ -25,7 +24,6 @@ public class AuthenticationService : IAuthenticationService
         IRefreshTokenRepository refreshTokenRepository,
         IPasswordResetTokenRepository passwordResetTokenRepository,
         IJwtTokenService jwtTokenService,
-        IUnitOfWork unitOfWork,
         IOptions<JwtSettings> jwtSettings,
         IEmailService emailService,
         IPasswordHasher passwordHasher)
@@ -34,7 +32,6 @@ public class AuthenticationService : IAuthenticationService
         m_refreshTokenRepository = refreshTokenRepository;
         m_passwordResetTokenRepository = passwordResetTokenRepository;
         m_jwtTokenService = jwtTokenService;
-        m_unitOfWork = unitOfWork;
         m_jwtSettings = jwtSettings.Value;
         m_emailService = emailService;
         m_passwordHasher = passwordHasher;
@@ -60,7 +57,6 @@ public class AuthenticationService : IAuthenticationService
             );
         }
 
-        // Check if user already exists
         var existingUserByEmail = await m_userRepository.GetByEmailAsync(emailResult.Value!);
         if (existingUserByEmail != null)
         {
@@ -79,7 +75,6 @@ public class AuthenticationService : IAuthenticationService
             );
         }
 
-        // Create new user using factory method
         var user = User.Create(
             usernameResult.Value!,
             emailResult.Value!,
@@ -87,16 +82,13 @@ public class AuthenticationService : IAuthenticationService
         );
 
         await m_userRepository.AddAsync(user);
-        await m_unitOfWork.SaveChangesAsync();
 
-        // Generate tokens
         var token = m_jwtTokenService.GenerateToken(user);
         var refreshToken = m_jwtTokenService.GenerateRefreshToken();
 
         var refreshTokenEntity = RefreshToken.Create(user.Id, refreshToken, m_jwtSettings.RefreshTokenExpirationDays);
 
         await m_refreshTokenRepository.AddAsync(refreshTokenEntity);
-        await m_unitOfWork.SaveChangesAsync();
 
         return new AuthenticationResult(
             IsSuccess: true,
@@ -114,7 +106,6 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<AuthenticationResult> LoginAsync(LoginCommand command)
     {
-        // Find user by username or email
         var user = await FindUserByUsernameOrEmailAsync(command.UsernameOrEmail);
         if (user == null)
         {
@@ -124,7 +115,6 @@ public class AuthenticationService : IAuthenticationService
             );
         }
 
-        // Verify password
         if (!m_passwordHasher.VerifyPassword(command.Password, user.PasswordHash))
         {
             return new AuthenticationResult(
@@ -133,19 +123,15 @@ public class AuthenticationService : IAuthenticationService
             );
         }
 
-        // Update last login using domain method
         user.UpdateLastLogin();
         await m_userRepository.UpdateAsync(user);
-        await m_unitOfWork.SaveChangesAsync();
 
-        // Generate tokens
         var token = m_jwtTokenService.GenerateToken(user);
         var refreshToken = m_jwtTokenService.GenerateRefreshToken();
 
         var refreshTokenEntity = RefreshToken.Create(user.Id, refreshToken, m_jwtSettings.RefreshTokenExpirationDays);
 
         await m_refreshTokenRepository.AddAsync(refreshTokenEntity);
-        await m_unitOfWork.SaveChangesAsync();
 
         return new AuthenticationResult(
             IsSuccess: true,
@@ -173,13 +159,13 @@ public class AuthenticationService : IAuthenticationService
 
         if (token == null)
         {
-            throw new UnauthorizedAccessException("Invalid or expired refresh token");
+            throw new UnauthorizedAccessException(ErrorMessages.InvalidOrExpiredRefreshToken);
         }
 
         var user = await m_userRepository.GetByIdAsync(token.UserId);
         if (user == null)
         {
-            throw new UnauthorizedAccessException("User not found");
+            throw new UnauthorizedAccessException(ErrorMessages.UserNotFound);
         }
 
         token.Revoke();
@@ -191,7 +177,6 @@ public class AuthenticationService : IAuthenticationService
         var newRefreshTokenEntity = RefreshToken.Create(user.Id, newRefreshToken, m_jwtSettings.RefreshTokenExpirationDays);
 
         await m_refreshTokenRepository.AddAsync(newRefreshTokenEntity);
-        await m_unitOfWork.SaveChangesAsync();
 
         return newToken;
     }
@@ -213,7 +198,6 @@ public class AuthenticationService : IAuthenticationService
                 await m_refreshTokenRepository.UpdateAsync(refreshToken);
             }
             
-            await m_unitOfWork.SaveChangesAsync();
 
             return true;
         }
@@ -233,7 +217,7 @@ public class AuthenticationService : IAuthenticationService
                 // Return success to prevent email enumeration attacks
                 return new PasswordResetResponse(
                     Success: true,
-                    Message: "If the email exists, a password reset link has been sent."
+                    Message: ErrorMessages.PasswordResetEmailSent
                 );
             }
 
@@ -244,12 +228,12 @@ public class AuthenticationService : IAuthenticationService
             {
                 return new PasswordResetResponse(
                     Success: true,
-                    Message: "If the email exists, a password reset link has been sent."
+                    Message: ErrorMessages.PasswordResetEmailSent
                 );
             }
 
             var resetToken = Guid.NewGuid().ToString();
-            var expiresAt = DateTime.UtcNow.AddHours(1);
+            var expiresAt = DateTime.UtcNow.AddHours(ValidationConstants.Password.ResetTokenExpirationHours);
 
             var existingTokens = await m_passwordResetTokenRepository.GetUnusedByUserIdAsync(user.Id);
             foreach (var token in existingTokens)
@@ -258,16 +242,15 @@ public class AuthenticationService : IAuthenticationService
                 await m_passwordResetTokenRepository.UpdateAsync(token);
             }
 
-            var passwordResetToken = PasswordResetToken.Create(user.Id, resetToken, 1); // 1 hour expiration
+            var passwordResetToken = PasswordResetToken.Create(user.Id, resetToken, ValidationConstants.Password.ResetTokenExpirationHours);
 
             await m_passwordResetTokenRepository.AddAsync(passwordResetToken);
-            await m_unitOfWork.SaveChangesAsync();
     
             await m_emailService.SendPasswordResetEmailAsync(user.Email.Value, resetToken, user.Username.Value);
 
             return new PasswordResetResponse(
                 Success: true,
-                Message: "If the email exists, a password reset link has been sent."
+                Message: ErrorMessages.PasswordResetEmailSent
             );
         }
         catch (Exception)
@@ -304,7 +287,6 @@ public class AuthenticationService : IAuthenticationService
                 );
             }
 
-            // Hash new password and update using domain method
             var hashedPassword = m_passwordHasher.HashPassword(command.NewPassword);
             user.ChangePassword(hashedPassword);
 
@@ -312,7 +294,6 @@ public class AuthenticationService : IAuthenticationService
 
             await m_userRepository.UpdateAsync(user);
             await m_passwordResetTokenRepository.UpdateAsync(resetToken);
-            await m_unitOfWork.SaveChangesAsync();
 
             return new PasswordResetResponse(
                 Success: true,
@@ -330,7 +311,6 @@ public class AuthenticationService : IAuthenticationService
 
     private async Task<User?> FindUserByUsernameOrEmailAsync(string usernameOrEmail)
     {
-        // Try as email first
         var emailResult = Email.Create(usernameOrEmail);
         if (emailResult.IsSuccess)
         {
@@ -338,7 +318,6 @@ public class AuthenticationService : IAuthenticationService
             if (user != null) return user;
         }
 
-        // Try as username
         var usernameResult = Username.Create(usernameOrEmail);
         if (usernameResult.IsSuccess)
         {

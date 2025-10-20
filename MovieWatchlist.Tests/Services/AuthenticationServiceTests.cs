@@ -23,7 +23,6 @@ public class AuthenticationServiceTests : UnitTestBase
     private readonly Mock<IRefreshTokenRepository> _mockRefreshTokenRepository;
     private readonly Mock<IPasswordResetTokenRepository> _mockPasswordResetTokenRepository;
     private readonly Mock<IJwtTokenService> _mockJwtTokenService;
-    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IEmailService> _mockEmailService;
     private readonly Mock<IPasswordHasher> _mockPasswordHasher;
     private readonly JwtSettings _jwtSettings;
@@ -35,7 +34,6 @@ public class AuthenticationServiceTests : UnitTestBase
         _mockRefreshTokenRepository = new Mock<IRefreshTokenRepository>();
         _mockPasswordResetTokenRepository = new Mock<IPasswordResetTokenRepository>();
         _mockJwtTokenService = new Mock<IJwtTokenService>();
-        _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockEmailService = new Mock<IEmailService>();
         _mockPasswordHasher = new Mock<IPasswordHasher>();
 
@@ -60,7 +58,6 @@ public class AuthenticationServiceTests : UnitTestBase
             _mockRefreshTokenRepository.Object,
             _mockPasswordResetTokenRepository.Object,
             _mockJwtTokenService.Object,
-            _mockUnitOfWork.Object,
             options,
             _mockEmailService.Object,
             _mockPasswordHasher.Object);
@@ -100,7 +97,6 @@ public class AuthenticationServiceTests : UnitTestBase
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Once);
         _mockRefreshTokenRepository.Verify(x => x.AddAsync(It.IsAny<RefreshToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Exactly(2));
     }
 
     [Fact]
@@ -128,7 +124,6 @@ public class AuthenticationServiceTests : UnitTestBase
         result.User.Should().BeNull();
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
@@ -159,7 +154,6 @@ public class AuthenticationServiceTests : UnitTestBase
         result.User.Should().BeNull();
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     #endregion
@@ -201,7 +195,6 @@ public class AuthenticationServiceTests : UnitTestBase
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Once);
         _mockRefreshTokenRepository.Verify(x => x.AddAsync(It.IsAny<RefreshToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Exactly(2));
     }
 
     [Fact]
@@ -228,7 +221,6 @@ public class AuthenticationServiceTests : UnitTestBase
         result.User.Should().BeNull();
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
@@ -260,7 +252,6 @@ public class AuthenticationServiceTests : UnitTestBase
         result.User.Should().BeNull();
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
@@ -370,7 +361,6 @@ public class AuthenticationServiceTests : UnitTestBase
         
         _mockRefreshTokenRepository.Verify(x => x.UpdateAsync(It.IsAny<RefreshToken>()), Times.Once);
         _mockRefreshTokenRepository.Verify(x => x.AddAsync(It.IsAny<RefreshToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -463,7 +453,6 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().BeTrue();
         _mockRefreshTokenRepository.Verify(x => x.UpdateAsync(It.IsAny<RefreshToken>()), Times.Exactly(2));
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -481,7 +470,6 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().BeFalse();
         _mockRefreshTokenRepository.Verify(x => x.UpdateAsync(It.IsAny<RefreshToken>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
@@ -504,7 +492,6 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().BeFalse();
         _mockRefreshTokenRepository.Verify(x => x.UpdateAsync(It.IsAny<RefreshToken>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     #endregion
@@ -543,7 +530,6 @@ public class AuthenticationServiceTests : UnitTestBase
             TestConstants.Users.DefaultEmail, 
             It.IsAny<string>(), 
             testUser.Username), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -566,7 +552,6 @@ public class AuthenticationServiceTests : UnitTestBase
 
         _mockPasswordResetTokenRepository.Verify(x => x.AddAsync(It.IsAny<PasswordResetToken>()), Times.Never);
         _mockEmailService.Verify(x => x.SendPasswordResetEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     #endregion
@@ -608,7 +593,6 @@ public class AuthenticationServiceTests : UnitTestBase
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.Is<User>(u => u.Id == testUser.Id)), Times.Once);
         _mockPasswordResetTokenRepository.Verify(x => x.UpdateAsync(It.Is<PasswordResetToken>(t => t.IsUsed == true)), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -633,7 +617,6 @@ public class AuthenticationServiceTests : UnitTestBase
         result.Message.Should().Be("Invalid or expired reset token.");
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
@@ -666,7 +649,6 @@ public class AuthenticationServiceTests : UnitTestBase
         result.Message.Should().Be("Invalid or expired reset token.");
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
@@ -700,7 +682,6 @@ public class AuthenticationServiceTests : UnitTestBase
         result.Message.Should().Be("Invalid or expired reset token.");
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     #endregion

@@ -24,6 +24,7 @@ public static class ErrorMessages
     #region Password Reset Errors
     
     public const string InvalidOrExpiredResetToken = "Invalid or expired reset token.";
+    public const string InvalidOrExpiredRefreshToken = "Invalid or expired refresh token.";
     public const string UserNotFound = "User not found.";
     public const string PasswordResetSuccess = "Password has been reset successfully.";
     public const string PasswordResetFailed = "An error occurred while resetting your password.";

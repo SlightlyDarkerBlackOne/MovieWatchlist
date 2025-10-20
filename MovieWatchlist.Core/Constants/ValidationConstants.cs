@@ -6,6 +6,7 @@ public static class ValidationConstants
     {
         public const int MinValue = 1;
         public const int MaxValue = 10;
+        public const int HighRatingThreshold = 7;
         
         public static string InvalidRangeMessage => $"Rating must be between {MinValue} and {MaxValue}";
     }
@@ -36,9 +37,17 @@ public static class ValidationConstants
     public static class Password
     {
         public const int MinLength = 8;
+        public const int ResetTokenExpirationHours = 1;
         
         public static string InvalidFormatMessage => 
             $"Password must be at least {MinLength} characters with uppercase, lowercase, number, and special character";
+    }
+
+    public static class Recommendation
+    {
+        public const int TopGenresCount = 3;
+        public const double MinTmdbRating = 7.0;
+        public const int MinVoteCount = 1000;
     }
 }
 
