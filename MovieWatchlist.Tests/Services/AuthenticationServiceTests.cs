@@ -11,6 +11,7 @@ using MovieWatchlist.Infrastructure.Services;
 using MovieWatchlist.Tests.Infrastructure;
 using System.Security.Claims;
 using Xunit;
+using MovieWatchlist.Core.Constants;
 
 namespace MovieWatchlist.Tests.Services;
 
@@ -142,7 +143,7 @@ public class AuthenticationServiceTests : UnitTestBase
         _mockUserRepository.Setup(x => x.GetByEmailAsync(email))
             .ReturnsAsync((User?)null); // No existing email
         _mockUserRepository.Setup(x => x.GetByUsernameAsync(username))
-            .ReturnsAsync(CreateTestUser(username: "existinguser")); // Existing username
+            .ReturnsAsync(CreateTestUser(username: "existinguser"));
 
         // Act
         var result = await _authenticationService.RegisterAsync(command);
@@ -150,6 +151,72 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorMessage.Should().Be("Username is already taken");
+        result.Token.Should().BeNull();
+        result.User.Should().BeNull();
+
+        _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithInvalidPassword_ReturnsFailureResult()
+    {
+        // Arrange
+        var command = new RegisterCommand(
+            Username: TestConstants.Users.DefaultUsername,
+            Email: TestConstants.Users.DefaultEmail,
+            Password: TestConstants.Users.WeakPassword
+        );
+
+        // Act
+        var result = await _authenticationService.RegisterAsync(command);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be(ValidationConstants.Password.InvalidFormatMessage);
+        result.Token.Should().BeNull();
+        result.User.Should().BeNull();
+
+        _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithInvalidEmail_ReturnsFailureResult()
+    {
+        // Arrange
+        var command = new RegisterCommand(
+            Username: TestConstants.Users.DefaultUsername,
+            Email: "invalid-email",
+            Password: TestConstants.Users.DefaultPassword
+        );
+
+        // Act
+        var result = await _authenticationService.RegisterAsync(command);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be(ValidationConstants.Email.InvalidFormatMessage);
+        result.Token.Should().BeNull();
+        result.User.Should().BeNull();
+
+        _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithInvalidUsername_ReturnsFailureResult()
+    {
+        // Arrange
+        var command = new RegisterCommand(
+            Username: "user@name", // Invalid format (contains @)
+            Email: TestConstants.Users.DefaultEmail,
+            Password: TestConstants.Users.DefaultPassword
+        );
+
+        // Act
+        var result = await _authenticationService.RegisterAsync(command);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorMessage.Should().Be(ValidationConstants.Username.InvalidFormatMessage);
         result.Token.Should().BeNull();
         result.User.Should().BeNull();
 

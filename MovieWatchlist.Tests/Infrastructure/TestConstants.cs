@@ -22,6 +22,19 @@ public static class TestConstants
         
         public const string InactiveUsername = "inactiveuser";
         public const string InactiveEmail = "inactive@example.com";
+        
+        // Invalid passwords for testing
+        public const string WeakPassword = "weak";
+        public const string ValidPassword1 = "Password1@";
+        public const string ValidPassword2 = "Password2@";
+        
+        // Invalid password scenarios
+        public const string NoUppercasePassword = "password";
+        public const string NoLowercasePassword = "PASSWORD";
+        public const string NoNumberPassword = "Password!";
+        public const string NoSpecialCharPassword = "Password1";
+        public const string TooShortPassword = "Pass1!";
+        public const string NoSpecialCharLongPassword = "Password123";
     }
 
     // Test Movie Data
@@ -105,16 +118,11 @@ public static class TestConstants
         public const string UnauthorizedAccess = "Unauthorized access";
         public const string ValidationFailed = "Validation failed";
     }
-
-    // Test Date Constants
-    public static class Dates
+    
+    // Test Display Values
+    public static class DisplayValues
     {
-        public static readonly DateTime DefaultReleaseDate = new(2023, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        public static readonly DateTime DefaultAddedDate = DateTime.UtcNow.AddDays(-7);
-        public static readonly DateTime DefaultWatchedDate = DateTime.UtcNow.AddDays(-3);
-        public static readonly DateTime DefaultCreatedAt = DateTime.UtcNow.AddDays(-30);
-        public static readonly DateTime DefaultLastLoginAt = DateTime.UtcNow.AddDays(-1);
-        public static readonly DateTime DefaultTokenExpiresAt = DateTime.UtcNow.AddDays(7);
+        public const string MaskedPassword = "********";
     }
 
     // Test Rating Constants

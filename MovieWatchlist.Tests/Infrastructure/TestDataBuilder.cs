@@ -314,6 +314,7 @@ public class RefreshTokenBuilder
     private int _expirationDays = 7;
     private bool _isRevoked = false;
     private DateTime? _createdAt = null;
+    private DateTime? _expiresAt = null;
 
     public RefreshTokenBuilder WithId(int id)
     {
@@ -335,6 +336,7 @@ public class RefreshTokenBuilder
 
     public RefreshTokenBuilder WithExpiresAt(DateTime expiresAt)
     {
+        _expiresAt = expiresAt;
         var daysUntilExpiration = (expiresAt - DateTime.UtcNow).Days;
         _expirationDays = Math.Max(1, daysUntilExpiration);
         return this;
@@ -354,12 +356,30 @@ public class RefreshTokenBuilder
 
     public RefreshToken Build()
     {
-        var token = RefreshToken.Create(_userId, _token, _expirationDays);
-
-        // Set CreatedAt using reflection if provided
-        if (_createdAt.HasValue)
+        RefreshToken token;
+        
+        // If we need to set custom ExpiresAt or CreatedAt dates, create the token using reflection
+        // instead of the factory method to avoid the DateTime.UtcNow calculation
+        if (_expiresAt.HasValue || _createdAt.HasValue)
         {
-            typeof(RefreshToken).GetProperty("CreatedAt")!.SetValue(token, _createdAt.Value);
+            // Create token using reflection to bypass factory method validation
+            token = (RefreshToken)Activator.CreateInstance(typeof(RefreshToken), true)!;
+            
+            // Set properties using reflection - set CreatedAt first, then ExpiresAt
+            typeof(RefreshToken).GetProperty("UserId")!.SetValue(token, _userId);
+            typeof(RefreshToken).GetProperty("Token")!.SetValue(token, _token);
+            typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(token, false);
+            
+            var createdAtValue = _createdAt ?? DateTime.UtcNow;
+            typeof(RefreshToken).GetProperty("CreatedAt")!.SetValue(token, createdAtValue);
+            
+            var expiresAtValue = _expiresAt ?? DateTime.UtcNow.AddDays(_expirationDays);
+            typeof(RefreshToken).GetProperty("ExpiresAt")!.SetValue(token, expiresAtValue);
+        }
+        else
+        {
+            // Use factory method for normal cases
+            token = RefreshToken.Create(_userId, _token, _expirationDays);
         }
 
         if (_isRevoked)

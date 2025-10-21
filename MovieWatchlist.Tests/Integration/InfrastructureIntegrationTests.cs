@@ -125,34 +125,35 @@ public class InfrastructureIntegrationTests : EnhancedIntegrationTestBase
         tokenCount.Should().Be(4);
 
         // Test different user scenarios (active vs inactive)
-        var activeUsers = await Context.Users.Where(u => u.LastLoginAt != null).ToListAsync();
-        var inactiveUser = await Context.Users.FirstOrDefaultAsync(u => u.Username == "inactiveuser");
+        var activeUsers = await Context.Users.AsNoTracking().Where(u => u.LastLoginAt != null).ToListAsync();
+        var inactiveUser = await Context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "inactiveuser");
         
         activeUsers.Should().HaveCount(2);
         inactiveUser.Should().NotBeNull();
         inactiveUser!.LastLoginAt.Should().BeNull();
 
         // Test different watchlist statuses
-        var plannedItems = await Context.WatchlistItems.Where(w => w.Status == WatchlistStatus.Planned).ToListAsync();
-        var watchedItems = await Context.WatchlistItems.Where(w => w.Status == WatchlistStatus.Watched).ToListAsync();
-        var watchingItems = await Context.WatchlistItems.Where(w => w.Status == WatchlistStatus.Watching).ToListAsync();
+        var plannedItems = await Context.WatchlistItems.AsNoTracking().Where(w => w.Status == WatchlistStatus.Planned).ToListAsync();
+        var watchedItems = await Context.WatchlistItems.AsNoTracking().Where(w => w.Status == WatchlistStatus.Watched).ToListAsync();
+        var watchingItems = await Context.WatchlistItems.AsNoTracking().Where(w => w.Status == WatchlistStatus.Watching).ToListAsync();
         
         plannedItems.Should().HaveCount(2);
         watchedItems.Should().HaveCount(3);
         watchingItems.Should().HaveCount(1);
 
         // Test favorites and ratings
-        var favoriteItems = await Context.WatchlistItems.Where(w => w.IsFavorite == true).ToListAsync();
-        var ratedItems = await Context.WatchlistItems.Where(w => w.UserRating != null).ToListAsync();
-        var unratedItems = await Context.WatchlistItems.Where(w => w.UserRating == null).ToListAsync();
+        var favoriteItems = await Context.WatchlistItems.AsNoTracking().Where(w => w.IsFavorite == true).ToListAsync();
+        var ratedItems = await Context.WatchlistItems.AsNoTracking().Where(w => w.UserRating != null).ToListAsync();
+        var unratedItems = await Context.WatchlistItems.AsNoTracking().Where(w => w.UserRating == null).ToListAsync();
         
         favoriteItems.Should().HaveCount(3);
         ratedItems.Should().HaveCount(3);
         unratedItems.Should().HaveCount(3);
 
         // Test relationships - verify foreign keys work
-        var firstUser = await Context.Users.FirstAsync();
+        var firstUser = await Context.Users.AsNoTracking().FirstAsync();
         var user1Watchlist = await Context.WatchlistItems
+            .AsNoTracking()
             .Where(w => w.UserId == firstUser.Id)
             .Include(w => w.Movie)
             .ToListAsync();
@@ -162,16 +163,16 @@ public class InfrastructureIntegrationTests : EnhancedIntegrationTestBase
         user1Watchlist.Select(w => w.Movie!.Title).Should().Contain("The Dark Knight", "Inception", "The Shawshank Redemption", "Pulp Fiction");
 
         // Test refresh token scenarios
-        var validTokens = await Context.RefreshTokens.Where(t => !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow).ToListAsync();
-        var expiredTokens = await Context.RefreshTokens.Where(t => t.ExpiresAt <= DateTime.UtcNow).ToListAsync();
-        var revokedTokens = await Context.RefreshTokens.Where(t => t.IsRevoked).ToListAsync();
+        var validTokens = await Context.RefreshTokens.AsNoTracking().Where(t => !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow).ToListAsync();
+        var expiredTokens = await Context.RefreshTokens.AsNoTracking().Where(t => t.ExpiresAt <= DateTime.UtcNow).ToListAsync();
+        var revokedTokens = await Context.RefreshTokens.AsNoTracking().Where(t => t.IsRevoked).ToListAsync();
         
         validTokens.Should().HaveCount(2);
         expiredTokens.Should().HaveCount(1);
         revokedTokens.Should().HaveCount(1);
 
         // Test realistic movie data
-        var movies = await Context.Movies.ToListAsync();
+        var movies = await Context.Movies.AsNoTracking().ToListAsync();
         movies.Should().OnlyContain(m => !string.IsNullOrEmpty(m.Title));
         movies.Should().OnlyContain(m => !string.IsNullOrEmpty(m.Overview));
         movies.Should().OnlyContain(m => m.TmdbId > 0);
@@ -179,7 +180,7 @@ public class InfrastructureIntegrationTests : EnhancedIntegrationTestBase
         movies.Should().OnlyContain(m => m.VoteCount >= 0);
 
         // Test genre data
-        var moviesWithGenres = await Context.Movies.ToListAsync();
+        var moviesWithGenres = await Context.Movies.AsNoTracking().ToListAsync();
         moviesWithGenres.Should().HaveCount(5);
         moviesWithGenres.Should().OnlyContain(m => m.Genres != null && m.Genres.Length > 0 && m.Genres.Any(g => !string.IsNullOrEmpty(g)));
         

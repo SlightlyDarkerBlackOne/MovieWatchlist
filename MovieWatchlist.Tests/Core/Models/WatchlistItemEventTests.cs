@@ -20,10 +20,11 @@ public class WatchlistItemEventTests : UnitTestBase
         
         // Assert
         var events = item.DomainEvents.ToList();
-        Assert.Single(events);
-        Assert.IsType<MovieWatchedEvent>(events[0]);
+        Assert.Equal(2, events.Count);
+        Assert.IsType<StatisticsInvalidatedEvent>(events[0]);
+        Assert.IsType<MovieWatchedEvent>(events[1]);
         
-        var watchedEvent = (MovieWatchedEvent)events[0];
+        var watchedEvent = (MovieWatchedEvent)events[1];
         Assert.Equal(1, watchedEvent.UserId);
         Assert.Equal(1, watchedEvent.MovieId);
         Assert.NotEqual(default(DateTime), watchedEvent.WatchedDate);
@@ -61,8 +62,9 @@ public class WatchlistItemEventTests : UnitTestBase
         
         // Assert
         var events = item.DomainEvents.ToList();
-        Assert.Single(events);
+        Assert.Equal(2, events.Count);
         Assert.IsType<MovieRatedEvent>(events[0]);
+        Assert.IsType<StatisticsInvalidatedEvent>(events[1]);
         
         var ratedEvent = (MovieRatedEvent)events[0];
         Assert.Equal(1, ratedEvent.UserId);
@@ -83,7 +85,9 @@ public class WatchlistItemEventTests : UnitTestBase
         
         // Assert
         var events = item.DomainEvents.ToList();
-        Assert.Single(events);
+        Assert.Equal(2, events.Count);
+        Assert.IsType<MovieRatedEvent>(events[0]);
+        Assert.IsType<StatisticsInvalidatedEvent>(events[1]);
         
         var ratedEvent = (MovieRatedEvent)events[0];
         Assert.Equal(7, ratedEvent.Rating);
@@ -103,8 +107,9 @@ public class WatchlistItemEventTests : UnitTestBase
         
         // Assert
         var events = item.DomainEvents.ToList();
-        Assert.Single(events);
+        Assert.Equal(2, events.Count);
         Assert.IsType<MovieFavoritedEvent>(events[0]);
+        Assert.IsType<StatisticsInvalidatedEvent>(events[1]);
         
         var favoritedEvent = (MovieFavoritedEvent)events[0];
         Assert.Equal(1, favoritedEvent.UserId);
@@ -127,7 +132,9 @@ public class WatchlistItemEventTests : UnitTestBase
         
         // Assert
         var events = item.DomainEvents.ToList();
-        Assert.Single(events);
+        Assert.Equal(2, events.Count);
+        Assert.IsType<MovieFavoritedEvent>(events[0]);
+        Assert.IsType<StatisticsInvalidatedEvent>(events[1]);
         
         var favoritedEvent = (MovieFavoritedEvent)events[0];
         Assert.False(favoritedEvent.IsFavorite);
@@ -161,7 +168,7 @@ public class WatchlistItemEventTests : UnitTestBase
         item.SetRating(Rating.Create(8).Value!);
         item.SetFavorite(true);
         
-        Assert.Equal(3, item.DomainEvents.Count);
+        Assert.Equal(6, item.DomainEvents.Count);
         
         // Act
         item.ClearDomainEvents();
@@ -184,10 +191,13 @@ public class WatchlistItemEventTests : UnitTestBase
         
         // Assert
         var events = item.DomainEvents.ToList();
-        Assert.Equal(3, events.Count);
-        Assert.IsType<MovieWatchedEvent>(events[0]);
-        Assert.IsType<MovieRatedEvent>(events[1]);
-        Assert.IsType<MovieFavoritedEvent>(events[2]);
+        Assert.Equal(6, events.Count);
+        Assert.IsType<StatisticsInvalidatedEvent>(events[0]);
+        Assert.IsType<MovieWatchedEvent>(events[1]);
+        Assert.IsType<MovieRatedEvent>(events[2]);
+        Assert.IsType<StatisticsInvalidatedEvent>(events[3]);
+        Assert.IsType<MovieFavoritedEvent>(events[4]);
+        Assert.IsType<StatisticsInvalidatedEvent>(events[5]);
     }
     
     [Fact]
@@ -202,7 +212,7 @@ public class WatchlistItemEventTests : UnitTestBase
         item.MarkAsWatched();
         
         // Assert
-        var watchedEvent = (MovieWatchedEvent)item.DomainEvents.First();
+        var watchedEvent = (MovieWatchedEvent)item.DomainEvents.Skip(1).First();
         Assert.True(watchedEvent.OccurredAt >= beforeEvent);
         Assert.True(watchedEvent.OccurredAt <= DateTime.UtcNow);
     }
@@ -222,7 +232,7 @@ public class WatchlistItemEventTests : UnitTestBase
         var events = item.DomainEvents.ToList();
         var eventIds = events.Select(e => e.EventId).ToList();
         
-        Assert.Equal(2, eventIds.Count);
+        Assert.Equal(4, eventIds.Count);
         Assert.NotEqual(eventIds[0], eventIds[1]);
         Assert.All(eventIds, id => Assert.NotEqual(Guid.Empty, id));
     }

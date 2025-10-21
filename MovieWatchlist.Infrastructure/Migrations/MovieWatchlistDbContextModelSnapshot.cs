@@ -203,6 +203,10 @@ namespace MovieWatchlist.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("CachedStatisticsJson")
+                        .HasColumnType("jsonb")
+                        .HasComment("Cached watchlist statistics as JSONB");
+
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -225,6 +229,10 @@ namespace MovieWatchlist.Infrastructure.Migrations
                         .HasColumnType("character varying(255)")
                         .HasComment("Hashed password using PBKDF2");
 
+                    b.Property<DateTime?>("StatisticsLastUpdated")
+                        .HasColumnType("timestamp with time zone")
+                        .HasComment("When statistics were last calculated");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -236,6 +244,9 @@ namespace MovieWatchlist.Infrastructure.Migrations
                     b.HasIndex("Email")
                         .IsUnique()
                         .HasDatabaseName("IX_Users_Email");
+
+                    b.HasIndex("StatisticsLastUpdated")
+                        .HasDatabaseName("IX_Users_StatisticsLastUpdated");
 
                     b.HasIndex("Username")
                         .IsUnique()

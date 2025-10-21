@@ -15,7 +15,7 @@ public static class ValidationConstants
     {
         public const int MinLength = 3;
         public const int MaxLength = 50;
-        public const string Pattern = @"^[a-zA-Z0-9_-]+$";
+        public static string Pattern => $"^[a-zA-Z0-9_-]{{{MinLength},{MaxLength}}}$";
         
         // Dynamic messages that use the constants
         public static string InvalidFormatMessage => 
@@ -28,7 +28,7 @@ public static class ValidationConstants
     public static class Email
     {
         public const int MaxLength = 100;
-        public const string Pattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+        public const string Pattern = @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$";
         
         public const string InvalidFormatMessage = "Invalid email format";
         public static string InvalidLengthMessage => $"Email cannot exceed {MaxLength} characters";
@@ -37,10 +37,12 @@ public static class ValidationConstants
     public static class Password
     {
         public const int MinLength = 8;
+        public const int MaxLength = 100;
         public const int ResetTokenExpirationHours = 1;
+        public static string Pattern => $@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{{{MinLength},{MaxLength}}}$";
         
         public static string InvalidFormatMessage => 
-            $"Password must be at least {MinLength} characters with uppercase, lowercase, number, and special character";
+            $"Password must be {MinLength}-{MaxLength} characters with uppercase, lowercase, number, and special character";
     }
 
     public static class Recommendation

@@ -27,9 +27,6 @@ public static class TestDatabaseSeeder
     /// </summary>
     public static async Task SeedUsersAsync(MovieWatchlistDbContext context)
     {
-        if (await context.Users.AnyAsync())
-            return;
-
         var users = new[]
         {
             TestDataBuilder.User()
@@ -37,8 +34,8 @@ public static class TestDatabaseSeeder
                 .WithUsername("testuser1")
                 .WithEmail("testuser1@example.com")
                 .WithPasswordHash("hashed_password_1")
-                .WithCreatedAt(TestConstants.Dates.DefaultCreatedAt)
-                .WithLastLoginAt(TestConstants.Dates.DefaultLastLoginAt)
+                .WithCreatedAt(DateTime.UtcNow.AddDays(-30))
+                .WithLastLoginAt(DateTime.UtcNow.AddDays(-1))
                 .Build(),
 
             TestDataBuilder.User()
@@ -46,8 +43,8 @@ public static class TestDatabaseSeeder
                 .WithUsername("testuser2")
                 .WithEmail("testuser2@example.com")
                 .WithPasswordHash("hashed_password_2")
-                .WithCreatedAt(TestConstants.Dates.DefaultCreatedAt.AddDays(-10))
-                .WithLastLoginAt(TestConstants.Dates.DefaultLastLoginAt.AddDays(-2))
+                .WithCreatedAt(DateTime.UtcNow.AddDays(-40))
+                .WithLastLoginAt(DateTime.UtcNow.AddDays(-3))
                 .Build(),
 
             TestDataBuilder.User()
@@ -55,7 +52,7 @@ public static class TestDatabaseSeeder
                 .WithUsername("inactiveuser")
                 .WithEmail("inactive@example.com")
                 .WithPasswordHash("hashed_password_3")
-                .WithCreatedAt(TestConstants.Dates.DefaultCreatedAt.AddDays(-60))
+                .WithCreatedAt(DateTime.UtcNow.AddDays(-90))
                 .WithLastLoginAt(null)
                 .Build()
         };
@@ -69,9 +66,6 @@ public static class TestDatabaseSeeder
     /// </summary>
     public static async Task SeedMoviesAsync(MovieWatchlistDbContext context)
     {
-        if (await context.Movies.AnyAsync())
-            return;
-
         var movies = new[]
         {
             TestDataBuilder.Movie()
@@ -144,9 +138,6 @@ public static class TestDatabaseSeeder
     /// </summary>
     public static async Task SeedWatchlistItemsAsync(MovieWatchlistDbContext context)
     {
-        if (await context.WatchlistItems.AnyAsync())
-            return;
-
         // Get the seeded users and movies to use their actual IDs
         var users = await context.Users.OrderBy(u => u.Id).ToListAsync();
         var movies = await context.Movies.OrderBy(m => m.Id).ToListAsync();
@@ -161,8 +152,8 @@ public static class TestDatabaseSeeder
                 .WithIsFavorite(true)
                 .WithUserRating(Rating.Create(10).Value!)
                 .WithNotes("Amazing movie!")
-                .WithAddedDate(TestConstants.Dates.DefaultAddedDate)
-                .WithWatchedDate(TestConstants.Dates.DefaultWatchedDate)
+                .WithAddedDate(DateTime.UtcNow.AddDays(-7))
+                .WithWatchedDate(DateTime.UtcNow.AddDays(-3))
                 .Build(),
 
             TestDataBuilder.WatchlistItem()
@@ -172,8 +163,8 @@ public static class TestDatabaseSeeder
                 .WithIsFavorite(false)
                 .WithUserRating(Rating.Create(8).Value!)
                 .WithNotes("Confusing but good")
-                .WithAddedDate(TestConstants.Dates.DefaultAddedDate.AddDays(-5))
-                .WithWatchedDate(TestConstants.Dates.DefaultWatchedDate.AddDays(-1))
+                .WithAddedDate(DateTime.UtcNow.AddDays(-12))
+                .WithWatchedDate(DateTime.UtcNow.AddDays(-4))
                 .Build(),
 
             TestDataBuilder.WatchlistItem()
@@ -183,7 +174,7 @@ public static class TestDatabaseSeeder
                 .WithIsFavorite(true)
                 .WithUserRating(null)
                 .WithNotes("Must watch soon")
-                .WithAddedDate(TestConstants.Dates.DefaultAddedDate.AddDays(-3))
+                .WithAddedDate(DateTime.UtcNow.AddDays(-10))
                 .WithWatchedDate(null)
                 .Build(),
 
@@ -194,7 +185,7 @@ public static class TestDatabaseSeeder
                 .WithIsFavorite(false)
                 .WithUserRating(null)
                 .WithNotes("Currently watching")
-                .WithAddedDate(TestConstants.Dates.DefaultAddedDate.AddDays(-1))
+                .WithAddedDate(DateTime.UtcNow.AddDays(-8))
                 .WithWatchedDate(null)
                 .Build(),
 
@@ -206,8 +197,8 @@ public static class TestDatabaseSeeder
                 .WithIsFavorite(true)
                 .WithUserRating(Rating.Create(9).Value!)
                 .WithNotes("Great superhero movie")
-                .WithAddedDate(TestConstants.Dates.DefaultAddedDate.AddDays(-10))
-                .WithWatchedDate(TestConstants.Dates.DefaultWatchedDate.AddDays(-5))
+                .WithAddedDate(DateTime.UtcNow.AddDays(-17))
+                .WithWatchedDate(DateTime.UtcNow.AddDays(-8))
                 .Build(),
 
             TestDataBuilder.WatchlistItem()
@@ -217,7 +208,7 @@ public static class TestDatabaseSeeder
                 .WithIsFavorite(false)
                 .WithUserRating(null)
                 .WithNotes("Classic sci-fi")
-                .WithAddedDate(TestConstants.Dates.DefaultAddedDate.AddDays(-7))
+                .WithAddedDate(DateTime.UtcNow.AddDays(-14))
                 .WithWatchedDate(null)
                 .Build()
         };
@@ -230,9 +221,6 @@ public static class TestDatabaseSeeder
     /// </summary>
     public static async Task SeedRefreshTokensAsync(MovieWatchlistDbContext context)
     {
-        if (await context.RefreshTokens.AnyAsync())
-            return;
-
         // Get the seeded users to use their actual IDs
         var users = await context.Users.OrderBy(u => u.Id).ToListAsync();
 
@@ -244,7 +232,7 @@ public static class TestDatabaseSeeder
                 .WithToken("valid_refresh_token_1")
                 .WithExpiresAt(DateTime.UtcNow.AddDays(7))
                 .WithIsRevoked(false)
-                .WithCreatedAt(TestConstants.Dates.DefaultCreatedAt)
+                .WithCreatedAt(DateTime.UtcNow.AddDays(-30))
                 .Build(),
 
             TestDataBuilder.RefreshToken()
@@ -253,16 +241,16 @@ public static class TestDatabaseSeeder
                 .WithToken("valid_refresh_token_2")
                 .WithExpiresAt(DateTime.UtcNow.AddDays(7))
                 .WithIsRevoked(false)
-                .WithCreatedAt(TestConstants.Dates.DefaultCreatedAt)
+                .WithCreatedAt(DateTime.UtcNow.AddDays(-30))
                 .Build(),
 
             TestDataBuilder.RefreshToken()
                 .WithId(3)
                 .WithUserId(users[0].Id)
                 .WithToken("expired_refresh_token")
-                .WithExpiresAt(DateTime.UtcNow.AddDays(-1))
+                .WithExpiresAt(DateTime.UtcNow.AddDays(-30))
                 .WithIsRevoked(false)
-                .WithCreatedAt(TestConstants.Dates.DefaultCreatedAt.AddDays(-10))
+                .WithCreatedAt(DateTime.UtcNow.AddDays(-30))
                 .Build(),
 
             TestDataBuilder.RefreshToken()
@@ -271,7 +259,7 @@ public static class TestDatabaseSeeder
                 .WithToken("revoked_refresh_token")
                 .WithExpiresAt(DateTime.UtcNow.AddDays(7))
                 .WithIsRevoked(true)
-                .WithCreatedAt(TestConstants.Dates.DefaultCreatedAt.AddDays(-5))
+                .WithCreatedAt(DateTime.UtcNow.AddDays(-30))
                 .Build()
         };
 

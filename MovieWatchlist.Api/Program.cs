@@ -7,7 +7,6 @@ using MovieWatchlist.Core.Configuration;
 using MovieWatchlist.Infrastructure.Configuration;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Api.Middleware;
-using MovieWatchlist.Application.Validation;
 using MovieWatchlist.Application.Services;
 using MovieWatchlist.Application.Events;
 using MovieWatchlist.Application.Events.Handlers;
@@ -128,7 +127,6 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Register Application services
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IWatchlistService, WatchlistService>();
-builder.Services.AddScoped<IInputValidationService, InputValidationService>();
 
 // Register Infrastructure services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();

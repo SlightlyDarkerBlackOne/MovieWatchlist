@@ -1,6 +1,6 @@
+using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using MovieWatchlist.Api.DTOs;
-using MovieWatchlist.Application.Validation;
 using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Exceptions;
@@ -13,16 +13,13 @@ namespace MovieWatchlist.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthenticationService _authService;
-    private readonly IInputValidationService _validationService;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
-        IAuthenticationService authService, 
-        IInputValidationService validationService,
+        IAuthenticationService authService,
         ILogger<AuthController> logger)
     {
         _authService = authService;
-        _validationService = validationService;
         _logger = logger;
     }
 
@@ -34,23 +31,12 @@ public class AuthController : ControllerBase
             if (!ModelState.IsValid)
                 throw new ValidationException(ErrorMessages.InvalidModelState, ModelState);
 
-            // Sanitize inputs
-            var sanitizedUsername = _validationService.SanitizeInput(dto.Username);
-            var sanitizedEmail = _validationService.SanitizeInput(dto.Email);
+            _logger.LogInformation("Registration attempt for user: {Username}", dto.Username);
 
-            // Validate inputs
-            var validationResult = _validationService.ValidateRegistrationInput(
-                sanitizedUsername, sanitizedEmail, dto.Password);
 
-            if (!validationResult.IsValid)
-                throw new ValidationException(ErrorMessages.ValidationFailed, validationResult.Errors);
-
-            _logger.LogInformation("Registration attempt for user: {Username}", sanitizedUsername);
-
-            // Map DTO → Command
             var command = new RegisterCommand(
-                Username: sanitizedUsername,
-                Email: sanitizedEmail,
+                Username: dto.Username,
+                Email: dto.Email,
                 Password: dto.Password
             );
 
@@ -59,7 +45,7 @@ public class AuthController : ControllerBase
             if (!result.IsSuccess)
                 throw new ConflictException(result.ErrorMessage ?? ErrorMessages.RegistrationFailed);
 
-            _logger.LogInformation("User registered successfully: {Username}", sanitizedUsername);
+            _logger.LogInformation("User registered successfully: {Username}", dto.Username);
             return Ok(result);
         }
         catch (Exception ex) when (!(ex is ApiException))
@@ -139,17 +125,9 @@ public class AuthController : ControllerBase
             if (!ModelState.IsValid)
                 throw new ValidationException(ErrorMessages.InvalidModelState, ModelState);
 
-            // Sanitize input
-            var sanitizedEmail = _validationService.SanitizeInput(dto.Email);
+            _logger.LogInformation("Password reset requested for email: {Email}", dto.Email);
 
-            // Validate email format
-            if (!_validationService.IsValidEmail(sanitizedEmail))
-                throw new ValidationException(ErrorMessages.InvalidEmailFormat);
-
-            _logger.LogInformation("Password reset requested for email: {Email}", sanitizedEmail);
-
-            // Map DTO → Command
-            var command = new ForgotPasswordCommand(Email: sanitizedEmail);
+            var command = new ForgotPasswordCommand(Email: dto.Email);
 
             var result = await _authService.ForgotPasswordAsync(command);
 
@@ -174,16 +152,11 @@ public class AuthController : ControllerBase
             if (!ModelState.IsValid)
                 throw new ValidationException(ErrorMessages.InvalidModelState, ModelState);
 
-            // Validate token and password
             if (string.IsNullOrWhiteSpace(dto.Token))
                 return BadRequest(new { Message = ErrorMessages.ResetTokenRequired });
-            
-            if (!_validationService.IsValidPassword(dto.NewPassword))
-                throw new ValidationException(ErrorMessages.InvalidPasswordFormat);
 
             _logger.LogInformation("Password reset attempt with token: {Token}", dto.Token.Substring(0, Math.Min(8, dto.Token.Length)) + "...");
 
-            // Map DTO → Command
             var command = new ResetPasswordCommand(
                 Token: dto.Token,
                 NewPassword: dto.NewPassword

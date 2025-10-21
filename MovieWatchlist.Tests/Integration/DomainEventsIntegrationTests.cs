@@ -180,7 +180,7 @@ public class DomainEventsIntegrationTests : EnhancedIntegrationTestBase
         item.SetFavorite(true);
         
         var eventsBeforeSave = item.DomainEvents.ToList();
-        eventsBeforeSave.Should().HaveCount(3);
+        eventsBeforeSave.Should().HaveCount(6);
         
         await m_unitOfWork.SaveChangesAsync();
         

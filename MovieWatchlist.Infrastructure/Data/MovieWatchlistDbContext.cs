@@ -148,11 +148,11 @@ public class MovieWatchlistDbContext : DbContext
                 .HasComment("Last time movie data was updated");
 
             // Configure Genres as JSON array for PostgreSQL
-            entity.Property(e => e.Genres)
-                .HasConversion(
-                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>())
-                .HasComment("Movie genres as JSON array");
+        entity.Property(e => e.Genres)
+            .HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>())
+            .HasComment("Movie genres as JSON array");
 
             // Indexes for performance
             entity.HasIndex(e => e.TmdbId)

@@ -57,6 +57,15 @@ public class AuthenticationService : IAuthenticationService
             );
         }
 
+        var passwordResult = Password.Create(command.Password);
+        if (passwordResult.IsFailure)
+        {
+            return new AuthenticationResult(
+                IsSuccess: false,
+                ErrorMessage: passwordResult.Error
+            );
+        }
+
         var existingUserByEmail = await m_userRepository.GetByEmailAsync(emailResult.Value!);
         if (existingUserByEmail != null)
         {
@@ -266,6 +275,15 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
+            var passwordResult = Password.Create(command.NewPassword);
+            if (passwordResult.IsFailure)
+            {
+                return new PasswordResetResponse(
+                    Success: false,
+                    Message: passwordResult.Error
+                );
+            }
+
             // Find valid reset token
             var resetToken = await m_passwordResetTokenRepository.GetValidByTokenAsync(command.Token);
 
