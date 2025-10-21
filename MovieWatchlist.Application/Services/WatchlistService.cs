@@ -20,17 +20,20 @@ public class WatchlistService : IWatchlistService
     private readonly IMovieRepository _movieRepository;
     private readonly IUserRepository _userRepository;
     private readonly ITmdbService _tmdbService;
+    private readonly IRetryPolicyService _retryPolicy;
 
     public WatchlistService(
         IWatchlistRepository watchlistRepository,
         IMovieRepository movieRepository,
         IUserRepository userRepository,
-        ITmdbService tmdbService)
+        ITmdbService tmdbService,
+        IRetryPolicyService retryPolicy)
     {
         _watchlistRepository = watchlistRepository;
         _movieRepository = movieRepository;
         _userRepository = userRepository;
         _tmdbService = tmdbService;
+        _retryPolicy = retryPolicy;
     }
 
     public async Task<IEnumerable<WatchlistItem>> GetUserWatchlistAsync(GetUserWatchlistQuery query)
@@ -146,7 +149,13 @@ public class WatchlistService : IWatchlistService
         Movie movie;
         if (cachedMovie == null)
         {
-            var tmdbMovie = await _tmdbService.GetMovieDetailsAsync(command.MovieId);
+            var tmdbMovie = await _retryPolicy.ExecuteWithRetryAsync(
+                () => _tmdbService.GetMovieDetailsAsync(command.MovieId),
+                maxRetries: 3,
+                baseDelayMs: 1000,
+                operationName: "TMDB GetMovieDetails"
+            );
+            
             if (tmdbMovie == null)
                 return Result<WatchlistItem>.Failure(string.Format(ErrorMessages.MovieNotFound, command.MovieId));
             

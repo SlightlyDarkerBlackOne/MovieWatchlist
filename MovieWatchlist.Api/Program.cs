@@ -127,6 +127,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Register Application services
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IWatchlistService, WatchlistService>();
+builder.Services.AddScoped<IRetryPolicyService, RetryPolicyService>();
 
 // Register Infrastructure services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
