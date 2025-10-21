@@ -7,17 +7,17 @@ namespace MovieWatchlist.Application.Events;
 
 public class DomainEventDispatcher : IDomainEventDispatcher
 {
-    private readonly IServiceProvider m_serviceProvider;
+    private readonly IServiceProvider _serviceProvider;
     
     public DomainEventDispatcher(IServiceProvider serviceProvider)
     {
-        m_serviceProvider = serviceProvider;
+        _serviceProvider = serviceProvider;
     }
     
     public async Task DispatchAsync(IDomainEvent domainEvent, CancellationToken cancellationToken = default)
     {
         var handlerType = typeof(IDomainEventHandler<>).MakeGenericType(domainEvent.GetType());
-        var handlers = m_serviceProvider.GetServices(handlerType);
+        var handlers = _serviceProvider.GetServices(handlerType);
         
         foreach (var handler in handlers)
         {

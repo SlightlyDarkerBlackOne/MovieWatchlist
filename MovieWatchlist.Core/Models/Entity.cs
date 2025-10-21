@@ -4,18 +4,18 @@ namespace MovieWatchlist.Core.Models;
 
 public abstract class Entity
 {
-    private readonly List<IDomainEvent> m_domainEvents = new();
+    private readonly List<IDomainEvent> _domainEvents = new();
     
-    public IReadOnlyCollection<IDomainEvent> DomainEvents => m_domainEvents.AsReadOnly();
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     
     protected void RaiseDomainEvent(IDomainEvent domainEvent)
     {
-        m_domainEvents.Add(domainEvent);
+        _domainEvents.Add(domainEvent);
     }
     
     public void ClearDomainEvents()
     {
-        m_domainEvents.Clear();
+        _domainEvents.Clear();
     }
 }
 

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MovieWatchlist.Infrastructure.Configuration;
 using MovieWatchlist.Infrastructure.DTOs;
@@ -17,14 +18,16 @@ public class TmdbService : ITmdbService
     private readonly HttpClient _httpClient;
     private readonly TmdbSettings _settings;
     private readonly IGenreService _genreService;
+    private readonly ILogger<TmdbService> _logger;
 
     private readonly string _baseUrl = "https://api.themoviedb.org/3";
 
-    public TmdbService(HttpClient httpClient, IOptions<TmdbSettings> settings, IGenreService genreService)
+    public TmdbService(HttpClient httpClient, IOptions<TmdbSettings> settings, IGenreService genreService, ILogger<TmdbService> logger)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
         _genreService = genreService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -78,7 +81,7 @@ public class TmdbService : ITmdbService
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to serialize credits/videos for movie {tmdbId}: {ex.Message}");
+                    _logger.LogWarning(ex, "Failed to serialize credits/videos for movie {TmdbId}", tmdbId);
                 }
                 
                 return movie;
@@ -89,7 +92,7 @@ public class TmdbService : ITmdbService
                 if (attempt < maxRetries - 1)
                 {
                     var delay = retryDelayMs * (int)Math.Pow(2, attempt);
-                    Console.WriteLine($"Rate limited. Retrying in {delay}ms... (Attempt {attempt + 1}/{maxRetries})");
+                    _logger.LogWarning("Rate limited. Retrying in {Delay}ms... (Attempt {Attempt}/{MaxRetries})", delay, attempt + 1, maxRetries);
                     await Task.Delay(delay);
                     continue;
                 }
@@ -143,8 +146,6 @@ public class TmdbService : ITmdbService
         }
 
         var url = $"{_baseUrl}/discover/movie?api_key={_settings.ApiKey}&with_genres={genreId}&page={page}";
-        Console.WriteLine($"Making request to: {url}");
-        Console.WriteLine($"API Key: {_settings.ApiKey}");
         
         var response = await _httpClient.GetAsync(url);
         

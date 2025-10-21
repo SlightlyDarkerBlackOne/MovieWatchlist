@@ -16,10 +16,10 @@ namespace MovieWatchlist.Application.Services;
 
 public class WatchlistService : IWatchlistService
 {
-    private readonly IWatchlistRepository m_watchlistRepository;
-    private readonly IMovieRepository m_movieRepository;
-    private readonly IUserRepository m_userRepository;
-    private readonly ITmdbService m_tmdbService;
+    private readonly IWatchlistRepository _watchlistRepository;
+    private readonly IMovieRepository _movieRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly ITmdbService _tmdbService;
 
     public WatchlistService(
         IWatchlistRepository watchlistRepository,
@@ -27,30 +27,30 @@ public class WatchlistService : IWatchlistService
         IUserRepository userRepository,
         ITmdbService tmdbService)
     {
-        m_watchlistRepository = watchlistRepository;
-        m_movieRepository = movieRepository;
-        m_userRepository = userRepository;
-        m_tmdbService = tmdbService;
+        _watchlistRepository = watchlistRepository;
+        _movieRepository = movieRepository;
+        _userRepository = userRepository;
+        _tmdbService = tmdbService;
     }
 
     public async Task<IEnumerable<WatchlistItem>> GetUserWatchlistAsync(GetUserWatchlistQuery query)
     {
-        return await m_watchlistRepository.GetByUserIdAsync(query.UserId);
+        return await _watchlistRepository.GetByUserIdAsync(query.UserId);
     }
 
     public async Task<IEnumerable<WatchlistItem>> GetWatchlistByStatusAsync(GetWatchlistByStatusQuery query)
     {
-        return await m_watchlistRepository.GetByUserIdAndStatusAsync(query.UserId, query.Status);
+        return await _watchlistRepository.GetByUserIdAndStatusAsync(query.UserId, query.Status);
     }
 
     public async Task<IEnumerable<WatchlistItem>> GetFavoriteMoviesAsync(GetFavoriteMoviesQuery query)
     {
-        return await m_watchlistRepository.GetFavoritesByUserIdAsync(query.UserId);
+        return await _watchlistRepository.GetFavoritesByUserIdAsync(query.UserId);
     }
 
     public async Task<WatchlistStatistics> GetUserStatisticsAsync(GetUserStatisticsQuery query)
     {
-        var user = await m_userRepository.GetByIdAsync(query.UserId);
+        var user = await _userRepository.GetByIdAsync(query.UserId);
         if (user == null)
             throw new ApiException($"User with ID {query.UserId} not found");
 
@@ -60,18 +60,18 @@ public class WatchlistService : IWatchlistService
             return cachedStats;
 
         // Calculate and cache new statistics
-        var watchlist = await m_watchlistRepository.GetByUserIdAsync(query.UserId);
+        var watchlist = await _watchlistRepository.GetByUserIdAsync(query.UserId);
         var statistics = user.CalculateStatistics(watchlist);
         
         user.UpdateCachedStatistics(statistics);
-        await m_userRepository.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user);
         
         return statistics;
     }
 
     public async Task<IEnumerable<Movie>> GetRecommendedMoviesAsync(GetRecommendedMoviesQuery query)
     {
-        var userWatchlist = await m_watchlistRepository.GetByUserIdAsync(query.UserId);
+        var userWatchlist = await _watchlistRepository.GetByUserIdAsync(query.UserId);
         var userWatchlistList = userWatchlist.ToList();
 
         var watchedSpec = new WatchlistByStatusSpecification(WatchlistStatus.Watched);
@@ -87,7 +87,7 @@ public class WatchlistService : IWatchlistService
             .Select(g => g.Key)
             .ToList();
 
-        var allMovies = await m_movieRepository.GetAllAsync();
+        var allMovies = await _movieRepository.GetAllAsync();
         
         var userMovieIds = userWatchlistList.Select(w => w.MovieId).ToArray();
         var notInWatchlistSpec = new MoviesNotInWatchlistSpecification(userMovieIds);
@@ -108,7 +108,7 @@ public class WatchlistService : IWatchlistService
 
     public async Task<IEnumerable<WatchlistItem>> GetWatchlistByGenreAsync(GetWatchlistByGenreQuery query)
     {
-        var watchlist = await m_watchlistRepository.GetByUserIdAsync(query.UserId);
+        var watchlist = await _watchlistRepository.GetByUserIdAsync(query.UserId);
         var spec = new WatchlistByGenreSpecification(query.Genre);
         return watchlist
             .Where(spec.IsSatisfiedBy)
@@ -117,7 +117,7 @@ public class WatchlistService : IWatchlistService
 
     public async Task<IEnumerable<WatchlistItem>> GetWatchlistByYearRangeAsync(GetWatchlistByYearRangeQuery query)
     {
-        var watchlist = await m_watchlistRepository.GetByUserIdAsync(query.UserId);
+        var watchlist = await _watchlistRepository.GetByUserIdAsync(query.UserId);
         var spec = new WatchlistByYearRangeSpecification(query.StartYear, query.EndYear);
         return watchlist
             .Where(spec.IsSatisfiedBy)
@@ -126,7 +126,7 @@ public class WatchlistService : IWatchlistService
 
     public async Task<IEnumerable<WatchlistItem>> GetWatchlistByRatingRangeAsync(GetWatchlistByRatingRangeQuery query)
     {
-        var watchlist = await m_watchlistRepository.GetByUserIdAsync(query.UserId);
+        var watchlist = await _watchlistRepository.GetByUserIdAsync(query.UserId);
         var spec = new WatchlistByTmdbRatingRangeSpecification(query.MinRating, query.MaxRating);
         return watchlist
             .Where(spec.IsSatisfiedBy)
@@ -141,16 +141,16 @@ public class WatchlistService : IWatchlistService
     /// </summary>
     public async Task<Result<WatchlistItem>> AddToWatchlistAsync(AddToWatchlistCommand command)
     {
-        var cachedMovie = await m_movieRepository.GetByTmdbIdAsync(command.MovieId);
+        var cachedMovie = await _movieRepository.GetByTmdbIdAsync(command.MovieId);
         
         Movie movie;
         if (cachedMovie == null)
         {
-            var tmdbMovie = await m_tmdbService.GetMovieDetailsAsync(command.MovieId);
+            var tmdbMovie = await _tmdbService.GetMovieDetailsAsync(command.MovieId);
             if (tmdbMovie == null)
                 return Result<WatchlistItem>.Failure(string.Format(ErrorMessages.MovieNotFound, command.MovieId));
             
-            await m_movieRepository.AddAsync(tmdbMovie);
+            await _movieRepository.AddAsync(tmdbMovie);
             movie = tmdbMovie;
         }
         else
@@ -158,7 +158,7 @@ public class WatchlistService : IWatchlistService
             movie = cachedMovie;
         }
 
-        var alreadyInWatchlist = await m_watchlistRepository.IsMovieInUserWatchlistAsync(command.UserId, movie.Id);
+        var alreadyInWatchlist = await _watchlistRepository.IsMovieInUserWatchlistAsync(command.UserId, movie.Id);
         if (alreadyInWatchlist)
             return Result<WatchlistItem>.Failure(ErrorMessages.MovieAlreadyInWatchlist);
 
@@ -174,7 +174,7 @@ public class WatchlistService : IWatchlistService
             watchlistItem.UpdateNotes(command.Notes);
         }
 
-        await m_watchlistRepository.AddAsync(watchlistItem);
+        await _watchlistRepository.AddAsync(watchlistItem);
         
         await InvalidateUserStatisticsAsync(command.UserId);
         
@@ -183,7 +183,7 @@ public class WatchlistService : IWatchlistService
 
     public async Task<Result<WatchlistItem>> UpdateWatchlistItemAsync(UpdateWatchlistItemCommand command)
     {
-        var item = await m_watchlistRepository.GetByUserIdAndIdAsync(command.UserId, command.WatchlistItemId);
+        var item = await _watchlistRepository.GetByUserIdAndIdAsync(command.UserId, command.WatchlistItemId);
         
         if (item == null)
             return Result<WatchlistItem>.Failure(ErrorMessages.WatchlistItemNotFound);
@@ -215,18 +215,18 @@ public class WatchlistService : IWatchlistService
             item.UpdateNotes(command.Notes);
         }
 
-        await m_watchlistRepository.UpdateAsync(item);
+        await _watchlistRepository.UpdateAsync(item);
         return Result<WatchlistItem>.Success(item);
     }
 
     public async Task<Result<bool>> RemoveFromWatchlistAsync(RemoveFromWatchlistCommand command)
     {
-        var item = await m_watchlistRepository.GetByUserIdAndIdAsync(command.UserId, command.WatchlistItemId);
+        var item = await _watchlistRepository.GetByUserIdAndIdAsync(command.UserId, command.WatchlistItemId);
         
         if (item == null)
             return Result<bool>.Failure(ErrorMessages.WatchlistItemNotFound);
 
-        await m_watchlistRepository.DeleteAsync(item);
+        await _watchlistRepository.DeleteAsync(item);
         
         await InvalidateUserStatisticsAsync(command.UserId);
         
@@ -235,16 +235,16 @@ public class WatchlistService : IWatchlistService
 
     public async Task<WatchlistItem?> GetWatchlistItemByIdAsync(GetWatchlistItemByIdQuery query)
     {
-        return await m_watchlistRepository.GetByUserIdAndIdAsync(query.UserId, query.WatchlistItemId);
+        return await _watchlistRepository.GetByUserIdAndIdAsync(query.UserId, query.WatchlistItemId);
     }
 
     private async Task InvalidateUserStatisticsAsync(int userId)
     {
-        var user = await m_userRepository.GetByIdAsync(userId);
+        var user = await _userRepository.GetByIdAsync(userId);
         if (user != null)
         {
             user.InvalidateStatistics();
-            await m_userRepository.UpdateAsync(user);
+            await _userRepository.UpdateAsync(user);
         }
     }
 }

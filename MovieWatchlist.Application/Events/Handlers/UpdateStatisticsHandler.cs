@@ -10,15 +10,15 @@ public class UpdateStatisticsHandler :
     IDomainEventHandler<MovieFavoritedEvent>,
     IDomainEventHandler<StatisticsInvalidatedEvent>
 {
-    private readonly IUserRepository m_userRepository;
-    private readonly ILogger<UpdateStatisticsHandler> m_logger;
+    private readonly IUserRepository _userRepository;
+    private readonly ILogger<UpdateStatisticsHandler> _logger;
     
     public UpdateStatisticsHandler(
         IUserRepository userRepository,
         ILogger<UpdateStatisticsHandler> logger)
     {
-        m_userRepository = userRepository;
-        m_logger = logger;
+        _userRepository = userRepository;
+        _logger = logger;
     }
     
     public async Task HandleAsync(MovieWatchedEvent domainEvent, CancellationToken cancellationToken = default)
@@ -43,13 +43,13 @@ public class UpdateStatisticsHandler :
     
     private async Task InvalidateStatisticsAsync(int userId)
     {
-        var user = await m_userRepository.GetByIdAsync(userId);
+        var user = await _userRepository.GetByIdAsync(userId);
         if (user != null)
         {
             user.InvalidateStatistics();
-            await m_userRepository.UpdateAsync(user);
+            await _userRepository.UpdateAsync(user);
             
-            m_logger.LogDebug("Invalidated statistics cache for user {UserId}", userId);
+            _logger.LogDebug("Invalidated statistics cache for user {UserId}", userId);
         }
     }
 }

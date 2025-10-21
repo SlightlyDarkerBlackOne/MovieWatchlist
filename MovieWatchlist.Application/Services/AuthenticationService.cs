@@ -11,13 +11,13 @@ namespace MovieWatchlist.Application.Services;
 
 public class AuthenticationService : IAuthenticationService
 {
-    private readonly IUserRepository m_userRepository;
-    private readonly IRefreshTokenRepository m_refreshTokenRepository;
-    private readonly IPasswordResetTokenRepository m_passwordResetTokenRepository;
-    private readonly IJwtTokenService m_jwtTokenService;
-    private readonly JwtSettings m_jwtSettings;
-    private readonly IEmailService m_emailService;
-    private readonly IPasswordHasher m_passwordHasher;
+    private readonly IUserRepository _userRepository;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IPasswordResetTokenRepository _passwordResetTokenRepository;
+    private readonly IJwtTokenService _jwtTokenService;
+    private readonly JwtSettings _jwtSettings;
+    private readonly IEmailService _emailService;
+    private readonly IPasswordHasher _passwordHasher;
 
     public AuthenticationService(
         IUserRepository userRepository,
@@ -28,13 +28,13 @@ public class AuthenticationService : IAuthenticationService
         IEmailService emailService,
         IPasswordHasher passwordHasher)
     {
-        m_userRepository = userRepository;
-        m_refreshTokenRepository = refreshTokenRepository;
-        m_passwordResetTokenRepository = passwordResetTokenRepository;
-        m_jwtTokenService = jwtTokenService;
-        m_jwtSettings = jwtSettings.Value;
-        m_emailService = emailService;
-        m_passwordHasher = passwordHasher;
+        _userRepository = userRepository;
+        _refreshTokenRepository = refreshTokenRepository;
+        _passwordResetTokenRepository = passwordResetTokenRepository;
+        _jwtTokenService = jwtTokenService;
+        _jwtSettings = jwtSettings.Value;
+        _emailService = emailService;
+        _passwordHasher = passwordHasher;
     }
 
     public async Task<AuthenticationResult> RegisterAsync(RegisterCommand command)
@@ -66,7 +66,7 @@ public class AuthenticationService : IAuthenticationService
             );
         }
 
-        var existingUserByEmail = await m_userRepository.GetByEmailAsync(emailResult.Value!);
+        var existingUserByEmail = await _userRepository.GetByEmailAsync(emailResult.Value!);
         if (existingUserByEmail != null)
         {
             return new AuthenticationResult(
@@ -75,7 +75,7 @@ public class AuthenticationService : IAuthenticationService
             );
         }
 
-        var existingUserByUsername = await m_userRepository.GetByUsernameAsync(usernameResult.Value!);
+        var existingUserByUsername = await _userRepository.GetByUsernameAsync(usernameResult.Value!);
         if (existingUserByUsername != null)
         {
             return new AuthenticationResult(
@@ -87,23 +87,23 @@ public class AuthenticationService : IAuthenticationService
         var user = User.Create(
             usernameResult.Value!,
             emailResult.Value!,
-            m_passwordHasher.HashPassword(command.Password)
+            _passwordHasher.HashPassword(command.Password)
         );
 
-        await m_userRepository.AddAsync(user);
+        await _userRepository.AddAsync(user);
 
-        var token = m_jwtTokenService.GenerateToken(user);
-        var refreshToken = m_jwtTokenService.GenerateRefreshToken();
+        var token = _jwtTokenService.GenerateToken(user);
+        var refreshToken = _jwtTokenService.GenerateRefreshToken();
 
-        var refreshTokenEntity = RefreshToken.Create(user.Id, refreshToken, m_jwtSettings.RefreshTokenExpirationDays);
+        var refreshTokenEntity = RefreshToken.Create(user.Id, refreshToken, _jwtSettings.RefreshTokenExpirationDays);
 
-        await m_refreshTokenRepository.AddAsync(refreshTokenEntity);
+        await _refreshTokenRepository.AddAsync(refreshTokenEntity);
 
         return new AuthenticationResult(
             IsSuccess: true,
             Token: token,
             RefreshToken: refreshToken,
-            ExpiresAt: DateTime.UtcNow.AddMinutes(m_jwtSettings.ExpirationMinutes),
+            ExpiresAt: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes),
             User: new UserInfo(
                 Id: user.Id,
                 Username: user.Username.Value,
@@ -124,7 +124,7 @@ public class AuthenticationService : IAuthenticationService
             );
         }
 
-        if (!m_passwordHasher.VerifyPassword(command.Password, user.PasswordHash))
+        if (!_passwordHasher.VerifyPassword(command.Password, user.PasswordHash))
         {
             return new AuthenticationResult(
                 IsSuccess: false,
@@ -133,20 +133,20 @@ public class AuthenticationService : IAuthenticationService
         }
 
         user.UpdateLastLogin();
-        await m_userRepository.UpdateAsync(user);
+        await _userRepository.UpdateAsync(user);
 
-        var token = m_jwtTokenService.GenerateToken(user);
-        var refreshToken = m_jwtTokenService.GenerateRefreshToken();
+        var token = _jwtTokenService.GenerateToken(user);
+        var refreshToken = _jwtTokenService.GenerateRefreshToken();
 
-        var refreshTokenEntity = RefreshToken.Create(user.Id, refreshToken, m_jwtSettings.RefreshTokenExpirationDays);
+        var refreshTokenEntity = RefreshToken.Create(user.Id, refreshToken, _jwtSettings.RefreshTokenExpirationDays);
 
-        await m_refreshTokenRepository.AddAsync(refreshTokenEntity);
+        await _refreshTokenRepository.AddAsync(refreshTokenEntity);
 
         return new AuthenticationResult(
             IsSuccess: true,
             Token: token,
             RefreshToken: refreshToken,
-            ExpiresAt: DateTime.UtcNow.AddMinutes(m_jwtSettings.ExpirationMinutes),
+            ExpiresAt: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes),
             User: new UserInfo(
                 Id: user.Id,
                 Username: user.Username.Value,
@@ -158,34 +158,34 @@ public class AuthenticationService : IAuthenticationService
 
     public Task<bool> ValidateTokenAsync(string token)
     {
-        var principal = m_jwtTokenService.ValidateToken(token);
+        var principal = _jwtTokenService.ValidateToken(token);
         return Task.FromResult(principal != null);
     }
 
     public async Task<string> RefreshTokenAsync(string refreshToken)
     {
-        var token = await m_refreshTokenRepository.GetByTokenAsync(refreshToken);
+        var token = await _refreshTokenRepository.GetByTokenAsync(refreshToken);
 
         if (token == null)
         {
             throw new UnauthorizedAccessException(ErrorMessages.InvalidOrExpiredRefreshToken);
         }
 
-        var user = await m_userRepository.GetByIdAsync(token.UserId);
+        var user = await _userRepository.GetByIdAsync(token.UserId);
         if (user == null)
         {
             throw new UnauthorizedAccessException(ErrorMessages.UserNotFound);
         }
 
         token.Revoke();
-        await m_refreshTokenRepository.UpdateAsync(token);
+        await _refreshTokenRepository.UpdateAsync(token);
 
-        var newToken = m_jwtTokenService.GenerateToken(user);
-        var newRefreshToken = m_jwtTokenService.GenerateRefreshToken();
+        var newToken = _jwtTokenService.GenerateToken(user);
+        var newRefreshToken = _jwtTokenService.GenerateRefreshToken();
 
-        var newRefreshTokenEntity = RefreshToken.Create(user.Id, newRefreshToken, m_jwtSettings.RefreshTokenExpirationDays);
+        var newRefreshTokenEntity = RefreshToken.Create(user.Id, newRefreshToken, _jwtSettings.RefreshTokenExpirationDays);
 
-        await m_refreshTokenRepository.AddAsync(newRefreshTokenEntity);
+        await _refreshTokenRepository.AddAsync(newRefreshTokenEntity);
 
         return newToken;
     }
@@ -194,17 +194,17 @@ public class AuthenticationService : IAuthenticationService
     {
         try
         {
-            var principal = m_jwtTokenService.ValidateToken(token);
+            var principal = _jwtTokenService.ValidateToken(token);
             if (principal == null) return false;
 
             var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!int.TryParse(userIdClaim, out var userId)) return false;
 
-            var userRefreshTokens = await m_refreshTokenRepository.GetActiveByUserIdAsync(userId);
+            var userRefreshTokens = await _refreshTokenRepository.GetActiveByUserIdAsync(userId);
             foreach (var refreshToken in userRefreshTokens)
             {
                 refreshToken.Revoke();
-                await m_refreshTokenRepository.UpdateAsync(refreshToken);
+                await _refreshTokenRepository.UpdateAsync(refreshToken);
             }
             
 
@@ -230,7 +230,7 @@ public class AuthenticationService : IAuthenticationService
                 );
             }
 
-            var user = await m_userRepository.GetByEmailAsync(emailResult.Value!);
+            var user = await _userRepository.GetByEmailAsync(emailResult.Value!);
 
             // Always return success to prevent email enumeration attacks
             if (user == null)
@@ -244,18 +244,18 @@ public class AuthenticationService : IAuthenticationService
             var resetToken = Guid.NewGuid().ToString();
             var expiresAt = DateTime.UtcNow.AddHours(ValidationConstants.Password.ResetTokenExpirationHours);
 
-            var existingTokens = await m_passwordResetTokenRepository.GetUnusedByUserIdAsync(user.Id);
+            var existingTokens = await _passwordResetTokenRepository.GetUnusedByUserIdAsync(user.Id);
             foreach (var token in existingTokens)
             {
                 token.MarkAsUsed();
-                await m_passwordResetTokenRepository.UpdateAsync(token);
+                await _passwordResetTokenRepository.UpdateAsync(token);
             }
 
             var passwordResetToken = PasswordResetToken.Create(user.Id, resetToken, ValidationConstants.Password.ResetTokenExpirationHours);
 
-            await m_passwordResetTokenRepository.AddAsync(passwordResetToken);
+            await _passwordResetTokenRepository.AddAsync(passwordResetToken);
     
-            await m_emailService.SendPasswordResetEmailAsync(user.Email.Value, resetToken, user.Username.Value);
+            await _emailService.SendPasswordResetEmailAsync(user.Email.Value, resetToken, user.Username.Value);
 
             return new PasswordResetResponse(
                 Success: true,
@@ -285,7 +285,7 @@ public class AuthenticationService : IAuthenticationService
             }
 
             // Find valid reset token
-            var resetToken = await m_passwordResetTokenRepository.GetValidByTokenAsync(command.Token);
+            var resetToken = await _passwordResetTokenRepository.GetValidByTokenAsync(command.Token);
 
             if (resetToken == null)
             {
@@ -296,7 +296,7 @@ public class AuthenticationService : IAuthenticationService
             }
 
             // Find user
-            var user = await m_userRepository.GetByIdAsync(resetToken.UserId);
+            var user = await _userRepository.GetByIdAsync(resetToken.UserId);
             if (user == null)
             {
                 return new PasswordResetResponse(
@@ -305,13 +305,13 @@ public class AuthenticationService : IAuthenticationService
                 );
             }
 
-            var hashedPassword = m_passwordHasher.HashPassword(command.NewPassword);
+            var hashedPassword = _passwordHasher.HashPassword(command.NewPassword);
             user.ChangePassword(hashedPassword);
 
             resetToken.MarkAsUsed();
 
-            await m_userRepository.UpdateAsync(user);
-            await m_passwordResetTokenRepository.UpdateAsync(resetToken);
+            await _userRepository.UpdateAsync(user);
+            await _passwordResetTokenRepository.UpdateAsync(resetToken);
 
             return new PasswordResetResponse(
                 Success: true,
@@ -332,14 +332,14 @@ public class AuthenticationService : IAuthenticationService
         var emailResult = Email.Create(usernameOrEmail);
         if (emailResult.IsSuccess)
         {
-            var user = await m_userRepository.GetByEmailAsync(emailResult.Value!);
+            var user = await _userRepository.GetByEmailAsync(emailResult.Value!);
             if (user != null) return user;
         }
 
         var usernameResult = Username.Create(usernameOrEmail);
         if (usernameResult.IsSuccess)
         {
-            return await m_userRepository.GetByUsernameAsync(usernameResult.Value!);
+            return await _userRepository.GetByUsernameAsync(usernameResult.Value!);
         }
 
         return null;

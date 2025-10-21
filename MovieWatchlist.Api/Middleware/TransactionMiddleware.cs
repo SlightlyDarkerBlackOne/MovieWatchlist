@@ -4,18 +4,18 @@ namespace MovieWatchlist.Api.Middleware;
 
 public class TransactionMiddleware
 {
-    private readonly RequestDelegate m_next;
-    private readonly ILogger<TransactionMiddleware> m_logger;
+    private readonly RequestDelegate _next;
+    private readonly ILogger<TransactionMiddleware> _logger;
 
     public TransactionMiddleware(RequestDelegate next, ILogger<TransactionMiddleware> logger)
     {
-        m_next = next;
-        m_logger = logger;
+        _next = next;
+        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context, IUnitOfWork unitOfWork)
     {
-        await m_next(context);
+        await _next(context);
 
         if (context.Response.StatusCode >= 200 && context.Response.StatusCode < 300)
         {
@@ -23,13 +23,13 @@ public class TransactionMiddleware
             
             if (changes > 0)
             {
-                m_logger.LogDebug("Saved {Changes} changes to database for request {Method} {Path}", 
+                _logger.LogDebug("Saved {Changes} changes to database for request {Method} {Path}", 
                     changes, context.Request.Method, context.Request.Path);
             }
         }
         else
         {
-            m_logger.LogDebug("Skipping SaveChanges for non-successful response: {StatusCode}", 
+            _logger.LogDebug("Skipping SaveChanges for non-successful response: {StatusCode}", 
                 context.Response.StatusCode);
         }
     }
