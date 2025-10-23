@@ -82,22 +82,25 @@ public class AuthenticationServiceTests : UnitTestBase
             .ReturnsAsync((User?)null); // No existing users
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
             .Returns("test-jwt-token");
-        _mockJwtTokenService.Setup(x => x.GenerateRefreshToken())
-            .Returns("test-refresh-token");
 
         // Act
-        var result = await _authenticationService.RegisterAsync(command);
+        var userResult = await _authenticationService.RegisterUserAsync(command);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Token.Should().Be("test-jwt-token");
-        result.RefreshToken.Should().Be("test-refresh-token");
-        result.User.Should().NotBeNull();
-        result.User!.Username.Should().Be(TestConstants.Users.DefaultUsername);
-        result.User.Email.Should().Be(TestConstants.Users.DefaultEmail);
+        userResult.IsSuccess.Should().BeTrue();
+        userResult.Value.Should().NotBeNull();
+        userResult.Value!.Username.Value.Should().Be(TestConstants.Users.DefaultUsername);
+        userResult.Value.Email.Value.Should().Be(TestConstants.Users.DefaultEmail);
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Once);
-        _mockRefreshTokenRepository.Verify(x => x.AddAsync(It.IsAny<RefreshToken>()), Times.Once);
+
+        // Test GenerateAuthenticationResult separately
+        var authResult = _authenticationService.GenerateAuthenticationResult(userResult.Value!);
+        authResult.IsSuccess.Should().BeTrue();
+        authResult.Token.Should().Be("test-jwt-token");
+        authResult.User.Should().NotBeNull();
+        authResult.User!.Username.Should().Be(TestConstants.Users.DefaultUsername);
+        authResult.User.Email.Should().Be(TestConstants.Users.DefaultEmail);
     }
 
     [Fact]
@@ -116,13 +119,11 @@ public class AuthenticationServiceTests : UnitTestBase
             .ReturnsAsync(existingUser); // Existing user with same email
 
         // Act
-        var result = await _authenticationService.RegisterAsync(command);
+        var result = await _authenticationService.RegisterUserAsync(command);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Email is already registered");
-        result.Token.Should().BeNull();
-        result.User.Should().BeNull();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Email is already registered");
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
     }
@@ -146,13 +147,11 @@ public class AuthenticationServiceTests : UnitTestBase
             .ReturnsAsync(CreateTestUser(username: "existinguser"));
 
         // Act
-        var result = await _authenticationService.RegisterAsync(command);
+        var result = await _authenticationService.RegisterUserAsync(command);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Username is already taken");
-        result.Token.Should().BeNull();
-        result.User.Should().BeNull();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Username is already taken");
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
     }
@@ -168,13 +167,11 @@ public class AuthenticationServiceTests : UnitTestBase
         );
 
         // Act
-        var result = await _authenticationService.RegisterAsync(command);
+        var result = await _authenticationService.RegisterUserAsync(command);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be(ValidationConstants.Password.InvalidFormatMessage);
-        result.Token.Should().BeNull();
-        result.User.Should().BeNull();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(ValidationConstants.Password.InvalidFormatMessage);
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
     }
@@ -190,13 +187,11 @@ public class AuthenticationServiceTests : UnitTestBase
         );
 
         // Act
-        var result = await _authenticationService.RegisterAsync(command);
+        var result = await _authenticationService.RegisterUserAsync(command);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be(ValidationConstants.Email.InvalidFormatMessage);
-        result.Token.Should().BeNull();
-        result.User.Should().BeNull();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(ValidationConstants.Email.InvalidFormatMessage);
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
     }
@@ -212,13 +207,11 @@ public class AuthenticationServiceTests : UnitTestBase
         );
 
         // Act
-        var result = await _authenticationService.RegisterAsync(command);
+        var result = await _authenticationService.RegisterUserAsync(command);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be(ValidationConstants.Username.InvalidFormatMessage);
-        result.Token.Should().BeNull();
-        result.User.Should().BeNull();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(ValidationConstants.Username.InvalidFormatMessage);
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
     }

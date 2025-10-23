@@ -16,6 +16,7 @@ public class WatchlistServiceTests : UnitTestBase
     private readonly Mock<IMovieRepository> _mockMovieRepository;
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<ITmdbService> _mockTmdbService;
+    private readonly Mock<IRetryPolicyService> _mockRetryPolicyService;
     private readonly WatchlistService _service;
 
     public WatchlistServiceTests()
@@ -24,11 +25,19 @@ public class WatchlistServiceTests : UnitTestBase
         _mockMovieRepository = new Mock<IMovieRepository>();
         _mockUserRepository = new Mock<IUserRepository>();
         _mockTmdbService = new Mock<ITmdbService>();
+        _mockRetryPolicyService = new Mock<IRetryPolicyService>();
+        
+        // Setup default retry policy behavior
+        _mockRetryPolicyService
+            .Setup(x => x.ExecuteWithRetryAsync(It.IsAny<Func<Task<Movie?>>>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>()))
+            .Returns<Func<Task<Movie?>>, int, int, string>((func, maxRetries, baseDelayMs, operationName) => func());
+        
         _service = new WatchlistService(
             _mockWatchlistRepository.Object, 
             _mockMovieRepository.Object,
             _mockUserRepository.Object,
-            _mockTmdbService.Object);
+            _mockTmdbService.Object,
+            _mockRetryPolicyService.Object);
     }
 
     [Fact]
@@ -171,7 +180,7 @@ public class WatchlistServiceTests : UnitTestBase
             Title = GenreConstants.ActionTitle,
             VoteAverage = TestConstants.Ratings.HighRating,
             VoteCount = 5000,
-            ReleaseDate = TestConstants.Dates.DefaultReleaseDate.AddYears(-2),
+            ReleaseDate = new DateTime(2020, 1, 1),
             Genres = new[] { GenreConstants.Action, GenreConstants.Adventure }
         };
 
@@ -181,7 +190,7 @@ public class WatchlistServiceTests : UnitTestBase
             Title = "Action Movie 2",
             VoteAverage = TestConstants.Ratings.DefaultTmdbRating,
             VoteCount = 3000,
-            ReleaseDate = TestConstants.Dates.DefaultReleaseDate.AddYears(-1),
+            ReleaseDate = new DateTime(2021, 1, 1),
             Genres = new[] { GenreConstants.Action, GenreConstants.Thriller }
         };
 
@@ -191,7 +200,7 @@ public class WatchlistServiceTests : UnitTestBase
             Title = GenreConstants.DramaTitle,
             VoteAverage = TestConstants.Ratings.HighRating,
             VoteCount = 2000,
-            ReleaseDate = TestConstants.Dates.DefaultReleaseDate.AddYears(-3),
+            ReleaseDate = new DateTime(2022, 1, 1),
             Genres = new[] { GenreConstants.Drama }
         };
 
@@ -201,7 +210,7 @@ public class WatchlistServiceTests : UnitTestBase
             Title = GenreConstants.ComedyTitle,
             VoteAverage = TestConstants.Ratings.LowRating,
             VoteCount = 1500,
-            ReleaseDate = TestConstants.Dates.DefaultReleaseDate,
+            ReleaseDate = new DateTime(2019, 1, 1),
             Genres = new[] { GenreConstants.Comedy }
         };
 
