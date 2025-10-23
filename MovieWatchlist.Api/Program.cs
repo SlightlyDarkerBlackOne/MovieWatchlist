@@ -122,7 +122,20 @@ builder.Services.AddScoped<IDomainEventHandler<MovieRatedEvent>, LogActivityHand
 builder.Services.AddScoped<IDomainEventHandler<MovieFavoritedEvent>, LogActivityHandler>();
 builder.Services.AddScoped<IDomainEventHandler<MovieWatchedEvent>, UpdateStatisticsHandler>();
 
+// Register Authentication Domain Event Handlers
+builder.Services.AddScoped<IDomainEventHandler<UserRegisteredEvent>, UserRegisteredEventHandler>();
+builder.Services.AddScoped<IDomainEventHandler<UserLoggedInEvent>, UserLoggedInEventHandler>();
+builder.Services.AddScoped<IDomainEventHandler<RefreshTokenCreatedEvent>, RefreshTokenCreatedEventHandler>();
+builder.Services.AddScoped<IDomainEventHandler<UserPasswordChangedEvent>, UserPasswordChangedEventHandler>();
+
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(MovieWatchlist.Application.Handlers.Auth.RegisterCommandHandler).Assembly);
+    cfg.AddOpenBehavior(typeof(MovieWatchlist.Application.Behaviors.LoggingBehavior<,>));
+    cfg.AddOpenBehavior(typeof(MovieWatchlist.Application.Behaviors.TransactionBehavior<,>));
+});
 
 // Register Application services
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
@@ -193,8 +206,6 @@ else
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.UseTransactionPerRequest();
 
 app.MapControllers();
 

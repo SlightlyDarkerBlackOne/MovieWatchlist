@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Options;
 using MovieWatchlist.Core.Commands;
+using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Configuration;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Interfaces;
@@ -37,52 +38,27 @@ public class AuthenticationService : IAuthenticationService
         _passwordHasher = passwordHasher;
     }
 
-    public async Task<AuthenticationResult> RegisterAsync(RegisterCommand command)
+    public async Task<Result<User>> RegisterUserAsync(RegisterCommand command)
     {
         var usernameResult = Username.Create(command.Username);
         if (usernameResult.IsFailure)
-        {
-            return new AuthenticationResult(
-                IsSuccess: false,
-                ErrorMessage: usernameResult.Error
-            );
-        }
+            return Result<User>.Failure(usernameResult.Error);
 
         var emailResult = Email.Create(command.Email);
         if (emailResult.IsFailure)
-        {
-            return new AuthenticationResult(
-                IsSuccess: false,
-                ErrorMessage: emailResult.Error
-            );
-        }
+            return Result<User>.Failure(emailResult.Error);
 
         var passwordResult = Password.Create(command.Password);
         if (passwordResult.IsFailure)
-        {
-            return new AuthenticationResult(
-                IsSuccess: false,
-                ErrorMessage: passwordResult.Error
-            );
-        }
+            return Result<User>.Failure(passwordResult.Error);
 
         var existingUserByEmail = await _userRepository.GetByEmailAsync(emailResult.Value!);
         if (existingUserByEmail != null)
-        {
-            return new AuthenticationResult(
-                IsSuccess: false,
-                ErrorMessage: ErrorMessages.EmailAlreadyRegistered
-            );
-        }
+            return Result<User>.Failure(ErrorMessages.EmailAlreadyRegistered);
 
         var existingUserByUsername = await _userRepository.GetByUsernameAsync(usernameResult.Value!);
         if (existingUserByUsername != null)
-        {
-            return new AuthenticationResult(
-                IsSuccess: false,
-                ErrorMessage: ErrorMessages.UsernameAlreadyTaken
-            );
-        }
+            return Result<User>.Failure(ErrorMessages.UsernameAlreadyTaken);
 
         var user = User.Create(
             usernameResult.Value!,
@@ -92,17 +68,17 @@ public class AuthenticationService : IAuthenticationService
 
         await _userRepository.AddAsync(user);
 
+        return Result<User>.Success(user);
+    }
+
+    public AuthenticationResult GenerateAuthenticationResult(User user)
+    {
         var token = _jwtTokenService.GenerateToken(user);
-        var refreshToken = _jwtTokenService.GenerateRefreshToken();
-
-        var refreshTokenEntity = RefreshToken.Create(user.Id, refreshToken, _jwtSettings.RefreshTokenExpirationDays);
-
-        await _refreshTokenRepository.AddAsync(refreshTokenEntity);
 
         return new AuthenticationResult(
             IsSuccess: true,
             Token: token,
-            RefreshToken: refreshToken,
+            RefreshToken: null,
             ExpiresAt: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes),
             User: new UserInfo(
                 Id: user.Id,
@@ -111,6 +87,27 @@ public class AuthenticationService : IAuthenticationService
                 CreatedAt: user.CreatedAt
             )
         );
+    }
+
+    public async Task<Result<RefreshTokenResult>> CreateRefreshTokenAsync(int userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return Result<RefreshTokenResult>.Failure(ErrorMessages.UserNotFound);
+
+        var refreshToken = _jwtTokenService.GenerateRefreshToken();
+        var refreshTokenEntity = RefreshToken.Create(
+            userId,
+            refreshToken,
+            _jwtSettings.RefreshTokenExpirationDays
+        );
+
+        await _refreshTokenRepository.AddAsync(refreshTokenEntity);
+
+        return Result<RefreshTokenResult>.Success(new RefreshTokenResult(
+            refreshToken,
+            refreshTokenEntity.ExpiresAt
+        ));
     }
 
     public async Task<AuthenticationResult> LoginAsync(LoginCommand command)

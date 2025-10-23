@@ -1,9 +1,11 @@
 namespace MovieWatchlist.Core.Models;
 
+using MovieWatchlist.Core.Events;
+
 /// <summary>
 /// Represents a refresh token for JWT authentication
 /// </summary>
-public class RefreshToken
+public class RefreshToken : Entity
 {
     public int Id { get; private set; }
     public int UserId { get; private set; }
@@ -27,7 +29,7 @@ public class RefreshToken
         if (expirationDays <= 0)
             throw new ArgumentException("Expiration days must be greater than zero", nameof(expirationDays));
 
-        return new RefreshToken
+        var refreshToken = new RefreshToken
         {
             UserId = userId,
             Token = token,
@@ -35,6 +37,10 @@ public class RefreshToken
             CreatedAt = DateTime.UtcNow,
             IsRevoked = false
         };
+
+        refreshToken.RaiseDomainEvent(new RefreshTokenCreatedEvent(userId, token, refreshToken.ExpiresAt));
+
+        return refreshToken;
     }
 
     /// <summary>

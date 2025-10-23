@@ -48,3 +48,8 @@ public record ResetPasswordDto(
     string ConfirmPassword
 );
 
+public record CreateRefreshTokenDto(
+    [Required(ErrorMessage = "User ID is required")]
+    int UserId
+);
+

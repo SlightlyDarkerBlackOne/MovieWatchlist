@@ -1,10 +1,10 @@
 using System.Net;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using MovieWatchlist.Api.DTOs;
 using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Exceptions;
-using MovieWatchlist.Core.Interfaces;
 
 namespace MovieWatchlist.Api.Controllers;
 
@@ -12,47 +12,40 @@ namespace MovieWatchlist.Api.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly IAuthenticationService _authService;
+    private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
-        IAuthenticationService authService,
+        IMediator mediator,
         ILogger<AuthController> logger)
     {
-        _authService = authService;
+        _mediator = mediator;
         _logger = logger;
     }
 
     [HttpPost("register")]
     public async Task<ActionResult<AuthenticationResult>> Register([FromBody] RegisterDto dto)
     {
-        try
-        {
-            if (!ModelState.IsValid)
-                throw new ValidationException(ErrorMessages.InvalidModelState, ModelState);
+        var command = new RegisterCommand(dto.Username, dto.Email, dto.Password);
+        var result = await _mediator.Send(command);
 
-            _logger.LogInformation("Registration attempt for user: {Username}", dto.Username);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
 
+        _logger.LogInformation("User registered successfully: {Username}", dto.Username);
+        return Ok(result.Value);
+    }
 
-            var command = new RegisterCommand(
-                Username: dto.Username,
-                Email: dto.Email,
-                Password: dto.Password
-            );
+    [HttpPost("create-refresh-token")]
+    public async Task<ActionResult<RefreshTokenResult>> CreateRefreshToken([FromBody] CreateRefreshTokenDto dto)
+    {
+        var command = new CreateRefreshTokenCommand(dto.UserId);
+        var result = await _mediator.Send(command);
 
-            var result = await _authService.RegisterAsync(command);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
 
-            if (!result.IsSuccess)
-                throw new ConflictException(result.ErrorMessage ?? ErrorMessages.RegistrationFailed);
-
-            _logger.LogInformation("User registered successfully: {Username}", dto.Username);
-            return Ok(result);
-        }
-        catch (Exception ex) when (!(ex is ApiException))
-        {
-            _logger.LogError(ex, "Unexpected error during registration");
-            throw;
-        }
+        return Ok(result.Value);
     }
 
     [HttpPost("login")]
@@ -61,18 +54,17 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        // Map DTO → Command
         var command = new LoginCommand(
             UsernameOrEmail: dto.UsernameOrEmail,
             Password: dto.Password
         );
 
-        var result = await _authService.LoginAsync(command);
+        var result = await _mediator.Send(command);
 
-        if (!result.IsSuccess)
-            return Unauthorized(new { message = result.ErrorMessage });
+        if (result.IsFailure)
+            return Unauthorized(new { error = result.Error });
 
-        return Ok(result);
+        return Ok(result.Value);
     }
 
     [HttpPost("refresh")]
@@ -81,15 +73,13 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        try
-        {
-            var newToken = await _authService.RefreshTokenAsync(refreshTokenDto.RefreshToken);
-            return Ok(new { token = newToken });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { message = ex.Message });
-        }
+        var command = new RefreshTokenCommand(refreshTokenDto.RefreshToken);
+        var result = await _mediator.Send(command);
+
+        if (result.IsFailure)
+            return Unauthorized(new { message = result.Error });
+
+        return Ok(new { token = result.Value });
     }
 
     [HttpPost("logout")]
@@ -99,8 +89,13 @@ public class AuthController : ControllerBase
         if (string.IsNullOrEmpty(token))
             return BadRequest(new { message = ErrorMessages.TokenNotProvided });
 
-        var success = await _authService.LogoutAsync(token);
-        if (!success)
+        var command = new LogoutCommand(token);
+        var result = await _mediator.Send(command);
+
+        if (result.IsFailure)
+            return BadRequest(new { message = result.Error });
+
+        if (!result.Value)
             return BadRequest(new { message = ErrorMessages.LogoutFailed });
 
         return Ok(new { message = ErrorMessages.LogoutSuccess });
@@ -113,8 +108,13 @@ public class AuthController : ControllerBase
         if (string.IsNullOrEmpty(token))
             return BadRequest(new { message = ErrorMessages.TokenNotProvided, isValid = false });
 
-        var isValid = await _authService.ValidateTokenAsync(token);
-        return Ok(new { isValid });
+        var command = new ValidateTokenCommand(token);
+        var result = await _mediator.Send(command);
+
+        if (result.IsFailure)
+            return BadRequest(new { message = result.Error, isValid = false });
+
+        return Ok(new { isValid = result.Value });
     }
 
     [HttpPost("forgot-password")]
@@ -129,9 +129,12 @@ public class AuthController : ControllerBase
 
             var command = new ForgotPasswordCommand(Email: dto.Email);
 
-            var result = await _authService.ForgotPasswordAsync(command);
+            var result = await _mediator.Send(command);
 
-            return Ok(result);
+            if (result.IsFailure)
+                return BadRequest(new { error = result.Error });
+
+            return Ok(result.Value);
         }
         catch (ValidationException)
         {
@@ -162,12 +165,12 @@ public class AuthController : ControllerBase
                 NewPassword: dto.NewPassword
             );
 
-            var result = await _authService.ResetPasswordAsync(command);
+            var result = await _mediator.Send(command);
 
-            if (!result.Success)
-                return BadRequest(result);
+            if (result.IsFailure)
+                return BadRequest(new { error = result.Error });
 
-            return Ok(result);
+            return Ok(result.Value);
         }
         catch (ValidationException)
         {

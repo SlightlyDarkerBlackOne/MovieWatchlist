@@ -1,10 +1,14 @@
 using MovieWatchlist.Core.Commands;
+using MovieWatchlist.Core.Common;
+using MovieWatchlist.Core.Models;
 
 namespace MovieWatchlist.Core.Interfaces;
 
 public interface IAuthenticationService
 {
-    Task<AuthenticationResult> RegisterAsync(RegisterCommand command);
+    Task<Result<User>> RegisterUserAsync(RegisterCommand command);
+    AuthenticationResult GenerateAuthenticationResult(User user);
+    Task<Result<RefreshTokenResult>> CreateRefreshTokenAsync(int userId);
     Task<AuthenticationResult> LoginAsync(LoginCommand command);
     Task<bool> ValidateTokenAsync(string token);
     Task<string> RefreshTokenAsync(string refreshToken);

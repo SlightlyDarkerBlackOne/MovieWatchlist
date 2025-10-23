@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using MovieWatchlist.Core.Events;
 using MovieWatchlist.Core.Queries;
 using MovieWatchlist.Core.ValueObjects;
 
@@ -29,13 +30,17 @@ public class User : Entity
         if (string.IsNullOrWhiteSpace(passwordHash))
             throw new ArgumentException("Password hash cannot be null or empty", nameof(passwordHash));
 
-        return new User
+        var user = new User
         {
             Username = username,
             Email = email,
             PasswordHash = passwordHash,
             CreatedAt = DateTime.UtcNow
         };
+
+        user.RaiseDomainEvent(new UserRegisteredEvent(user.Id, user.Username.Value, user.Email.Value));
+
+        return user;
     }
 
     /// <summary>
@@ -44,6 +49,7 @@ public class User : Entity
     public void UpdateLastLogin()
     {
         LastLoginAt = DateTime.UtcNow;
+        RaiseDomainEvent(new UserLoggedInEvent(Id, Username.Value, Email.Value, LastLoginAt.Value));
     }
 
     /// <summary>
@@ -55,6 +61,7 @@ public class User : Entity
             throw new ArgumentException("Password hash cannot be null or empty", nameof(newPasswordHash));
 
         PasswordHash = newPasswordHash;
+        RaiseDomainEvent(new UserPasswordChangedEvent(Id, Username.Value, Email.Value, DateTime.UtcNow));
     }
 
     /// <summary>
