@@ -13,7 +13,7 @@ public class WatchlistItemEventTests : UnitTestBase
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, 1, movie);
+        var item = WatchlistItem.Create(1, movie);
         
         // Act
         item.MarkAsWatched();
@@ -26,7 +26,7 @@ public class WatchlistItemEventTests : UnitTestBase
         
         var watchedEvent = (MovieWatchedEvent)events[1];
         Assert.Equal(1, watchedEvent.UserId);
-        Assert.Equal(1, watchedEvent.MovieId);
+        Assert.Equal(12345, watchedEvent.MovieId);
         Assert.NotEqual(default(DateTime), watchedEvent.WatchedDate);
         Assert.NotEqual(Guid.Empty, watchedEvent.EventId);
     }
@@ -36,7 +36,7 @@ public class WatchlistItemEventTests : UnitTestBase
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, 1, movie);
+        var item = WatchlistItem.Create(1, movie);
         item.MarkAsWatched();
         item.ClearDomainEvents();
         
@@ -53,7 +53,7 @@ public class WatchlistItemEventTests : UnitTestBase
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, 1, movie);
+        var item = WatchlistItem.Create(1, movie);
         item.SetRating(Rating.Create(5).Value!);
         item.ClearDomainEvents();
         
@@ -68,7 +68,7 @@ public class WatchlistItemEventTests : UnitTestBase
         
         var ratedEvent = (MovieRatedEvent)events[0];
         Assert.Equal(1, ratedEvent.UserId);
-        Assert.Equal(1, ratedEvent.MovieId);
+        Assert.Equal(12345, ratedEvent.MovieId);
         Assert.Equal(8, ratedEvent.Rating);
         Assert.Equal(5, ratedEvent.PreviousRating);
     }
@@ -78,7 +78,7 @@ public class WatchlistItemEventTests : UnitTestBase
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, 1, movie);
+        var item = WatchlistItem.Create(1, movie);
         
         // Act
         item.SetRating(Rating.Create(7).Value!);
@@ -99,7 +99,7 @@ public class WatchlistItemEventTests : UnitTestBase
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, 1, movie);
+        var item = WatchlistItem.Create(1, movie);
         Assert.False(item.IsFavorite);
         
         // Act
@@ -113,7 +113,7 @@ public class WatchlistItemEventTests : UnitTestBase
         
         var favoritedEvent = (MovieFavoritedEvent)events[0];
         Assert.Equal(1, favoritedEvent.UserId);
-        Assert.Equal(1, favoritedEvent.MovieId);
+        Assert.Equal(12345, favoritedEvent.MovieId);
         Assert.True(favoritedEvent.IsFavorite);
         Assert.True(item.IsFavorite);
     }
@@ -123,7 +123,7 @@ public class WatchlistItemEventTests : UnitTestBase
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, 1, movie);
+        var item = WatchlistItem.Create(1, movie);
         item.SetFavorite(true);
         item.ClearDomainEvents();
         
@@ -146,7 +146,7 @@ public class WatchlistItemEventTests : UnitTestBase
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, 1, movie);
+        var item = WatchlistItem.Create(1, movie);
         item.SetFavorite(true);
         item.ClearDomainEvents();
         
@@ -163,7 +163,7 @@ public class WatchlistItemEventTests : UnitTestBase
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, 1, movie);
+        var item = WatchlistItem.Create(1, movie);
         item.MarkAsWatched();
         item.SetRating(Rating.Create(8).Value!);
         item.SetFavorite(true);
@@ -182,7 +182,7 @@ public class WatchlistItemEventTests : UnitTestBase
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, 1, movie);
+        var item = WatchlistItem.Create(1, movie);
         
         // Act
         item.MarkAsWatched();
@@ -205,7 +205,7 @@ public class WatchlistItemEventTests : UnitTestBase
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, 1, movie);
+        var item = WatchlistItem.Create(1, movie);
         var beforeEvent = DateTime.UtcNow;
         
         // Act
@@ -222,7 +222,7 @@ public class WatchlistItemEventTests : UnitTestBase
     {
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, 1, movie);
+        var item = WatchlistItem.Create(1, movie);
         
         // Act
         item.MarkAsWatched();

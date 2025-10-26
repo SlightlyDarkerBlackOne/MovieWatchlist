@@ -27,10 +27,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<Authenti
         
         var result = await _authService.LoginAsync(request);
         
-        if (!result.IsSuccess)
-            return Result<AuthenticationResult>.Failure(result.ErrorMessage!);
-        
-        return Result<AuthenticationResult>.Success(result);
+        return result;
     }
 }
 

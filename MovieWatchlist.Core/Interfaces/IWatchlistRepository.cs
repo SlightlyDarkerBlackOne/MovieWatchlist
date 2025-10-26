@@ -42,6 +42,14 @@ public interface IWatchlistRepository : IRepository<WatchlistItem>
     Task<bool> IsMovieInUserWatchlistAsync(int userId, int movieId);
 
     /// <summary>
+    /// Gets a watchlist item by user ID and TMDB movie ID.
+    /// </summary>
+    /// <param name="userId">The ID of the user</param>
+    /// <param name="tmdbId">The TMDB ID of the movie</param>
+    /// <returns>The watchlist item if found, null otherwise</returns>
+    Task<WatchlistItem?> GetByUserIdAndTmdbIdAsync(int userId, int tmdbId);
+
+    /// <summary>
     /// Gets the count of watchlist items for a user by status.
     /// </summary>
     /// <param name="userId">The ID of the user</param>

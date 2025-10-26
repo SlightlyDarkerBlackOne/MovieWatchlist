@@ -110,23 +110,17 @@ public class AuthenticationService : IAuthenticationService
         ));
     }
 
-    public async Task<AuthenticationResult> LoginAsync(LoginCommand command)
+    public async Task<Result<AuthenticationResult>> LoginAsync(LoginCommand command)
     {
         var user = await FindUserByUsernameOrEmailAsync(command.UsernameOrEmail);
         if (user == null)
         {
-            return new AuthenticationResult(
-                IsSuccess: false,
-                ErrorMessage: ErrorMessages.InvalidCredentials
-            );
+            return Result<AuthenticationResult>.Failure(ErrorMessages.InvalidCredentials);
         }
 
         if (!_passwordHasher.VerifyPassword(command.Password, user.PasswordHash))
         {
-            return new AuthenticationResult(
-                IsSuccess: false,
-                ErrorMessage: ErrorMessages.InvalidCredentials
-            );
+            return Result<AuthenticationResult>.Failure(ErrorMessages.InvalidCredentials);
         }
 
         user.UpdateLastLogin();
@@ -139,7 +133,7 @@ public class AuthenticationService : IAuthenticationService
 
         await _refreshTokenRepository.AddAsync(refreshTokenEntity);
 
-        return new AuthenticationResult(
+        var authResult = new AuthenticationResult(
             IsSuccess: true,
             Token: token,
             RefreshToken: refreshToken,
@@ -151,6 +145,8 @@ public class AuthenticationService : IAuthenticationService
                 CreatedAt: user.CreatedAt
             )
         );
+
+        return Result<AuthenticationResult>.Success(authResult);
     }
 
     public Task<bool> ValidateTokenAsync(string token)

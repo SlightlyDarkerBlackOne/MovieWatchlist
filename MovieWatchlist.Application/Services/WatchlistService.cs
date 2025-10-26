@@ -167,11 +167,20 @@ public class WatchlistService : IWatchlistService
             movie = cachedMovie;
         }
 
-        var alreadyInWatchlist = await _watchlistRepository.IsMovieInUserWatchlistAsync(command.UserId, movie.Id);
-        if (alreadyInWatchlist)
+        // Check if movie is already in watchlist using TMDB ID
+        var existingItem = await _watchlistRepository.GetByUserIdAndTmdbIdAsync(command.UserId, command.MovieId);
+        if (existingItem != null)
             return Result<WatchlistItem>.Failure(ErrorMessages.MovieAlreadyInWatchlist);
 
-        var watchlistItem = WatchlistItem.Create(command.UserId, movie.Id, movie);
+        // For new movies, add them to the repository
+        if (cachedMovie == null)
+        {
+            await _movieRepository.AddAsync(movie);
+        }
+
+        // Create watchlist item using the movie navigation property
+        // EF Core will automatically set MovieId when SaveChanges is called
+        var watchlistItem = WatchlistItem.Create(command.UserId, movie);
         
         if (command.Status != WatchlistStatus.Planned)
         {

@@ -42,7 +42,7 @@ public class DomainEventsIntegrationTests : EnhancedIntegrationTestBase
         Context.Movies.Add(movie);
         await m_unitOfWork.SaveChangesAsync();
         
-        var item = WatchlistItem.Create(user.Id, movie.Id, movie);
+        var item = WatchlistItem.Create(user.Id, movie);
         Context.WatchlistItems.Add(item);
         await m_unitOfWork.SaveChangesAsync();
         
@@ -85,7 +85,7 @@ public class DomainEventsIntegrationTests : EnhancedIntegrationTestBase
         Context.Movies.Add(movie);
         await m_unitOfWork.SaveChangesAsync();
         
-        var item = WatchlistItem.Create(user.Id, movie.Id, movie);
+        var item = WatchlistItem.Create(user.Id, movie);
         Context.WatchlistItems.Add(item);
         await m_unitOfWork.SaveChangesAsync();
         
@@ -128,7 +128,7 @@ public class DomainEventsIntegrationTests : EnhancedIntegrationTestBase
         Context.Movies.Add(movie);
         await m_unitOfWork.SaveChangesAsync();
         
-        var item = WatchlistItem.Create(user.Id, movie.Id, movie);
+        var item = WatchlistItem.Create(user.Id, movie);
         Context.WatchlistItems.Add(item);
         await m_unitOfWork.SaveChangesAsync();
         
@@ -170,7 +170,7 @@ public class DomainEventsIntegrationTests : EnhancedIntegrationTestBase
         Context.Movies.Add(movie);
         await m_unitOfWork.SaveChangesAsync();
         
-        var item = WatchlistItem.Create(user.Id, movie.Id, movie);
+        var item = WatchlistItem.Create(user.Id, movie);
         Context.WatchlistItems.Add(item);
         await m_unitOfWork.SaveChangesAsync();
         
@@ -219,8 +219,8 @@ public class DomainEventsIntegrationTests : EnhancedIntegrationTestBase
         Context.Movies.AddRange(movie1, movie2);
         await m_unitOfWork.SaveChangesAsync();
         
-        var item1 = WatchlistItem.Create(user.Id, movie1.Id, movie1);
-        var item2 = WatchlistItem.Create(user.Id, movie2.Id, movie2);
+        var item1 = WatchlistItem.Create(user.Id, movie1);
+        var item2 = WatchlistItem.Create(user.Id, movie2);
         
         Context.WatchlistItems.AddRange(item1, item2);
         await m_unitOfWork.SaveChangesAsync();

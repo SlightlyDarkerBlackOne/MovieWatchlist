@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using MovieWatchlist.Api.DTOs;
 using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Queries;
-using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
+using MediatR;
 
 namespace MovieWatchlist.Api.Controllers;
 
@@ -15,18 +15,18 @@ namespace MovieWatchlist.Api.Controllers;
 [Authorize]
 public class WatchlistController : ControllerBase
 {
-    private readonly IWatchlistService _watchlistService;
+    private readonly IMediator _mediator;
 
-    public WatchlistController(IWatchlistService watchlistService)
+    public WatchlistController(IMediator mediator)
     {
-        _watchlistService = watchlistService;
+        _mediator = mediator;
     }
 
     [HttpGet("user/{userId}")]
     public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetUserWatchlist(int userId)
     {
         var query = new GetUserWatchlistQuery(UserId: userId);
-        var watchlist = await _watchlistService.GetUserWatchlistAsync(query);
+        var watchlist = await _mediator.Send(query);
         return Ok(watchlist);
     }
 
@@ -34,7 +34,7 @@ public class WatchlistController : ControllerBase
     public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetWatchlistByStatus(int userId, WatchlistStatus status)
     {
         var query = new GetWatchlistByStatusQuery(UserId: userId, Status: status);
-        var watchlist = await _watchlistService.GetWatchlistByStatusAsync(query);
+        var watchlist = await _mediator.Send(query);
         return Ok(watchlist);
     }
 
@@ -42,7 +42,7 @@ public class WatchlistController : ControllerBase
     public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetFavoriteMovies(int userId)
     {
         var query = new GetFavoriteMoviesQuery(UserId: userId);
-        var favorites = await _watchlistService.GetFavoriteMoviesAsync(query);
+        var favorites = await _mediator.Send(query);
         return Ok(favorites);
     }
 
@@ -50,7 +50,7 @@ public class WatchlistController : ControllerBase
     public async Task<ActionResult<WatchlistStatistics>> GetUserStatistics(int userId)
     {
         var query = new GetUserStatisticsQuery(UserId: userId);
-        var statistics = await _watchlistService.GetUserStatisticsAsync(query);
+        var statistics = await _mediator.Send(query);
         return Ok(statistics);
     }
 
@@ -58,7 +58,7 @@ public class WatchlistController : ControllerBase
     public async Task<ActionResult<IEnumerable<Movie>>> GetRecommendedMovies(int userId, [FromQuery] int limit = 10)
     {
         var query = new GetRecommendedMoviesQuery(UserId: userId, Limit: limit);
-        var recommendations = await _watchlistService.GetRecommendedMoviesAsync(query);
+        var recommendations = await _mediator.Send(query);
         return Ok(recommendations);
     }
 
@@ -66,7 +66,7 @@ public class WatchlistController : ControllerBase
     public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetWatchlistByGenre(int userId, string genre)
     {
         var query = new GetWatchlistByGenreQuery(UserId: userId, Genre: genre);
-        var watchlist = await _watchlistService.GetWatchlistByGenreAsync(query);
+        var watchlist = await _mediator.Send(query);
         return Ok(watchlist);
     }
 
@@ -77,7 +77,7 @@ public class WatchlistController : ControllerBase
         [FromQuery] int endYear)
     {
         var query = new GetWatchlistByYearRangeQuery(UserId: userId, StartYear: startYear, EndYear: endYear);
-        var watchlist = await _watchlistService.GetWatchlistByYearRangeAsync(query);
+        var watchlist = await _mediator.Send(query);
         return Ok(watchlist);
     }
 
@@ -88,7 +88,7 @@ public class WatchlistController : ControllerBase
         [FromQuery] double maxRating)
     {
         var query = new GetWatchlistByRatingRangeQuery(UserId: userId, MinRating: minRating, MaxRating: maxRating);
-        var watchlist = await _watchlistService.GetWatchlistByRatingRangeAsync(query);
+        var watchlist = await _mediator.Send(query);
         return Ok(watchlist);
     }
 
@@ -106,7 +106,7 @@ public class WatchlistController : ControllerBase
             Notes: dto.Notes
         );
 
-        var result = await _watchlistService.AddToWatchlistAsync(command);
+        var result = await _mediator.Send(command);
         
         if (result.IsFailure)
             return BadRequest(result.Error);
@@ -119,7 +119,7 @@ public class WatchlistController : ControllerBase
     public async Task<ActionResult<WatchlistItem>> GetWatchlistItemById(int userId, int watchlistItemId)
     {
         var query = new GetWatchlistItemByIdQuery(UserId: userId, WatchlistItemId: watchlistItemId);
-        var watchlistItem = await _watchlistService.GetWatchlistItemByIdAsync(query);
+        var watchlistItem = await _mediator.Send(query);
         if (watchlistItem == null)
             return NotFound();
 
@@ -145,7 +145,7 @@ public class WatchlistController : ControllerBase
             WatchedDate: dto.WatchedDate
         );
 
-        var result = await _watchlistService.UpdateWatchlistItemAsync(command);
+        var result = await _mediator.Send(command);
         
         if (result.IsFailure)
             return NotFound(result.Error);
@@ -157,7 +157,7 @@ public class WatchlistController : ControllerBase
     public async Task<ActionResult> RemoveFromWatchlist(int userId, int watchlistItemId)
     {
         var command = new RemoveFromWatchlistCommand(UserId: userId, WatchlistItemId: watchlistItemId);
-        var result = await _watchlistService.RemoveFromWatchlistAsync(command);
+        var result = await _mediator.Send(command);
         
         if (result.IsFailure)
             return NotFound(result.Error);

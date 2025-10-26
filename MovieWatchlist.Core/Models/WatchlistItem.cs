@@ -6,7 +6,6 @@ namespace MovieWatchlist.Core.Models;
 
 public class WatchlistItem : Entity
 {
-    // Public properties with private setters for encapsulation
     public int Id { get; private set; }
     public int UserId { get; private set; }
     public int MovieId { get; private set; }
@@ -18,23 +17,29 @@ public class WatchlistItem : Entity
     public DateTime AddedDate { get; private set; } = DateTime.UtcNow;
     public DateTime? WatchedDate { get; private set; }
 
-    // Private parameterless constructor for EF Core
+    /// <summary>
+    /// Private parameterless constructor for EF Core
+    /// </summary>
     private WatchlistItem() { }
 
-    // Factory method for creating new watchlist items
-    public static WatchlistItem Create(int userId, int movieId, Movie movie)
+    /// <summary>
+    /// Factory method for creating new watchlist items
+    /// </summary>
+    /// <param name="userId">The ID of the user who owns the watchlist item</param>
+    /// <param name="movie">The movie object</param>
+    /// <returns>A new watchlist item</returns>
+    /// <exception cref="ArgumentException">Thrown when the user ID is not valid</exception>
+    /// <exception cref="ArgumentNullException">Thrown when the movie is null</exception>
+    public static WatchlistItem Create(int userId, Movie movie)
     {
         if (userId <= 0)
             throw new ArgumentException("User ID must be greater than zero", nameof(userId));
-        if (movieId <= 0)
-            throw new ArgumentException("Movie ID must be greater than zero", nameof(movieId));
         if (movie == null)
             throw new ArgumentNullException(nameof(movie));
 
         return new WatchlistItem
         {
             UserId = userId,
-            MovieId = movieId,
             Movie = movie,
             Status = WatchlistStatus.Planned,
             AddedDate = DateTime.UtcNow
@@ -71,7 +76,7 @@ public class WatchlistItem : Entity
             UpdateStatus(WatchlistStatus.Watched);
             RaiseDomainEvent(new MovieWatchedEvent(
                 UserId, 
-                MovieId, 
+                Movie.TmdbId,
                 WatchedDate!.Value
             ));
         }
@@ -91,7 +96,7 @@ public class WatchlistItem : Entity
         
         RaiseDomainEvent(new MovieRatedEvent(
             UserId,
-            MovieId,
+            Movie.TmdbId,
             rating.Value,
             previousRating?.Value
         ));
@@ -125,13 +130,14 @@ public class WatchlistItem : Entity
             IsFavorite = isFavorite;
             RaiseDomainEvent(new MovieFavoritedEvent(
                 UserId,
-                MovieId,
+                Movie.TmdbId,
                 isFavorite
             ));
             
             RaiseDomainEvent(new StatisticsInvalidatedEvent(UserId));
         }
     }
+
 }
 
 public enum WatchlistStatus

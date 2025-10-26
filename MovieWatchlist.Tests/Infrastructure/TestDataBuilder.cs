@@ -129,7 +129,7 @@ public class MovieBuilder
 
     public MovieBuilder WithId(int id)
     {
-        _movie.Id = id;
+        typeof(Movie).GetProperty("Id")!.SetValue(_movie, id);
         return this;
     }
 
@@ -277,7 +277,7 @@ public class WatchlistItemBuilder
         };
 
         // Create watchlist item using domain factory
-        var item = WatchlistItem.Create(_userId, _movieId, uniqueMovie);
+        var item = WatchlistItem.Create(_userId, uniqueMovie);
 
         // Update properties that weren't set by factory
         if (_status != WatchlistStatus.Planned)

@@ -1,4 +1,6 @@
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.Common;
+using MediatR;
 
 namespace MovieWatchlist.Core.Commands;
 
@@ -7,7 +9,7 @@ public record AddToWatchlistCommand(
     int MovieId,
     WatchlistStatus Status = WatchlistStatus.Planned,
     string? Notes = null
-);
+) : IRequest<Result<WatchlistItem>>;
 
 public record UpdateWatchlistItemCommand(
     int UserId,
@@ -17,11 +19,11 @@ public record UpdateWatchlistItemCommand(
     int? UserRating = null,
     string? Notes = null,
     DateTime? WatchedDate = null
-);
+) : IRequest<Result<WatchlistItem>>;
 
 public record RemoveFromWatchlistCommand(
     int UserId,
     int WatchlistItemId
-);
+) : IRequest<Result<bool>>;
 
 

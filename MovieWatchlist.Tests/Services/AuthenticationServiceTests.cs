@@ -229,12 +229,12 @@ public class AuthenticationServiceTests : UnitTestBase
             Password: TestConstants.Users.DefaultPassword
         );
 
-        var user = TestDataBuilder.User()
-            .WithId(1)
-            .WithUsername(TestConstants.Users.DefaultUsername)
-            .WithEmail(TestConstants.Users.DefaultEmail)
-            .WithPasswordHash(new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword))
-            .Build();
+        var user = User.Create(
+            Username.Create(TestConstants.Users.DefaultUsername).Value!,
+            Email.Create(TestConstants.Users.DefaultEmail).Value!,
+            new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword)
+        );
+        typeof(User).GetProperty("Id")!.SetValue(user, 1);
 
         _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
             .ReturnsAsync(user);
@@ -248,10 +248,10 @@ public class AuthenticationServiceTests : UnitTestBase
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Token.Should().Be("test-jwt-token");
-        result.RefreshToken.Should().Be("test-refresh-token");
-        result.User.Should().NotBeNull();
-        result.User!.Username.Should().Be(TestConstants.Users.DefaultUsername);
+        result.Value!.Token.Should().Be("test-jwt-token");
+        result.Value.RefreshToken.Should().Be("test-refresh-token");
+        result.Value.User.Should().NotBeNull();
+        result.Value.User!.Username.Should().Be(TestConstants.Users.DefaultUsername);
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Once);
         _mockRefreshTokenRepository.Verify(x => x.AddAsync(It.IsAny<RefreshToken>()), Times.Once);
@@ -276,9 +276,8 @@ public class AuthenticationServiceTests : UnitTestBase
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Invalid username/email or password");
-        result.Token.Should().BeNull();
-        result.User.Should().BeNull();
+        result.Error.Should().Be("Invalid username/email or password");
+        result.Value.Should().BeNull();
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
     }
@@ -292,12 +291,12 @@ public class AuthenticationServiceTests : UnitTestBase
             Password: "WrongPassword123!"
         );
 
-        var user = TestDataBuilder.User()
-            .WithId(1)
-            .WithUsername(TestConstants.Users.DefaultUsername)
-            .WithEmail(TestConstants.Users.DefaultEmail)
-            .WithPasswordHash(new PasswordHasher().HashPassword("CorrectPassword123!"))
-            .Build();
+        var user = User.Create(
+            Username.Create(TestConstants.Users.DefaultUsername).Value!,
+            Email.Create(TestConstants.Users.DefaultEmail).Value!,
+            new PasswordHasher().HashPassword("CorrectPassword123!")
+        );
+        typeof(User).GetProperty("Id")!.SetValue(user, 1);
 
         _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
             .ReturnsAsync(user);
@@ -307,9 +306,8 @@ public class AuthenticationServiceTests : UnitTestBase
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Invalid username/email or password");
-        result.Token.Should().BeNull();
-        result.User.Should().BeNull();
+        result.Error.Should().Be("Invalid username/email or password");
+        result.Value.Should().BeNull(); // Value should be null for failure results
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
     }
@@ -323,12 +321,12 @@ public class AuthenticationServiceTests : UnitTestBase
             Password: TestConstants.Users.DefaultPassword
         );
 
-        var user = TestDataBuilder.User()
-            .WithId(1)
-            .WithUsername(TestConstants.Users.DefaultUsername)
-            .WithEmail(TestConstants.Users.DefaultEmail)
-            .WithPasswordHash(new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword))
-            .Build();
+        var user = User.Create(
+            Username.Create(TestConstants.Users.DefaultUsername).Value!,
+            Email.Create(TestConstants.Users.DefaultEmail).Value!,
+            new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword)
+        );
+        typeof(User).GetProperty("Id")!.SetValue(user, 1);
 
         _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
             .ReturnsAsync(user);
@@ -342,9 +340,9 @@ public class AuthenticationServiceTests : UnitTestBase
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Token.Should().Be("test-jwt-token");
-        result.User.Should().NotBeNull();
-        result.User!.Email.Should().Be(TestConstants.Users.DefaultEmail);
+        result.Value!.Token.Should().Be("test-jwt-token");
+        result.Value.User.Should().NotBeNull();
+        result.Value.User!.Email.Should().Be(TestConstants.Users.DefaultEmail);
     }
 
     #endregion
@@ -396,13 +394,9 @@ public class AuthenticationServiceTests : UnitTestBase
         // Arrange
         var validRefreshToken = "valid-refresh-token";
         var user = CreateTestUser(id: 1, username: TestConstants.Users.DefaultUsername, email: TestConstants.Users.DefaultEmail);
-        var refreshTokenEntity = TestDataBuilder.RefreshToken()
-            .WithId(1)
-            .WithUserId(1)
-            .WithToken(validRefreshToken)
-            .WithExpiresAt(DateTime.UtcNow.AddDays(1))
-            .WithIsRevoked(false)
-            .Build();
+        var refreshTokenEntity = RefreshToken.Create(1, validRefreshToken, 1);
+        typeof(RefreshToken).GetProperty("Id")!.SetValue(refreshTokenEntity, 1);
+        typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(refreshTokenEntity, false);
 
         _mockRefreshTokenRepository.Setup(x => x.GetByTokenAsync(It.IsAny<string>()))
             .ReturnsAsync(refreshTokenEntity);
@@ -465,13 +459,9 @@ public class AuthenticationServiceTests : UnitTestBase
         // Arrange
         var revokedRefreshToken = "revoked-refresh-token";
         
-        var revokedTokenEntity = TestDataBuilder.RefreshToken()
-            .WithId(1)
-            .WithUserId(1)
-            .WithToken(revokedRefreshToken)
-            .WithExpiresAt(DateTime.UtcNow.AddDays(1))
-            .WithIsRevoked(true)
-            .Build();
+        var revokedTokenEntity = RefreshToken.Create(1, revokedRefreshToken, 1);
+        typeof(RefreshToken).GetProperty("Id")!.SetValue(revokedTokenEntity, 1);
+        typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(revokedTokenEntity, true);
 
         _mockRefreshTokenRepository.Setup(x => x.GetByTokenAsync(It.IsAny<string>()))
             .ReturnsAsync(revokedTokenEntity);
@@ -498,8 +488,8 @@ public class AuthenticationServiceTests : UnitTestBase
 
         var refreshTokens = new List<RefreshToken>
         {
-            TestDataBuilder.RefreshToken().WithId(1).WithUserId(1).WithIsRevoked(false).Build(),
-            TestDataBuilder.RefreshToken().WithId(2).WithUserId(1).WithIsRevoked(false).Build()
+            CreateRefreshToken(1, 1, false),
+            CreateRefreshToken(2, 1, false)
         };
 
         _mockJwtTokenService.Setup(x => x.ValidateToken(validToken))
@@ -629,11 +619,7 @@ public class AuthenticationServiceTests : UnitTestBase
         );
         
         var testUser = CreateTestUser();
-        var passwordResetToken = TestDataBuilder.PasswordResetToken()
-            .WithUserId(testUser.Id)
-            .WithToken(resetToken)
-            .WithExpiresAt(DateTime.UtcNow.AddHours(1))
-            .Build();
+        var passwordResetToken = PasswordResetToken.Create(testUser.Id, resetToken, 1);
 
         _mockPasswordResetTokenRepository
             .Setup(x => x.GetValidByTokenAsync(It.IsAny<string>()))
@@ -692,7 +678,7 @@ public class AuthenticationServiceTests : UnitTestBase
         var expiredToken = TestDataBuilder.PasswordResetToken()
             .WithUserId(1)
             .WithToken(resetToken)
-            .WithExpiresAt(DateTime.UtcNow.AddHours(-1)) // Expired
+            .WithExpiresAt(DateTime.UtcNow.AddHours(-1))
             .Build();
 
         // Mock returns empty list because the token is expired (filtered out by the query)
@@ -721,12 +707,8 @@ public class AuthenticationServiceTests : UnitTestBase
             NewPassword: "NewPassword123!"
         );
         
-        var usedToken = TestDataBuilder.PasswordResetToken()
-            .WithUserId(1)
-            .WithToken(resetToken)
-            .WithExpiresAt(DateTime.UtcNow.AddHours(1))
-            .WithIsUsed(true) // Already used
-            .Build();
+        var usedToken = PasswordResetToken.Create(1, resetToken, 1);
+        typeof(PasswordResetToken).GetProperty("IsUsed")!.SetValue(usedToken, true);
 
         // Mock returns empty list because the token is used (filtered out by the query)
         _mockPasswordResetTokenRepository
@@ -742,6 +724,18 @@ public class AuthenticationServiceTests : UnitTestBase
         result.Message.Should().Be("Invalid or expired reset token.");
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private static RefreshToken CreateRefreshToken(int id, int userId, bool isRevoked)
+    {
+        var token = RefreshToken.Create(userId, $"token-{id}", 1);
+        typeof(RefreshToken).GetProperty("Id")!.SetValue(token, id);
+        typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(token, isRevoked);
+        return token;
     }
 
     #endregion

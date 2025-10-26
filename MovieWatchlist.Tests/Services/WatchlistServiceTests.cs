@@ -176,61 +176,61 @@ public class WatchlistServiceTests : UnitTestBase
     {
         var movie1 = new Movie
         {
-            Id = 1,
             Title = GenreConstants.ActionTitle,
             VoteAverage = TestConstants.Ratings.HighRating,
             VoteCount = 5000,
             ReleaseDate = new DateTime(2020, 1, 1),
             Genres = new[] { GenreConstants.Action, GenreConstants.Adventure }
         };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie1, 1);
 
         var movie2 = new Movie
         {
-            Id = 2,
             Title = "Action Movie 2",
             VoteAverage = TestConstants.Ratings.DefaultTmdbRating,
             VoteCount = 3000,
             ReleaseDate = new DateTime(2021, 1, 1),
             Genres = new[] { GenreConstants.Action, GenreConstants.Thriller }
         };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie2, 2);
 
         var movie3 = new Movie
         {
-            Id = 3,
             Title = GenreConstants.DramaTitle,
             VoteAverage = TestConstants.Ratings.HighRating,
             VoteCount = 2000,
             ReleaseDate = new DateTime(2022, 1, 1),
             Genres = new[] { GenreConstants.Drama }
         };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie3, 3);
 
         var movie4 = new Movie
         {
-            Id = 4,
             Title = GenreConstants.ComedyTitle,
             VoteAverage = TestConstants.Ratings.LowRating,
             VoteCount = 1500,
             ReleaseDate = new DateTime(2019, 1, 1),
             Genres = new[] { GenreConstants.Comedy }
         };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie4, 4);
 
         // Create watchlist items using factory methods
-        var item1 = WatchlistItem.Create(1, 1, movie1);
+        var item1 = WatchlistItem.Create(1, movie1);
         item1.UpdateStatus(WatchlistStatus.Watched);
         item1.ToggleFavorite();
         item1.SetRating(Rating.Create(5).Value!);
         SetAddedDateViaReflection(item1, DateTime.UtcNow.AddDays(-10)); // Most recent
 
-        var item2 = WatchlistItem.Create(1, 2, movie2);
+        var item2 = WatchlistItem.Create(1, movie2);
         item2.UpdateStatus(WatchlistStatus.Watched);
         item2.SetRating(Rating.Create(4).Value!);
         SetAddedDateViaReflection(item2, new DateTime(2022, 6, 15, 0, 0, 0, DateTimeKind.Utc)); // Previous year
 
-        var item3 = WatchlistItem.Create(1, 3, movie3);
+        var item3 = WatchlistItem.Create(1, movie3);
         item3.ToggleFavorite();
         SetAddedDateViaReflection(item3, new DateTime(2021, 3, 10, 0, 0, 0, DateTimeKind.Utc)); // Two years ago
 
-        var item4 = WatchlistItem.Create(1, 4, movie4);
+        var item4 = WatchlistItem.Create(1, movie4);
         item4.UpdateStatus(WatchlistStatus.Watching);
         SetAddedDateViaReflection(item4, new DateTime(2020, 8, 20, 0, 0, 0, DateTimeKind.Utc)); // Three years ago
 
@@ -252,7 +252,6 @@ public class WatchlistServiceTests : UnitTestBase
         {
             new()
             {
-                Id = 5,
                 Title = "Recommended Action",
                 VoteAverage = TestConstants.Ratings.HighRating,
                 VoteCount = 8000,
@@ -261,7 +260,6 @@ public class WatchlistServiceTests : UnitTestBase
             },
             new()
             {
-                Id = 6,
                 Title = "Recommended Drama",
                 VoteAverage = TestConstants.Ratings.DefaultTmdbRating,
                 VoteCount = 5000,
@@ -329,7 +327,6 @@ public class WatchlistServiceTests : UnitTestBase
         Assert.True(result.IsSuccess);
         Assert.NotNull(result.Value);
         Assert.Equal(1, result.Value!.UserId);
-        Assert.Equal(1, result.Value.MovieId);
         Assert.Equal(WatchlistStatus.Planned, result.Value.Status);
         Assert.Equal("Test note", result.Value.Notes);
         Assert.True(result.Value.AddedDate != default);
@@ -436,8 +433,8 @@ public class WatchlistServiceTests : UnitTestBase
 
         // Mock watchlist to return existing item
         _mockWatchlistRepository
-            .Setup(x => x.IsMovieInUserWatchlistAsync(It.IsAny<int>(), It.IsAny<int>()))
-            .ReturnsAsync(true);
+            .Setup(x => x.GetByUserIdAndTmdbIdAsync(It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync(existingWatchlist.First());
 
         // Act
         var command = new AddToWatchlistCommand(UserId: 1, MovieId: 1);
@@ -452,7 +449,12 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task UpdateWatchlistItemAsync_WithValidItem_ReturnsUpdatedItem()
     {
         // Arrange
-        var existingItem = CreateTestWatchlistItem(id: 1, userId: 1, movieId: 1, status: WatchlistStatus.Planned);
+        var movie = CreateTestMovie(id: 1, title: "Test Movie");
+        var existingItem = WatchlistItem.Create(1, movie);
+        existingItem.UpdateStatus(WatchlistStatus.Planned);
+        
+        // Set Id using reflection for testing purposes
+        typeof(WatchlistItem).GetProperty("Id")!.SetValue(existingItem, 1);
 
         var command = new UpdateWatchlistItemCommand(
             UserId: 1,
@@ -770,8 +772,9 @@ public class WatchlistServiceTests : UnitTestBase
             "hashedpassword"
         );
         
-        var movie = new Movie { Id = 1, VoteAverage = TestConstants.Ratings.DefaultTmdbRating };
-        var item = WatchlistItem.Create(1, 1, movie);
+        var movie = new Movie { VoteAverage = TestConstants.Ratings.DefaultTmdbRating };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie, 1);
+        var item = WatchlistItem.Create(1, movie);
         item.UpdateStatus(WatchlistStatus.Watched);
         var watchlistWithNoRatings = new List<WatchlistItem> { item };
 
@@ -853,8 +856,9 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task GetFavoriteMoviesAsync_WithNoFavorites_ReturnsEmpty()
     {
         // Arrange
-        var movie = new Movie { Id = 1, VoteAverage = TestConstants.Ratings.DefaultTmdbRating };
-        var item = WatchlistItem.Create(1, 1, movie);
+        var movie = new Movie { VoteAverage = TestConstants.Ratings.DefaultTmdbRating };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie, 1);
+        var item = WatchlistItem.Create(1, movie);
         var watchlistWithNoFavorites = new List<WatchlistItem> { item };
 
         _mockWatchlistRepository

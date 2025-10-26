@@ -7,6 +7,7 @@ using MovieWatchlist.Infrastructure.Data;
 using MovieWatchlist.Api;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.Interfaces;
+using MovieWatchlist.Core.ValueObjects;
 using FluentAssertions;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -145,19 +146,19 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
     protected virtual async Task SeedBasicTestDataAsync()
     {
         // Create test users
-        var testUser = TestDataBuilder.User()
-            .WithId(1)
-            .WithUsername("testuser")
-            .WithEmail("test@example.com")
-            .WithPasswordHash("hashed_password")
-            .Build();
+        var testUser = User.Create(
+            Username.Create("testuser").Value!,
+            Email.Create("test@example.com").Value!,
+            "hashed_password"
+        );
+        typeof(User).GetProperty("Id")!.SetValue(testUser, 1);
 
-        var testUser2 = TestDataBuilder.User()
-            .WithId(2)
-            .WithUsername("testuser2")
-            .WithEmail("test2@example.com")
-            .WithPasswordHash("hashed_password")
-            .Build();
+        var testUser2 = User.Create(
+            Username.Create("testuser2").Value!,
+            Email.Create("test2@example.com").Value!,
+            "hashed_password"
+        );
+        typeof(User).GetProperty("Id")!.SetValue(testUser2, 2);
 
         Context.Users.AddRange(testUser, testUser2);
         await Context.SaveChangesAsync(); // Save users first to get their IDs
@@ -178,20 +179,13 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
         Context.Movies.AddRange(movie1, movie2);
         await Context.SaveChangesAsync(); // Save movies to get their IDs
 
-        // Create test watchlist items with proper movie references
-        var watchlistItem1 = TestDataBuilder.WatchlistItem()
-            .WithUserId(testUser.Id)
-            .WithMovieId(movie1.Id)
-            .WithStatus(WatchlistStatus.Planned)
-            .Build();
+        var watchlistItem1 = WatchlistItem.Create(testUser.Id, movie1);
+        watchlistItem1.UpdateStatus(WatchlistStatus.Planned);
 
-        var watchlistItem2 = TestDataBuilder.WatchlistItem()
-            .WithUserId(testUser.Id)
-            .WithMovieId(movie2.Id)
-            .WithStatus(WatchlistStatus.Watched)
-            .WithIsFavorite(true)
-            .WithUserRating(8)
-            .Build();
+        var watchlistItem2 = WatchlistItem.Create(testUser.Id, movie2);
+        watchlistItem2.UpdateStatus(WatchlistStatus.Watched);
+        watchlistItem2.ToggleFavorite();
+        watchlistItem2.SetRating(Rating.Create(8).Value!);
         
         Context.WatchlistItems.AddRange(watchlistItem1, watchlistItem2);
 

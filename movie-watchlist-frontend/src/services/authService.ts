@@ -7,7 +7,7 @@ import {
   ForgotPasswordData,
   ResetPasswordData,
   PasswordResetResponse,
-  User
+  UserInfo
 } from '../types/auth.types';
 import { AxiosError } from '../types/error.types';
 
@@ -25,6 +25,11 @@ class AuthService {
         // For this portfolio project, localStorage demonstrates understanding of token management.
         localStorage.setItem(STORAGE_KEYS.TOKEN, result.token);
         localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, result.refreshToken);
+        
+        // Store user info if provided
+        if (result.user) {
+          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(result.user));
+        }
       }
       
       return result;
@@ -32,7 +37,7 @@ class AuthService {
       const axiosError = error as AxiosError;
       return {
         isSuccess: false,
-        errorMessage: axiosError.response?.data?.message || 'Login failed'
+        errorMessage: String(axiosError.response?.data?.error || axiosError.response?.data?.message || 'Login failed')
       };
     }
   }
@@ -46,6 +51,11 @@ class AuthService {
         // Store tokens in localStorage
         localStorage.setItem(STORAGE_KEYS.TOKEN, result.token);
         localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, result.refreshToken);
+        
+        // Store user info if provided
+        if (result.user) {
+          localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(result.user));
+        }
       }
       
       return result;
@@ -53,8 +63,10 @@ class AuthService {
       const axiosError = error as AxiosError;
       // Try to extract more specific error message
       let errorMessage = 'Registration failed';
-      if (axiosError.response?.data?.message) {
-        errorMessage = axiosError.response.data.message;
+      if (axiosError.response?.data?.error) {
+        errorMessage = String(axiosError.response.data.error);
+      } else if (axiosError.response?.data?.message) {
+        errorMessage = String(axiosError.response.data.message);
       } else if (axiosError.response?.data?.errors) {
         // Handle validation errors
         const errors = axiosError.response.data.errors;
@@ -112,7 +124,7 @@ class AuthService {
     }
   }
 
-  getCurrentUser(): User | null {
+  getCurrentUser(): UserInfo | null {
     try {
       const userStr = localStorage.getItem(STORAGE_KEYS.USER);
       if (!userStr) return null;
@@ -128,18 +140,27 @@ class AuthService {
       const response = await api.post(API_ENDPOINTS.AUTH.REFRESH, { refreshToken });
       const result = response.data;
       
-      // Store new tokens
+      // Handle both cases: API returns just token or full AuthenticationResult
       if (result.token) {
         localStorage.setItem(STORAGE_KEYS.TOKEN, result.token);
-      }
-      if (result.refreshToken) {
-        localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, result.refreshToken);
-      }
-      if (result.user) {
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(result.user));
+        
+        // If API returns a new refresh token, use it; otherwise keep the existing one
+        const newRefreshToken = result.refreshToken || refreshToken;
+        if (result.refreshToken) {
+          localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, result.refreshToken);
+        }
+        
+        return {
+          isSuccess: true,
+          token: result.token,
+          refreshToken: newRefreshToken
+        };
       }
       
-      return result;
+      return {
+        isSuccess: false,
+        errorMessage: 'No token received from refresh endpoint'
+      };
     } catch (error) {
       const axiosError = error as AxiosError;
       console.error('Refresh token error:', axiosError);
@@ -209,4 +230,6 @@ class AuthService {
   }
 }
 
-export default new AuthService();
+const authService = new AuthService();
+
+export default authService;

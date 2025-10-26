@@ -27,10 +27,10 @@ public class LogActivityHandlerTests
         // Arrange
         var movie = new Movie
         {
-            Id = 123,
             Title = "Inception",
             TmdbId = 27205
         };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie, 123);
         
         m_mockMovieRepository
             .Setup(x => x.GetByIdAsync(123))
@@ -86,10 +86,10 @@ public class LogActivityHandlerTests
         // Arrange
         var movie = new Movie
         {
-            Id = 456,
             Title = "The Dark Knight",
             TmdbId = 155
         };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie, 456);
         
         m_mockMovieRepository
             .Setup(x => x.GetByIdAsync(456))
@@ -119,7 +119,8 @@ public class LogActivityHandlerTests
     public async Task HandleAsync_MovieRatedEvent_WithNullPreviousRating_LogsNone()
     {
         // Arrange
-        var movie = new Movie { Id = 789, Title = "Test Movie" };
+        var movie = new Movie { Title = "Test Movie" };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie, 789);
         m_mockMovieRepository.Setup(x => x.GetByIdAsync(789)).ReturnsAsync(movie);
         
         var domainEvent = new MovieRatedEvent(1, 789, 7, null);
@@ -142,7 +143,8 @@ public class LogActivityHandlerTests
     public async Task HandleAsync_MovieFavoritedEvent_True_LogsFavorited()
     {
         // Arrange
-        var movie = new Movie { Id = 111, Title = "Pulp Fiction" };
+        var movie = new Movie { Title = "Pulp Fiction" };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie, 111);
         m_mockMovieRepository.Setup(x => x.GetByIdAsync(111)).ReturnsAsync(movie);
         
         var domainEvent = new MovieFavoritedEvent(1, 111, true);
@@ -165,7 +167,8 @@ public class LogActivityHandlerTests
     public async Task HandleAsync_MovieFavoritedEvent_False_LogsUnfavorited()
     {
         // Arrange
-        var movie = new Movie { Id = 222, Title = "Test Movie" };
+        var movie = new Movie { Title = "Test Movie" };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie, 222);
         m_mockMovieRepository.Setup(x => x.GetByIdAsync(222)).ReturnsAsync(movie);
         
         var domainEvent = new MovieFavoritedEvent(1, 222, false);
@@ -188,7 +191,8 @@ public class LogActivityHandlerTests
     public async Task HandleAsync_MultipleEvents_LogsEachEvent()
     {
         // Arrange
-        var movie = new Movie { Id = 333, Title = "Test Movie" };
+        var movie = new Movie { Title = "Test Movie" };
+        typeof(Movie).GetProperty("Id")!.SetValue(movie, 333);
         m_mockMovieRepository.Setup(x => x.GetByIdAsync(333)).ReturnsAsync(movie);
         
         var watchedEvent = new MovieWatchedEvent(1, 333, DateTime.UtcNow);

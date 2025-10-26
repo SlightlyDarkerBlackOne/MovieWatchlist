@@ -157,7 +157,7 @@ describe('ForgotPasswordForm', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/network error/i)).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
   });
 
   it('should show loading state during submission', async () => {

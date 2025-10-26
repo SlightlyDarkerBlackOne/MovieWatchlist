@@ -9,7 +9,7 @@ public interface IAuthenticationService
     Task<Result<User>> RegisterUserAsync(RegisterCommand command);
     AuthenticationResult GenerateAuthenticationResult(User user);
     Task<Result<RefreshTokenResult>> CreateRefreshTokenAsync(int userId);
-    Task<AuthenticationResult> LoginAsync(LoginCommand command);
+    Task<Result<AuthenticationResult>> LoginAsync(LoginCommand command);
     Task<bool> ValidateTokenAsync(string token);
     Task<string> RefreshTokenAsync(string refreshToken);
     Task<bool> LogoutAsync(string token);

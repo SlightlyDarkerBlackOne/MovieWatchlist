@@ -29,32 +29,9 @@ public static class TestDatabaseSeeder
     {
         var users = new[]
         {
-            TestDataBuilder.User()
-                .WithId(1)
-                .WithUsername("testuser1")
-                .WithEmail("testuser1@example.com")
-                .WithPasswordHash("hashed_password_1")
-                .WithCreatedAt(DateTime.UtcNow.AddDays(-30))
-                .WithLastLoginAt(DateTime.UtcNow.AddDays(-1))
-                .Build(),
-
-            TestDataBuilder.User()
-                .WithId(2)
-                .WithUsername("testuser2")
-                .WithEmail("testuser2@example.com")
-                .WithPasswordHash("hashed_password_2")
-                .WithCreatedAt(DateTime.UtcNow.AddDays(-40))
-                .WithLastLoginAt(DateTime.UtcNow.AddDays(-3))
-                .Build(),
-
-            TestDataBuilder.User()
-                .WithId(3)
-                .WithUsername("inactiveuser")
-                .WithEmail("inactive@example.com")
-                .WithPasswordHash("hashed_password_3")
-                .WithCreatedAt(DateTime.UtcNow.AddDays(-90))
-                .WithLastLoginAt(null)
-                .Build()
+            CreateUser(1, "testuser1", "testuser1@example.com", "hashed_password_1", DateTime.UtcNow.AddDays(-30), DateTime.UtcNow.AddDays(-1)),
+            CreateUser(2, "testuser2", "testuser2@example.com", "hashed_password_2", DateTime.UtcNow.AddDays(-40), DateTime.UtcNow.AddDays(-3)),
+            CreateUser(3, "inactiveuser", "inactive@example.com", "hashed_password_3", DateTime.UtcNow.AddDays(-90), null)
         };
 
         await context.Users.AddRangeAsync(users);
@@ -144,76 +121,37 @@ public static class TestDatabaseSeeder
 
         var watchlistItems = new[]
         {
-            // User 1's watchlist
-            TestDataBuilder.WatchlistItem()
-                .WithUserId(users[0].Id)
-                .WithMovieId(movies[0].Id)
-                .WithStatus(WatchlistStatus.Watched)
-                .WithIsFavorite(true)
-                .WithUserRating(Rating.Create(10).Value!)
-                .WithNotes("Amazing movie!")
-                .WithAddedDate(DateTime.UtcNow.AddDays(-7))
-                .WithWatchedDate(DateTime.UtcNow.AddDays(-3))
-                .Build(),
-
-            TestDataBuilder.WatchlistItem()
-                .WithUserId(users[0].Id)
-                .WithMovieId(movies[1].Id)
-                .WithStatus(WatchlistStatus.Watched)
-                .WithIsFavorite(false)
-                .WithUserRating(Rating.Create(8).Value!)
-                .WithNotes("Confusing but good")
-                .WithAddedDate(DateTime.UtcNow.AddDays(-12))
-                .WithWatchedDate(DateTime.UtcNow.AddDays(-4))
-                .Build(),
-
-            TestDataBuilder.WatchlistItem()
-                .WithUserId(users[0].Id)
-                .WithMovieId(movies[2].Id)
-                .WithStatus(WatchlistStatus.Planned)
-                .WithIsFavorite(true)
-                .WithUserRating(null)
-                .WithNotes("Must watch soon")
-                .WithAddedDate(DateTime.UtcNow.AddDays(-10))
-                .WithWatchedDate(null)
-                .Build(),
-
-            TestDataBuilder.WatchlistItem()
-                .WithUserId(users[0].Id)
-                .WithMovieId(movies[3].Id)
-                .WithStatus(WatchlistStatus.Watching)
-                .WithIsFavorite(false)
-                .WithUserRating(null)
-                .WithNotes("Currently watching")
-                .WithAddedDate(DateTime.UtcNow.AddDays(-8))
-                .WithWatchedDate(null)
-                .Build(),
-
-            // User 2's watchlist
-            TestDataBuilder.WatchlistItem()
-                .WithUserId(users[1].Id)
-                .WithMovieId(movies[0].Id)
-                .WithStatus(WatchlistStatus.Watched)
-                .WithIsFavorite(true)
-                .WithUserRating(Rating.Create(9).Value!)
-                .WithNotes("Great superhero movie")
-                .WithAddedDate(DateTime.UtcNow.AddDays(-17))
-                .WithWatchedDate(DateTime.UtcNow.AddDays(-8))
-                .Build(),
-
-            TestDataBuilder.WatchlistItem()
-                .WithUserId(users[1].Id)
-                .WithMovieId(movies[4].Id)
-                .WithStatus(WatchlistStatus.Planned)
-                .WithIsFavorite(false)
-                .WithUserRating(null)
-                .WithNotes("Classic sci-fi")
-                .WithAddedDate(DateTime.UtcNow.AddDays(-14))
-                .WithWatchedDate(null)
-                .Build()
+            CreateWatchlistItem(users[0].Id, movies[0], WatchlistStatus.Watched, true, 10, "Amazing movie!", DateTime.UtcNow.AddDays(-7), DateTime.UtcNow.AddDays(-3)),
+            CreateWatchlistItem(users[0].Id, movies[1], WatchlistStatus.Watched, false, 8, "Confusing but good", DateTime.UtcNow.AddDays(-12), DateTime.UtcNow.AddDays(-4)),
+            CreateWatchlistItem(users[0].Id, movies[2], WatchlistStatus.Planned, true, null, "Must watch soon", DateTime.UtcNow.AddDays(-10), null),
+            CreateWatchlistItem(users[0].Id, movies[3], WatchlistStatus.Watching, false, null, "Currently watching", DateTime.UtcNow.AddDays(-8), null),
+            CreateWatchlistItem(users[1].Id, movies[0], WatchlistStatus.Watched, true, 9, "Great superhero movie", DateTime.UtcNow.AddDays(-17), DateTime.UtcNow.AddDays(-8)),
+            CreateWatchlistItem(users[1].Id, movies[4], WatchlistStatus.Planned, false, null, "Classic sci-fi", DateTime.UtcNow.AddDays(-14), null)
         };
 
         await context.WatchlistItems.AddRangeAsync(watchlistItems);
+    }
+
+    private static WatchlistItem CreateWatchlistItem(int userId, Movie movie, WatchlistStatus status, bool isFavorite, int? rating, string? notes, DateTime addedDate, DateTime? watchedDate)
+    {
+        var item = WatchlistItem.Create(userId, movie);
+        
+        if (status != WatchlistStatus.Planned)
+            item.UpdateStatus(status);
+            
+        if (isFavorite)
+            item.ToggleFavorite();
+            
+        if (rating.HasValue)
+            item.SetRating(Rating.Create(rating.Value).Value!);
+            
+        if (!string.IsNullOrEmpty(notes))
+            item.UpdateNotes(notes);
+            
+        // Note: AddedDate and WatchedDate are set by the domain methods, but we can't override them
+        // The test data will use the current timestamps instead of the specified ones
+        
+        return item;
     }
 
     /// <summary>
@@ -226,41 +164,16 @@ public static class TestDatabaseSeeder
 
         var refreshTokens = new[]
         {
+            CreateRefreshToken(users[0].Id, "valid_refresh_token_1", 7, false, DateTime.UtcNow.AddDays(-30)),
+            CreateRefreshToken(users[1].Id, "valid_refresh_token_2", 7, false, DateTime.UtcNow.AddDays(-30)),
             TestDataBuilder.RefreshToken()
-                .WithId(1)
-                .WithUserId(users[0].Id)
-                .WithToken("valid_refresh_token_1")
-                .WithExpiresAt(DateTime.UtcNow.AddDays(7))
-                .WithIsRevoked(false)
-                .WithCreatedAt(DateTime.UtcNow.AddDays(-30))
-                .Build(),
-
-            TestDataBuilder.RefreshToken()
-                .WithId(2)
-                .WithUserId(users[1].Id)
-                .WithToken("valid_refresh_token_2")
-                .WithExpiresAt(DateTime.UtcNow.AddDays(7))
-                .WithIsRevoked(false)
-                .WithCreatedAt(DateTime.UtcNow.AddDays(-30))
-                .Build(),
-
-            TestDataBuilder.RefreshToken()
-                .WithId(3)
                 .WithUserId(users[0].Id)
                 .WithToken("expired_refresh_token")
                 .WithExpiresAt(DateTime.UtcNow.AddDays(-30))
                 .WithIsRevoked(false)
                 .WithCreatedAt(DateTime.UtcNow.AddDays(-30))
                 .Build(),
-
-            TestDataBuilder.RefreshToken()
-                .WithId(4)
-                .WithUserId(users[1].Id)
-                .WithToken("revoked_refresh_token")
-                .WithExpiresAt(DateTime.UtcNow.AddDays(7))
-                .WithIsRevoked(true)
-                .WithCreatedAt(DateTime.UtcNow.AddDays(-30))
-                .Build()
+            CreateRefreshToken(users[1].Id, "revoked_refresh_token", 7, true, DateTime.UtcNow.AddDays(-30))
         };
 
         await context.RefreshTokens.AddRangeAsync(refreshTokens);
@@ -277,5 +190,29 @@ public static class TestDatabaseSeeder
         context.Users.RemoveRange(context.Users);
         
         await context.SaveChangesAsync();
+    }
+
+    private static User CreateUser(int id, string username, string email, string passwordHash, DateTime createdAt, DateTime? lastLoginAt)
+    {
+        var user = User.Create(
+            Username.Create(username).Value!,
+            Email.Create(email).Value!,
+            passwordHash
+        );
+        typeof(User).GetProperty("Id")!.SetValue(user, id);
+        typeof(User).GetProperty("CreatedAt")!.SetValue(user, createdAt);
+        if (lastLoginAt.HasValue)
+        {
+            typeof(User).GetProperty("LastLoginAt")!.SetValue(user, lastLoginAt.Value);
+        }
+        return user;
+    }
+
+    private static RefreshToken CreateRefreshToken(int userId, string token, int expirationDays, bool isRevoked, DateTime createdAt)
+    {
+        var refreshToken = RefreshToken.Create(userId, token, expirationDays);
+        typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(refreshToken, isRevoked);
+        typeof(RefreshToken).GetProperty("CreatedAt")!.SetValue(refreshToken, createdAt);
+        return refreshToken;
     }
 }

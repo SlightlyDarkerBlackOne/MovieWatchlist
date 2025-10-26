@@ -6,6 +6,13 @@ export interface User {
   lastLoginAt?: string;
 }
 
+export interface UserInfo {
+  id: number;
+  username: string;
+  email: string;
+  createdAt: string;
+}
+
 export interface LoginCredentials {
   usernameOrEmail: string;
   password: string;
@@ -21,8 +28,9 @@ export interface AuthenticationResult {
   isSuccess: boolean;
   token?: string;
   refreshToken?: string;
-  user?: User;
+  expiresAt?: string;
   errorMessage?: string;
+  user?: UserInfo;
 }
 
 export interface ForgotPasswordData {

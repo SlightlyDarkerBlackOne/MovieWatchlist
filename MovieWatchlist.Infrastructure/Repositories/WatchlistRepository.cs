@@ -74,6 +74,19 @@ public class WatchlistRepository : EfRepository<WatchlistItem>, IWatchlistReposi
     }
 
     /// <summary>
+    /// Gets a watchlist item by user ID and TMDB movie ID.
+    /// </summary>
+    /// <param name="userId">The ID of the user</param>
+    /// <param name="tmdbId">The TMDB ID of the movie</param>
+    /// <returns>The watchlist item if found, null otherwise</returns>
+    public async Task<WatchlistItem?> GetByUserIdAndTmdbIdAsync(int userId, int tmdbId)
+    {
+        return await _dbSet
+            .Include(w => w.Movie)
+            .FirstOrDefaultAsync(w => w.UserId == userId && w.Movie.TmdbId == tmdbId);
+    }
+
+    /// <summary>
     /// Gets the count of watchlist items for a user by status.
     /// </summary>
     /// <param name="userId">The ID of the user</param>
