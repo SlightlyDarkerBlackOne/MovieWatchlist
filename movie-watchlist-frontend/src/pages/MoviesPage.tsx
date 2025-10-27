@@ -1,49 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
-  Box,
-  Typography,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  TextField,
-  IconButton,
-  Tooltip,
-  Snackbar
+  Snackbar,
+  Alert
 } from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import { useSearchParams } from 'react-router-dom';
-import { MovieList, FeaturedMoviesCarousel } from '../components/movies';
+import { FeaturedMoviesCarousel } from '../components/movies';
+import { SearchResults, PopularMoviesSection } from '../components/pages';
+import { AddToWatchlistDialog } from '../components/dialogs';
 import LoginRequiredDialog from '../components/common/LoginRequiredDialog';
-import movieService from '../services/movieService';
+import * as movieService from '../services/movieService';
 import { Movie, MovieSearchResult } from '../types/movie.types';
 import { WatchlistStatus } from '../types/watchlist.types';
 import { useWatchlist } from '../contexts/WatchlistContext';
+import { useAddToWatchlistOperation } from '../hooks/useWatchlistOperations';
+import { useAuth } from '../contexts/AuthContext';
 
 const MoviesPage: React.FC = () => {
-  const { 
-    addToWatchlist,
-    successMessage,
-    error: watchlistError,
-    addDialogOpen,
-    loginRequiredDialogOpen,
-    selectedMovie,
-    status,
-    notes,
-    setStatus,
-    setNotes,
-    handleCloseDialog,
-    handleCloseLoginDialog,
-    handleConfirmAdd
-  } = useWatchlist();
-  
+  const { user } = useAuth();
+  const { addToWatchlist, isLoading: watchlistLoading, error: watchlistError } = useAddToWatchlistOperation();
   const [searchParams] = useSearchParams();
   const searchResultsRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,6 +27,14 @@ const MoviesPage: React.FC = () => {
   const [featuredMovies, setFeaturedMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Dialog state
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [loginRequiredDialogOpen, setLoginRequiredDialogOpen] = useState(false);
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
+  const [status, setStatus] = useState<WatchlistStatus>(WatchlistStatus.Planned);
+  const [notes, setNotes] = useState('');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Load popular movies and featured movies on mount
   useEffect(() => {
@@ -90,11 +73,6 @@ const MoviesPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Clear cache if force refresh is requested
-      if (forceRefresh) {
-        movieService.clearPopularMoviesCache();
-      }
-      
       const result = await movieService.getPopularMovies(page);
       setPopularMovies(result);
     } catch (err) {
@@ -139,7 +117,51 @@ const MoviesPage: React.FC = () => {
     }
   };
 
-  // All watchlist handling moved to WatchlistContext
+  // Watchlist handlers
+  const handleAddToWatchlist = (movie: Movie) => {
+    if (!user) {
+      setLoginRequiredDialogOpen(true);
+      return;
+    }
+    setSelectedMovie(movie);
+    setAddDialogOpen(true);
+  };
+
+  const handleConfirmAdd = async () => {
+    if (!selectedMovie || !user) return;
+    
+    try {
+      await addToWatchlist(user.id, {
+        movieId: selectedMovie.id,
+        status,
+        notes
+      });
+      
+      setSuccessMessage(`Added "${selectedMovie.title}" to your watchlist!`);
+      handleCloseDialog();
+    } catch (err) {
+      console.error('Failed to add to watchlist:', err);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setAddDialogOpen(false);
+    setSelectedMovie(null);
+    setStatus(WatchlistStatus.Planned);
+    setNotes('');
+  };
+
+  const handleCloseLoginDialog = () => {
+    setLoginRequiredDialogOpen(false);
+  };
+
+  // Clear success message after timeout
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   return (
     <>
@@ -174,7 +196,7 @@ const MoviesPage: React.FC = () => {
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert severity="error" variant="filled" sx={{ width: '100%' }}>
-          {watchlistError}
+          {watchlistError ? String(watchlistError) : 'An error occurred'}
         </Alert>
       </Snackbar>
 
@@ -182,7 +204,7 @@ const MoviesPage: React.FC = () => {
       {featuredMovies.length > 0 && (
         <FeaturedMoviesCarousel
           movies={featuredMovies}
-          onAddToWatchlist={addToWatchlist}
+          onAddToWatchlist={handleAddToWatchlist}
           autoRotate={true}
           rotateInterval={5000}
         />
@@ -192,99 +214,35 @@ const MoviesPage: React.FC = () => {
       <Container maxWidth="xl" sx={{ py: 4 }}>
         {/* Search Results Section */}
         {searchResults && (
-          <Box ref={searchResultsRef} sx={{ mb: 4, scrollMarginTop: '100px' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-              <Typography variant="h4" component="h2" sx={{ fontWeight: 600 }}>
-                Search Results for "{searchQuery}"
-              </Typography>
-            </Box>
-            <MovieList
-              movies={searchResults.movies}
-              loading={false}
-            />
-            {searchResults.movies.length === 0 && !loading && (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography variant="h6" color="text.secondary">
-                  No movies found matching "{searchQuery}"
-                </Typography>
-              </Box>
-            )}
-          </Box>
+          <SearchResults
+            query={searchQuery}
+            movies={searchResults.movies}
+            loading={loading}
+            containerRef={searchResultsRef}
+          />
         )}
 
         {/* Popular Movies Section */}
         {!searchResults && (
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-              <Typography variant="h4" component="h2" sx={{ fontWeight: 600 }}>
-                Popular Movies
-              </Typography>
-              <Tooltip title="Refresh popular movies (clear cache)">
-                <span>
-                  <IconButton 
-                    onClick={handleRefreshPopularMovies} 
-                    disabled={loading}
-                    color="primary"
-                    aria-label="Refresh popular movies (clear cache)"
-                  >
-                    <RefreshIcon />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            </Box>
-            <MovieList
-              movies={popularMovies?.movies || []}
-              loading={false}
-            />
-          </Box>
+          <PopularMoviesSection
+            movies={popularMovies?.movies || []}
+            loading={loading}
+            onRefresh={handleRefreshPopularMovies}
+          />
         )}
       </Container>
 
       {/* Add to Watchlist Dialog */}
-      <Dialog open={addDialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          Add to Watchlist
-          {selectedMovie && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              {selectedMovie.title}
-            </Typography>
-          )}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel id="status-label">Status</InputLabel>
-              <Select
-                labelId="status-label"
-                value={status}
-                label="Status"
-                onChange={(e) => setStatus(e.target.value as WatchlistStatus)}
-              >
-                <MenuItem value={WatchlistStatus.Planned}>Planned</MenuItem>
-                <MenuItem value={WatchlistStatus.Watching}>Watching</MenuItem>
-                <MenuItem value={WatchlistStatus.Watched}>Watched</MenuItem>
-                <MenuItem value={WatchlistStatus.Dropped}>Dropped</MenuItem>
-              </Select>
-            </FormControl>
-
-            <TextField
-              label="Notes (optional)"
-              multiline
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add your thoughts about this movie..."
-              fullWidth
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleConfirmAdd} variant="contained" color="primary">
-            Add to Watchlist
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <AddToWatchlistDialog
+        open={addDialogOpen}
+        onClose={handleCloseDialog}
+        onConfirm={handleConfirmAdd}
+        status={status}
+        setStatus={setStatus}
+        notes={notes}
+        setNotes={setNotes}
+        movieTitle={selectedMovie?.title}
+      />
 
       {/* Login Required Dialog */}
       <LoginRequiredDialog 

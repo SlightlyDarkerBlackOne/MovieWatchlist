@@ -3,7 +3,7 @@ import { STORAGE_KEYS, APP_CONFIG } from '../utils/constants';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'https://localhost:7055/api',
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5250/api',
   timeout: APP_CONFIG.API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json',

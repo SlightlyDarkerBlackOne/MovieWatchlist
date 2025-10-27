@@ -6,18 +6,16 @@ import {
   CardMedia,
   Typography,
   Box,
-  Chip,
-  IconButton,
-  Tooltip
+  Chip
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import StarIcon from '@mui/icons-material/Star';
 import { Movie } from '../../types/movie.types';
-import movieService from '../../services/movieService';
+import { getPosterUrl } from '../../services/movieService';
 import { ROUTES } from '../../constants/routeConstants';
 import { colors } from '../../theme';
 import { formatVoteCount, getReleaseYear } from '../../utils/formatters';
 import { useWatchlist } from '../../contexts/WatchlistContext';
+import { getMovieCardAriaLabel, handleEnterKey } from '../../utils/accessibility';
 
 interface MovieCardProps {
   movie: Movie;
@@ -25,23 +23,30 @@ interface MovieCardProps {
 
 const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
   const navigate = useNavigate();
-  const { addToWatchlist, isInWatchlist: checkIsInWatchlist } = useWatchlist();
+  const { isInWatchlist: checkIsInWatchlist } = useWatchlist();
   const isInWatchlist = checkIsInWatchlist(movie.tmdbId);
-  const posterUrl = movieService.getPosterUrl(movie.posterPath, 'medium');
+  const posterUrl = getPosterUrl(movie.posterPath, 'medium');
   const releaseYear = getReleaseYear(movie.releaseDate);
 
   const handleCardClick = () => {
     navigate(ROUTES.MOVIE_DETAILS(movie.tmdbId));
   };
 
-  const handleAddClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card navigation
-    addToWatchlist(movie);
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    handleEnterKey(event, handleCardClick);
   };
 
   return (
     <Card 
       onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={getMovieCardAriaLabel({ 
+        title: movie.title, 
+        voteAverage: movie.voteAverage, 
+        releaseDate: movie.releaseDate 
+      })}
       sx={{ 
         height: '100%', 
         display: 'flex', 
@@ -52,6 +57,11 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
         '&:hover': {
           transform: 'translateY(-4px)',
           boxShadow: 6
+        },
+        '&:focus': {
+          outline: '2px solid',
+          outlineColor: 'primary.main',
+          outlineOffset: '2px'
         }
       }}
     >
@@ -64,25 +74,6 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
         sx={{ objectFit: 'cover' }}
       />
 
-      {/* Add to Watchlist Button */}
-      {!isInWatchlist && (
-        <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
-          <Tooltip title="Add to Watchlist">
-            <IconButton
-              onClick={handleAddClick}
-              sx={{
-                backgroundColor: 'rgba(0, 0, 0, 0.6)',
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                }
-              }}
-            >
-              <AddIcon />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      )}
 
       {/* Already in Watchlist Indicator */}
       {isInWatchlist && (

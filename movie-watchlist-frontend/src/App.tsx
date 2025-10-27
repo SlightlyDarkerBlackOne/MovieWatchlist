@@ -5,6 +5,7 @@ import AppRoutes from './routes/AppRoutes';
 import { WatchlistProvider } from './contexts/WatchlistContext';
 import { useAuth } from './contexts/AuthContext';
 import { appTheme } from './theme';
+import SkipLink from './components/common/SkipLink';
 
 /**
  * App Content Component
@@ -31,8 +32,13 @@ function AppContent() {
   // Show loading spinner while restoring session
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <CircularProgress />
+      <Box 
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}
+        role="status"
+        aria-live="polite"
+        aria-label="Loading application"
+      >
+        <CircularProgress aria-hidden="true" />
       </Box>
     );
   }
@@ -58,6 +64,7 @@ function App() {
     <ThemeProvider theme={appTheme}>
       <CssBaseline />
       <BrowserRouter>
+        <SkipLink />
         <AppContent />
       </BrowserRouter>
     </ThemeProvider>
