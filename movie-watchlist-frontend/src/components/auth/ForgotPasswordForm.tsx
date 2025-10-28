@@ -9,7 +9,7 @@ import {
   CircularProgress,
   Link
 } from '@mui/material';
-import { Controller } from 'react-hook-form';
+import { Controller, ControllerRenderProps } from 'react-hook-form';
 import { useAuth } from '../../contexts/AuthContext';
 import { useForms } from '../../hooks/useForms';
 import { forgotPasswordSchema, ForgotPasswordSchema } from '../../validation/schemas';

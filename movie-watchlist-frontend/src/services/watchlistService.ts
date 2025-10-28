@@ -86,8 +86,19 @@ export async function updateWatchlistItem(
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError;
+    
+    let errorMessage = 'Failed to update watchlist item';
+    if (axiosError.response?.data?.errors) {
+      const errors = Array.isArray(axiosError.response.data.errors) 
+        ? axiosError.response.data.errors 
+        : Object.values(axiosError.response.data.errors).flat();
+      errorMessage = errors.join(', ');
+    } else if (axiosError.response?.data?.message) {
+      errorMessage = axiosError.response.data.message;
+    }
+    
     console.error('Update watchlist error:', error);
-    throw new Error(axiosError.response?.data?.message || 'Failed to update watchlist item');
+    throw new Error(errorMessage);
   }
 }
 

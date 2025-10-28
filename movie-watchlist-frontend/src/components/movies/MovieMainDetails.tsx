@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { MovieDetails, MovieVideo, MovieCredits, CrewMember } from '../../types/movie.types';
 import { colors } from '../../theme/colors';
 import { formatVoteCount, formatRuntime } from '../../utils/formatters';
-import movieService from '../../services/movieService';
+import * as movieService from '../../services/movieService';
 
 interface MovieMainDetailsProps {
   movieDetails: MovieDetails;

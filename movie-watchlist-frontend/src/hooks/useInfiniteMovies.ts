@@ -4,6 +4,7 @@ import { Movie } from '../types/movie.types';
 
 interface UseInfiniteMoviesOptions {
   initialLimit?: number;
+  excludeTmdbIds?: number[];
 }
 
 interface UseInfiniteMoviesReturn {
@@ -16,12 +17,14 @@ interface UseInfiniteMoviesReturn {
 }
 
 export function useInfiniteMovies(options: UseInfiniteMoviesOptions = {}): UseInfiniteMoviesReturn {
-  const { initialLimit = 5 } = options;
+  const { initialLimit = 5, excludeTmdbIds = [] } = options;
   const [limit, setLimit] = useState(initialLimit);
   
   const { data, isLoading, error } = useGetPopularMoviesInfiniteQuery({ limit });
 
-  const allMovies = (data || []).flatMap(page => page.movies);
+  const allMovies = (data || [])
+    .flatMap(page => page.movies)
+    .filter(movie => !excludeTmdbIds.includes(movie.tmdbId));
   
   const hasMore = isLoading ? false : (data?.length || 0) > 0;
 

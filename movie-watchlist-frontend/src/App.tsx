@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, CircularProgress, Box } from '@mui/material';
 import AppRoutes from './routes/AppRoutes';
 import { WatchlistProvider } from './contexts/WatchlistContext';
 import { useAuth } from './contexts/AuthContext';
 import { appTheme } from './theme';
 import SkipLink from './components/common/SkipLink';
+import { setNavigateHandler } from './services/api';
 
 /**
  * App Content Component
@@ -13,7 +14,13 @@ import SkipLink from './components/common/SkipLink';
  */
 function AppContent() {
   const { isLoading } = useAuth();
+  const navigate = useNavigate();
   const [resetToken, setResetToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Set up navigation handler for axios interceptor
+    setNavigateHandler(navigate);
+  }, [navigate]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

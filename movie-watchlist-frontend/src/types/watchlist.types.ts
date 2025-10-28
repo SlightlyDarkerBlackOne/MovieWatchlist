@@ -36,10 +36,13 @@ export interface WatchlistStatistics {
   totalMovies: number;
   watchedMovies: number;
   plannedMovies: number;
-  averageRating: number;
+  favoriteMovies: number;
+  averageUserRating: number;
+  averageTmdbRating: number;
   mostWatchedGenre: string;
+  moviesThisYear: number;
   genreBreakdown: { [genre: string]: number };
-  totalWatchTime: number;
+  yearlyBreakdown: { [year: number]: number };
 }
 
 export interface AddToWatchlistRequest {

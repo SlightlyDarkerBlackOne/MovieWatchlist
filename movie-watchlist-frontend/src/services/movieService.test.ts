@@ -2,7 +2,7 @@
  * Tests for movie service
  */
 
-import movieService from './movieService';
+import * as movieService from './movieService';
 import api from './api';
 import cacheService from '../utils/cacheService';
 import { mockMovie, mockMovieDetails, mockMovieVideo, mockMovieCredits, mockMovies } from '../__tests__/fixtures/movieFixtures';
@@ -243,15 +243,6 @@ describe('MovieService', () => {
     });
   });
 
-  describe('clearPopularMoviesCache', () => {
-    it('should clear cache for all popular movie pages', () => {
-      movieService.clearPopularMoviesCache();
-
-      // Should call clear for multiple pages
-      expect(mockedCache.clear).toHaveBeenCalled();
-      expect(mockedCache.clear).toHaveBeenCalledTimes(10); // Clears pages 1-10
-    });
-  });
 });
 
 

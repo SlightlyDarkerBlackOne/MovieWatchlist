@@ -11,7 +11,7 @@ export function useForms<TFieldValues extends FieldValues = FieldValues>({
   ...rest
 }: UseFormHookProps<TFieldValues>) {
   return useRHF<TFieldValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema as any) as any,
     ...rest,
   });
 }

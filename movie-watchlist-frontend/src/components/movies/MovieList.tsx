@@ -15,6 +15,7 @@ interface MovieListProps {
   currentPage?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
+  onAddToWatchlist?: (movie: Movie) => void;
 }
 
 const MovieList: React.FC<MovieListProps> = ({
@@ -22,7 +23,8 @@ const MovieList: React.FC<MovieListProps> = ({
   loading = false,
   currentPage = 1,
   totalPages = 1,
-  onPageChange
+  onPageChange,
+  onAddToWatchlist
 }) => {
   if (loading) {
     return (
@@ -49,9 +51,9 @@ const MovieList: React.FC<MovieListProps> = ({
     <Box>
       {/* Movie Grid using Grid2 */}
       <Grid2 container spacing={3}>
-        {movies.map((movie) => (
-          <Grid2 key={movie.tmdbId} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-            <MovieCard movie={movie} />
+        {movies.map((movie, index) => (
+          <Grid2 key={`${movie.tmdbId}-${index}`} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+            <MovieCard movie={movie} onAddToWatchlist={onAddToWatchlist} />
           </Grid2>
         ))}
       </Grid2>

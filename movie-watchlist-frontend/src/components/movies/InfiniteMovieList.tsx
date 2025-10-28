@@ -10,6 +10,7 @@ interface InfiniteMovieListProps {
   onLoadMore?: () => void;
   loadingMessage?: string;
   emptyMessage?: string;
+  onAddToWatchlist?: (movie: Movie) => void;
 }
 
 const InfiniteMovieList: React.FC<InfiniteMovieListProps> = ({
@@ -18,7 +19,8 @@ const InfiniteMovieList: React.FC<InfiniteMovieListProps> = ({
   hasMore = false,
   onLoadMore,
   loadingMessage = 'Loading more movies...',
-  emptyMessage = 'No movies found'
+  emptyMessage = 'No movies found',
+  onAddToWatchlist
 }) => {
   const [isIntersecting, setIsIntersecting] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -69,9 +71,9 @@ const InfiniteMovieList: React.FC<InfiniteMovieListProps> = ({
   return (
     <Box>
       <Grid2 container spacing={3}>
-        {movies.map((movie) => (
-          <Grid2 key={movie.tmdbId} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-            <MovieCard movie={movie} />
+        {movies.map((movie, index) => (
+          <Grid2 key={`${movie.tmdbId}-${index}`} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+            <MovieCard movie={movie} onAddToWatchlist={onAddToWatchlist} />
           </Grid2>
         ))}
       </Grid2>

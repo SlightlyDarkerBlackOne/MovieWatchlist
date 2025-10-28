@@ -9,7 +9,6 @@ import { ThemeProvider } from '@mui/material/styles';
 import { AuthProvider, AuthContextType } from '../contexts/AuthContext';
 import { WatchlistProvider, WatchlistContextType } from '../contexts/WatchlistContext';
 import { appTheme } from '../theme';
-import { WatchlistStatus } from '../types/watchlist.types';
 
 interface AllProvidersProps {
   children: React.ReactNode;
@@ -68,23 +67,7 @@ const renderWithMocks = (
     if (mockWatchlistContext) {
       const defaultWatchlistContext: WatchlistContextType = {
         watchlistMovieIds: [],
-        selectedMovie: null,
-        addDialogOpen: false,
-        loginRequiredDialogOpen: false,
-        status: WatchlistStatus.Planned,
-        notes: '',
-        successMessage: null,
-        error: null,
-        addToWatchlist: jest.fn(),
-        removeFromWatchlist: jest.fn().mockResolvedValue(undefined),
-        removeFromWatchlistIds: jest.fn(),
         isInWatchlist: jest.fn(() => false),
-        setStatus: jest.fn(),
-        setNotes: jest.fn(),
-        handleCloseDialog: jest.fn(),
-        handleCloseLoginDialog: jest.fn(),
-        handleConfirmAdd: jest.fn().mockResolvedValue(undefined),
-        refreshWatchlistIds: jest.fn().mockResolvedValue(undefined),
         ...mockWatchlistContext,
       };
       

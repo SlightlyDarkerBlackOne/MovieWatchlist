@@ -6,7 +6,7 @@ import React from 'react';
 import { screen, waitFor, act } from '@testing-library/react';
 import { render } from '../utils/test-utils';
 import MoviesPage from './MoviesPage';
-import movieService from '../services/movieService';
+import * as movieService from '../services/movieService';
 import { mockMovies } from '../__tests__/fixtures/movieFixtures';
 import { useSearchParams } from 'react-router-dom';
 
@@ -15,23 +15,8 @@ jest.mock('../services/movieService');
 jest.mock('../contexts/WatchlistContext', () => ({
   ...jest.requireActual('../contexts/WatchlistContext'),
   useWatchlist: () => ({
-    addToWatchlist: jest.fn(),
-    isInWatchlist: jest.fn(() => false),
     watchlistMovieIds: [],
-    selectedMovie: null,
-    addDialogOpen: false,
-    loginRequiredDialogOpen: false,
-    status: 0,
-    notes: '',
-    successMessage: null,
-    error: null,
-    setStatus: jest.fn(),
-    setNotes: jest.fn(),
-    handleCloseDialog: jest.fn(),
-    handleCloseLoginDialog: jest.fn(),
-    handleConfirmAdd: jest.fn(),
-    refreshWatchlistIds: jest.fn(),
-    removeFromWatchlistIds: jest.fn(),
+    isInWatchlist: jest.fn(() => false),
   }),
 }));
 jest.mock('react-router-dom', () => ({
@@ -51,7 +36,6 @@ describe('MoviesPage', () => {
       totalPages: 1,
       currentPage: 1,
     });
-    mockedMovieService.clearPopularMoviesCache = jest.fn();
     mockedUseSearchParams.mockReturnValue([new URLSearchParams(), jest.fn()]);
   });
 
@@ -139,7 +123,6 @@ describe('MoviesPage', () => {
 
     await waitFor(() => {
       expect(mockedMovieService.getPopularMovies).toHaveBeenCalledTimes(2);
-      expect(mockedMovieService.clearPopularMoviesCache).toHaveBeenCalled();
     });
 
     jest.useRealTimers();

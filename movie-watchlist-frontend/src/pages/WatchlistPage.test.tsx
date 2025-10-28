@@ -6,7 +6,7 @@ import React from 'react';
 import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { renderWithMocks } from '../utils/test-utils';
 import WatchlistPage from './WatchlistPage';
-import watchlistService from '../services/watchlistService';
+import * as watchlistService from '../services/watchlistService';
 import { mockWatchlistItems } from '../__tests__/fixtures/watchlistFixtures';
 import { mockUser } from '../__tests__/fixtures/authFixtures';
 import { WatchlistStatus } from '../types/watchlist.types';
@@ -23,7 +23,8 @@ describe('WatchlistPage', () => {
   };
 
   const mockWatchlistContext = {
-    removeFromWatchlistIds: jest.fn(),
+    watchlistMovieIds: [],
+    isInWatchlist: jest.fn(() => false),
   };
 
   beforeEach(() => {

@@ -2,61 +2,30 @@
  * Tests for watchlist service
  */
 
-import watchlistService from './watchlistService';
+import * as watchlistService from './watchlistService';
 import api from './api';
-import cacheService from '../utils/cacheService';
 import { mockWatchlistItems, mockWatchlistItem } from '../__tests__/fixtures/watchlistFixtures';
 import { WatchlistStatus } from '../types/watchlist.types';
 
 // Mock dependencies
 jest.mock('./api');
-jest.mock('../utils/cacheService');
 
 const mockedApi = api as jest.Mocked<typeof api>;
-const mockedCache = cacheService as jest.Mocked<typeof cacheService>;
 
 describe('WatchlistService', () => {
   const userId = 1;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockedCache.get.mockReturnValue(null); // Default to cache miss
   });
 
   describe('getUserWatchlist', () => {
-    it('should return cached watchlist when available', async () => {
-      mockedCache.get.mockReturnValue(mockWatchlistItems);
-
-      const result = await watchlistService.getUserWatchlist(userId);
-
-      expect(result).toEqual(mockWatchlistItems);
-      expect(mockedApi.get).not.toHaveBeenCalled();
-      expect(mockedCache.get).toHaveBeenCalledWith('watchlist_1');
-    });
-
-    it('should fetch from API on cache miss', async () => {
-      mockedCache.get.mockReturnValue(null);
+    it('should fetch watchlist from API', async () => {
       mockedApi.get.mockResolvedValue({ data: mockWatchlistItems });
 
       const result = await watchlistService.getUserWatchlist(userId);
 
       expect(result).toEqual(mockWatchlistItems);
-      expect(mockedApi.get).toHaveBeenCalled();
-      expect(mockedCache.set).toHaveBeenCalledWith(
-        'watchlist_1',
-        mockWatchlistItems,
-        expect.any(Number)
-      );
-    });
-
-    it('should force refresh when requested', async () => {
-      // When forceRefresh=true, cache is cleared first, then get returns null (cache miss)
-      mockedCache.get.mockReturnValue(null); // Cache miss after clear
-      mockedApi.get.mockResolvedValue({ data: mockWatchlistItems });
-
-      await watchlistService.getUserWatchlist(userId, true);
-
-      expect(mockedCache.clear).toHaveBeenCalledWith('watchlist_1');
       expect(mockedApi.get).toHaveBeenCalled();
     });
 
@@ -70,7 +39,7 @@ describe('WatchlistService', () => {
   });
 
   describe('addToWatchlist', () => {
-    it('should add movie to watchlist and update cache', async () => {
+    it('should add movie to watchlist', async () => {
       const request = {
         movieId: 550,
         status: WatchlistStatus.Planned,
@@ -78,13 +47,11 @@ describe('WatchlistService', () => {
       };
 
       mockedApi.post.mockResolvedValue({ data: mockWatchlistItem });
-      mockedCache.get.mockReturnValue(mockWatchlistItems);
 
       const result = await watchlistService.addToWatchlist(userId, request);
 
       expect(result).toEqual(mockWatchlistItem);
       expect(mockedApi.post).toHaveBeenCalled();
-      expect(mockedCache.set).toHaveBeenCalled(); // Optimistic cache update
     });
 
     it('should handle duplicate movie error', async () => {
@@ -116,10 +83,9 @@ describe('WatchlistService', () => {
   });
 
   describe('updateWatchlistItem', () => {
-    it('should update watchlist item and cache', async () => {
+    it('should update watchlist item', async () => {
       const updatedItem = { ...mockWatchlistItem, userRating: 4.5 };
       mockedApi.put.mockResolvedValue({ data: updatedItem });
-      mockedCache.get.mockReturnValue(mockWatchlistItems);
 
       const result = await watchlistService.updateWatchlistItem(userId, 1, {
         userRating: 4.5,
@@ -127,7 +93,6 @@ describe('WatchlistService', () => {
 
       expect(result).toEqual(updatedItem);
       expect(mockedApi.put).toHaveBeenCalled();
-      expect(mockedCache.set).toHaveBeenCalled(); // Optimistic cache update
     });
 
     it('should handle update errors', async () => {
@@ -142,14 +107,12 @@ describe('WatchlistService', () => {
   });
 
   describe('removeFromWatchlist', () => {
-    it('should remove item and update cache', async () => {
+    it('should remove item', async () => {
       mockedApi.delete.mockResolvedValue({ data: null });
-      mockedCache.get.mockReturnValue(mockWatchlistItems);
 
       await watchlistService.removeFromWatchlist(userId, 1);
 
       expect(mockedApi.delete).toHaveBeenCalled();
-      expect(mockedCache.set).toHaveBeenCalled(); // Optimistic cache update
     });
 
     it('should handle deletion errors', async () => {
@@ -163,50 +126,49 @@ describe('WatchlistService', () => {
     });
   });
 
-  describe('cache management', () => {
-    it('should clear watchlist cache for specific user', () => {
-      watchlistService.clearWatchlistCache(userId);
+  describe('getWatchlistStatistics', () => {
+    it('should fetch statistics from API', async () => {
+      const mockStats = {
+        totalMovies: 10,
+        watchedMovies: 5,
+        plannedMovies: 3,
+        favoriteMovies: 3,
+        averageUserRating: 4.5,
+        averageTmdbRating: 7.2,
+        mostWatchedGenre: 'Action',
+        moviesThisYear: 2,
+        genreBreakdown: { Action: 3, Comedy: 2 },
+        yearlyBreakdown: { 2024: 2 }
+      };
 
-      expect(mockedCache.clear).toHaveBeenCalledWith('watchlist_1');
+      mockedApi.get.mockResolvedValue({ data: mockStats });
+
+      const result = await watchlistService.getWatchlistStatistics(userId);
+
+      expect(result).toEqual(mockStats);
+      expect(mockedApi.get).toHaveBeenCalled();
     });
+  });
 
-    it('should remove item from cache', () => {
-      mockedCache.get.mockReturnValue(mockWatchlistItems);
+  describe('getFavorites', () => {
+    it('should fetch favorites from API', async () => {
+      mockedApi.get.mockResolvedValue({ data: mockWatchlistItems });
 
-      watchlistService.removeItemFromCache(userId, 1);
+      const result = await watchlistService.getFavorites(userId);
 
-      expect(mockedCache.get).toHaveBeenCalledWith('watchlist_1');
-      expect(mockedCache.set).toHaveBeenCalled();
+      expect(result).toEqual(mockWatchlistItems);
+      expect(mockedApi.get).toHaveBeenCalled();
     });
+  });
 
-    it('should add item to cache', () => {
-      mockedCache.get.mockReturnValue(mockWatchlistItems);
+  describe('getByGenre', () => {
+    it('should fetch watchlist by genre from API', async () => {
+      mockedApi.get.mockResolvedValue({ data: mockWatchlistItems });
 
-      watchlistService.addItemToCache(userId, mockWatchlistItem);
+      const result = await watchlistService.getByGenre(userId, 'Action');
 
-      expect(mockedCache.get).toHaveBeenCalledWith('watchlist_1');
-      expect(mockedCache.set).toHaveBeenCalled();
-    });
-
-    it('should update item in cache', () => {
-      mockedCache.get.mockReturnValue(mockWatchlistItems);
-      const updatedItem = { ...mockWatchlistItem, userRating: 5 };
-
-      watchlistService.updateItemInCache(userId, 1, updatedItem);
-
-      expect(mockedCache.get).toHaveBeenCalledWith('watchlist_1');
-      expect(mockedCache.set).toHaveBeenCalled();
-    });
-
-    it('should handle cache operations when cache is empty', () => {
-      mockedCache.get.mockReturnValue(null);
-
-      watchlistService.removeItemFromCache(userId, 1);
-      watchlistService.addItemToCache(userId, mockWatchlistItem);
-      watchlistService.updateItemInCache(userId, 1, mockWatchlistItem);
-
-      // Should not throw errors
-      expect(mockedCache.set).not.toHaveBeenCalled();
+      expect(result).toEqual(mockWatchlistItems);
+      expect(mockedApi.get).toHaveBeenCalled();
     });
   });
 
@@ -232,5 +194,3 @@ describe('WatchlistService', () => {
     });
   });
 });
-
-

@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import { CastMember } from '../../types/movie.types';
 import { colors } from '../../theme/colors';
-import movieService from '../../services/movieService';
+import * as movieService from '../../services/movieService';
 
 interface TopCastCrewProps {
   topCast: CastMember[];

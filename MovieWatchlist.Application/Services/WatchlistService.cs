@@ -234,6 +234,9 @@ public class WatchlistService : IWatchlistService
         }
 
         await _watchlistRepository.UpdateAsync(item);
+        
+        await InvalidateUserStatisticsAsync(command.UserId);
+        
         return Result<WatchlistItem>.Success(item);
     }
 

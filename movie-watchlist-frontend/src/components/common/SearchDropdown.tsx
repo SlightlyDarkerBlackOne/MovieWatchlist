@@ -15,7 +15,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import StarIcon from '@mui/icons-material/Star';
 import { useNavigate } from 'react-router-dom';
 import { debounce } from '@mui/material/utils';
-import movieService from '../../services/movieService';
+import * as movieService from '../../services/movieService';
 import { Movie } from '../../types/movie.types';
 import { ROUTES } from '../../constants/routeConstants';
 import { formatVoteCount } from '../../utils/formatters';

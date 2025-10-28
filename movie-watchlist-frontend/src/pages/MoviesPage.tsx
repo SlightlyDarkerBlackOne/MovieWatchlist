@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Container,
   Snackbar,
@@ -9,8 +9,8 @@ import { FeaturedMoviesCarousel } from '../components/movies';
 import { SearchResults, PopularMoviesSection } from '../components/pages';
 import { AddToWatchlistDialog } from '../components/dialogs';
 import LoginRequiredDialog from '../components/common/LoginRequiredDialog';
-import * as movieService from '../services/movieService';
-import { Movie, MovieSearchResult } from '../types/movie.types';
+import { useSearchMoviesQuery, useGetPopularMoviesQuery } from '../store/api/moviesApi';
+import { Movie } from '../types/movie.types';
 import { WatchlistStatus } from '../types/watchlist.types';
 import { useWatchlist } from '../contexts/WatchlistContext';
 import { useAddToWatchlistOperation } from '../hooks/useWatchlistOperations';
@@ -22,11 +22,23 @@ const MoviesPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const searchResultsRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<MovieSearchResult | null>(null);
-  const [popularMovies, setPopularMovies] = useState<MovieSearchResult | null>(null);
   const [featuredMovies, setFeaturedMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  
+  const { 
+    data: popularMovies, 
+    isLoading: popularMoviesLoading, 
+    error: popularMoviesError,
+    refetch: refetchPopularMovies
+  } = useGetPopularMoviesQuery({ page: 1 });
+
+  const { 
+    data: searchResults, 
+    isLoading: searchLoading, 
+    error: searchError
+  } = useSearchMoviesQuery(
+    { query: searchQuery, page: 1 },
+    { skip: !searchQuery.trim() }
+  );
   
   // Dialog state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -36,85 +48,55 @@ const MoviesPage: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Load popular movies and featured movies on mount
-  useEffect(() => {
-    loadPopularMovies();
-  }, []);
+  const loading = popularMoviesLoading || searchLoading;
+  const error = popularMoviesError || searchError;
 
   // Set featured movies from the first few popular movies
   useEffect(() => {
     if (popularMovies?.movies && popularMovies.movies.length > 0) {
-      // Take top 5 movies for featured carousel
       setFeaturedMovies(popularMovies.movies.slice(0, 5));
     }
   }, [popularMovies]);
 
+  // Memoize featured movie IDs to prevent infinite loops
+  const featuredMovieIds = useMemo(() => {
+    return featuredMovies.map(m => m.tmdbId);
+  }, [featuredMovies]);
+
   // Auto-refresh popular movies every 3 minutes
   useEffect(() => {
-    const AUTO_REFRESH_INTERVAL = 3 * 60 * 1000; // 3 minutes in milliseconds
+    const AUTO_REFRESH_INTERVAL = 3 * 60 * 1000;
     
     const intervalId = setInterval(() => {
       console.log('Auto-refreshing popular movies...');
-      loadPopularMovies(popularMovies?.currentPage || 1, true);
+      refetchPopularMovies();
     }, AUTO_REFRESH_INTERVAL);
 
     return () => clearInterval(intervalId);
-  }, [popularMovies?.currentPage]);
+  }, [refetchPopularMovies]);
 
   // Handle search from URL parameters
   useEffect(() => {
-    const searchQuery = searchParams.get('search');
-    if (searchQuery) {
-      handleSearch(searchQuery);
+    const urlSearchQuery = searchParams.get('search');
+    if (urlSearchQuery && urlSearchQuery !== searchQuery) {
+      setSearchQuery(urlSearchQuery);
     }
   }, [searchParams]);
 
-  const loadPopularMovies = async (page: number = 1, forceRefresh: boolean = false) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await movieService.getPopularMovies(page);
-      setPopularMovies(result);
-    } catch (err) {
-      const error = err as Error;
-      setError(error.message || 'Failed to load popular movies');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRefreshPopularMovies = () => {
-    loadPopularMovies(popularMovies?.currentPage || 1, true);
-  };
-
-  const handleSearch = async (query: string, page: number = 1) => {
-    if (!query.trim()) {
-      setSearchResults(null);
-      setSearchQuery('');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setSearchQuery(query);
-    
-    try {
-      const result = await movieService.searchMovies(query, page);
-      setSearchResults(result);
-      
-      // Scroll to search results after they're loaded
+  // Scroll to search results when they load
+  useEffect(() => {
+    if (searchResults && searchQuery) {
       setTimeout(() => {
         searchResultsRef.current?.scrollIntoView({ 
           behavior: 'smooth', 
           block: 'start' 
         });
       }, 100);
-    } catch (err) {
-      const error = err as Error;
-      setError(error.message || 'Failed to search movies');
-    } finally {
-      setLoading(false);
     }
+  }, [searchResults, searchQuery]);
+
+  const handleRefreshPopularMovies = () => {
+    refetchPopularMovies();
   };
 
   // Watchlist handlers
@@ -132,7 +114,7 @@ const MoviesPage: React.FC = () => {
     
     try {
       await addToWatchlist(user.id, {
-        movieId: selectedMovie.id,
+        movieId: selectedMovie.tmdbId,
         status,
         notes
       });
@@ -181,11 +163,10 @@ const MoviesPage: React.FC = () => {
       <Snackbar
         open={!!error}
         autoHideDuration={5000}
-        onClose={() => setError(null)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert severity="error" variant="filled" sx={{ width: '100%' }} onClose={() => setError(null)}>
-          {error}
+        <Alert severity="error" variant="filled" sx={{ width: '100%' }}>
+          {error ? String(error) : 'An error occurred'}
         </Alert>
       </Snackbar>
 
@@ -219,15 +200,16 @@ const MoviesPage: React.FC = () => {
             movies={searchResults.movies}
             loading={loading}
             containerRef={searchResultsRef}
+            onAddToWatchlist={handleAddToWatchlist}
           />
         )}
 
         {/* Popular Movies Section */}
         {!searchResults && (
           <PopularMoviesSection
-            movies={popularMovies?.movies || []}
-            loading={loading}
             onRefresh={handleRefreshPopularMovies}
+            excludeTmdbIds={featuredMovieIds}
+            onAddToWatchlist={handleAddToWatchlist}
           />
         )}
       </Container>

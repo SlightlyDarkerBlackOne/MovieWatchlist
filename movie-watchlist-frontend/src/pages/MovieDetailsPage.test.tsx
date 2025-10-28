@@ -6,7 +6,7 @@ import React from 'react';
 import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { renderWithMocks } from '../utils/test-utils';
 import MovieDetailsPage from './MovieDetailsPage';
-import movieService from '../services/movieService';
+import * as movieService from '../services/movieService';
 import { mockMovieDetails, mockMovieCredits, mockMovieVideo } from '../__tests__/fixtures/movieFixtures';
 import { useParams } from 'react-router-dom';
 
@@ -26,24 +26,8 @@ describe('MovieDetailsPage', () => {
 
   // Mock watchlist context for all tests
   const mockWatchlistContext = {
-    addToWatchlist: jest.fn(),
-    removeFromWatchlist: jest.fn(),
-    isInWatchlist: jest.fn(() => false),
     watchlistMovieIds: [],
-    selectedMovie: null,
-    addDialogOpen: false,
-    loginRequiredDialogOpen: false,
-    status: 0,
-    notes: '',
-    successMessage: null,
-    error: null,
-    setStatus: jest.fn(),
-    setNotes: jest.fn(),
-    handleCloseDialog: jest.fn(),
-    handleCloseLoginDialog: jest.fn(),
-    handleConfirmAdd: jest.fn(),
-    refreshWatchlistIds: jest.fn(),
-    removeFromWatchlistIds: jest.fn(),
+    isInWatchlist: jest.fn(() => false),
   };
 
   beforeEach(() => {

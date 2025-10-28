@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -9,13 +9,12 @@ import {
   Snackbar,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import * as movieService from '../services/movieService';
-import { MovieDetails, MovieVideo, MovieCredits } from '../types/movie.types';
+import { useGetMovieDetailsQuery } from '../store/api/moviesApi';
 import { WatchlistStatus } from '../types/watchlist.types';
 import { useWatchlist } from '../contexts/WatchlistContext';
-import { useAddToWatchlistOperation, useRemoveFromWatchlistOperation } from '../hooks/useWatchlistOperations';
+import { useAddToWatchlistOperation, useRemoveFromWatchlistOperation, useWatchlistQuery } from '../hooks/useWatchlistOperations';
 import { useAuth } from '../contexts/AuthContext';
-import { MovieDetailsContent, TrailerSection } from '../components/pages';
+import { MovieDetailsContent } from '../components/pages';
 import { AddToWatchlistDialog } from '../components/dialogs';
 import LoginRequiredDialog from '../components/common/LoginRequiredDialog';
 
@@ -26,12 +25,21 @@ const MovieDetailsPage: React.FC = () => {
   const { isInWatchlist } = useWatchlist();
   const { addToWatchlist } = useAddToWatchlistOperation();
   const { removeItem } = useRemoveFromWatchlistOperation();
+  const { data: watchlistItems } = useWatchlistQuery(user?.id);
   
-  const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
-  const [videos, setVideos] = useState<MovieVideo[]>([]);
-  const [credits, setCredits] = useState<MovieCredits | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const {
+    data: movieData,
+    isLoading: loading,
+    error: loadError
+  } = useGetMovieDetailsQuery(
+    { tmdbId: parseInt(tmdbId || '0') },
+    { skip: !tmdbId }
+  );
+
+  const movieDetails = movieData?.movie;
+  const videos = movieData?.videos || [];
+  const credits = movieData?.credits || null;
+  
   const [actionError, setActionError] = useState<string | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -41,40 +49,6 @@ const MovieDetailsPage: React.FC = () => {
   const [loginRequiredDialogOpen, setLoginRequiredDialogOpen] = useState(false);
   const [status, setStatus] = useState<WatchlistStatus>(WatchlistStatus.Planned);
   const [notes, setNotes] = useState('');
-  const trailerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (tmdbId) {
-      loadMovieData(parseInt(tmdbId));
-    }
-  }, [tmdbId]);
-
-  useEffect(() => {
-    if (showTrailer && trailerRef.current) {
-      requestAnimationFrame(() => {
-        trailerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
-    }
-  }, [showTrailer]);
-
-  const loadMovieData = async (id: number) => {
-    setLoading(true);
-    setLoadError(null);
-    
-    try {
-      const { movie, credits, videos } = await movieService.getMovieDetailsByTmdbId(id);
-      console.log('Movie data received:', movie);
-      console.log('Movie genres:', movie.genres);
-      setMovieDetails(movie);
-      setVideos(videos);
-      setCredits(credits);
-    } catch (err) {
-      const error = err as Error;
-      setLoadError(error.message || 'Failed to load movie details');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleAddToWatchlist = () => {
     if (!user) {
@@ -89,7 +63,7 @@ const MovieDetailsPage: React.FC = () => {
     
     try {
       await addToWatchlist(user.id, {
-        movieId: movieDetails.id,
+        movieId: movieDetails.tmdbId,
         status,
         notes
       });
@@ -103,12 +77,23 @@ const MovieDetailsPage: React.FC = () => {
   };
 
   const handleRemoveFromWatchlist = async () => {
-    if (!movieDetails || !user) return;
+    if (!movieDetails || !user || !watchlistItems) return;
     
-    // Find the watchlist item
-    // This would need to query the watchlist to find the item
-    // For now, we'll just show an error
-    setActionError('Remove functionality needs watchlist item ID');
+    // Find the watchlist item by tmdbId
+    const watchlistItem = watchlistItems.find(item => item.movie?.tmdbId === movieDetails.tmdbId);
+    
+    if (!watchlistItem) {
+      setActionError('Movie not found in watchlist');
+      return;
+    }
+    
+    try {
+      await removeItem(user.id, watchlistItem.id);
+      setSuccessMessage(`Removed "${movieDetails.title}" from your watchlist!`);
+    } catch (err) {
+      console.error('Failed to remove from watchlist:', err);
+      setActionError('Failed to remove from watchlist');
+    }
   };
 
   const handleToggleTrailer = () => {
@@ -144,7 +129,7 @@ const MovieDetailsPage: React.FC = () => {
   if (loadError || !movieDetails) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">{loadError || 'Movie not found'}</Alert>
+        <Alert severity="error">{loadError ? String(loadError) : 'Movie not found'}</Alert>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate(-1)}
@@ -156,8 +141,6 @@ const MovieDetailsPage: React.FC = () => {
     );
   }
 
-  const mainTrailer = movieService.findMainTrailer(videos);
-  const topCast = credits?.cast.slice(0, 10) || [];
 
   return (
     <>
@@ -198,11 +181,6 @@ const MovieDetailsPage: React.FC = () => {
         onRemoveFromWatchlist={handleRemoveFromWatchlist}
         isInWatchlist={isInWatchlist(movieDetails.tmdbId)}
       />
-
-      {/* Trailer Section */}
-      <TrailerSection trailer={mainTrailer} show={showTrailer} />
-
-      {/* Top Cast Section - rendered within MovieDetailsContent */}
 
       {/* Add to Watchlist Dialog */}
       <AddToWatchlistDialog

@@ -3,6 +3,8 @@ import { MovieDetails, MovieCredits, MovieVideo } from '../../types/movie.types'
 import MovieMainDetails from '../movies/MovieMainDetails';
 import MovieGenres from '../movies/MovieGenres';
 import TopCastCrew from '../movies/TopCastCrew';
+import TrailerSection from './TrailerSection';
+import { findMainTrailer } from '../../services/movieService';
 
 interface MovieDetailsContentProps {
   movieDetails: MovieDetails;
@@ -25,6 +27,8 @@ const MovieDetailsContent: React.FC<MovieDetailsContentProps> = ({
   onRemoveFromWatchlist,
   isInWatchlist
 }) => {
+  const mainTrailer = findMainTrailer(videos);
+
   return (
     <>
       <MovieMainDetails
@@ -39,6 +43,8 @@ const MovieDetailsContent: React.FC<MovieDetailsContentProps> = ({
       />
 
       <MovieGenres genres={movieDetails.genres} />
+
+      <TrailerSection trailer={mainTrailer} show={showTrailer} />
 
       <TopCastCrew topCast={credits?.cast.slice(0, 10) || []} />
     </>

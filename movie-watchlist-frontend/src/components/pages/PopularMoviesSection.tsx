@@ -6,12 +6,19 @@ import { useInfiniteMovies } from '../../hooks/useInfiniteMovies';
 
 interface PopularMoviesSectionProps {
   onRefresh?: () => void;
+  excludeTmdbIds?: number[];
+  onAddToWatchlist?: (movie: import('../../types/movie.types').Movie) => void;
 }
 
 const PopularMoviesSection: React.FC<PopularMoviesSectionProps> = ({ 
-  onRefresh 
+  onRefresh,
+  excludeTmdbIds = [],
+  onAddToWatchlist
 }) => {
-  const { movies, loading, hasMore, loadMore, loadingMore } = useInfiniteMovies({ initialLimit: 5 });
+  const { movies, loading, hasMore, loadMore, loadingMore } = useInfiniteMovies({ 
+    initialLimit: 5,
+    excludeTmdbIds 
+  });
 
   return (
     <Box>
@@ -41,6 +48,7 @@ const PopularMoviesSection: React.FC<PopularMoviesSectionProps> = ({
         onLoadMore={loadMore}
         loadingMessage="Loading more movies..."
         emptyMessage="No popular movies available"
+        onAddToWatchlist={onAddToWatchlist}
       />
     </Box>
   );

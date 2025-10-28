@@ -121,6 +121,9 @@ builder.Services.AddScoped<IDomainEventHandler<MovieWatchedEvent>, LogActivityHa
 builder.Services.AddScoped<IDomainEventHandler<MovieRatedEvent>, LogActivityHandler>();
 builder.Services.AddScoped<IDomainEventHandler<MovieFavoritedEvent>, LogActivityHandler>();
 builder.Services.AddScoped<IDomainEventHandler<MovieWatchedEvent>, UpdateStatisticsHandler>();
+builder.Services.AddScoped<IDomainEventHandler<MovieRatedEvent>, UpdateStatisticsHandler>();
+builder.Services.AddScoped<IDomainEventHandler<MovieFavoritedEvent>, UpdateStatisticsHandler>();
+builder.Services.AddScoped<IDomainEventHandler<StatisticsInvalidatedEvent>, UpdateStatisticsHandler>();
 
 // Register Authentication Domain Event Handlers
 builder.Services.AddScoped<IDomainEventHandler<UserRegisteredEvent>, UserRegisteredEventHandler>();

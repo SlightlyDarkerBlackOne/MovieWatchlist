@@ -52,7 +52,27 @@ export const moviesApi = createApi({
         return endpointName;
       },
       merge: (currentCache, newItems) => {
-        return [...currentCache, ...newItems];
+        // Get all tmdbIds already in cache
+        const seenTmdbIds = new Set<number>();
+        currentCache.forEach(page => {
+          page.movies.forEach(movie => {
+            seenTmdbIds.add(movie.tmdbId);
+          });
+        });
+
+        // Filter new items to only include unique movies
+        const deduplicatedNewItems = newItems.map(page => ({
+          ...page,
+          movies: page.movies.filter(movie => {
+            if (seenTmdbIds.has(movie.tmdbId)) {
+              return false;
+            }
+            seenTmdbIds.add(movie.tmdbId);
+            return true;
+          })
+        })).filter(page => page.movies.length > 0);
+
+        return [...currentCache, ...deduplicatedNewItems];
       },
       forceRefetch({ currentArg, previousArg }) {
         return currentArg?.limit !== previousArg?.limit;
