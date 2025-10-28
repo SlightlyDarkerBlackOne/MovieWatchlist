@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Box, CircularProgress, Typography, Grid2 } from '@mui/material';
 import MovieCard from './MovieCard';
 import { Movie } from '../../types/movie.types';
@@ -22,22 +22,17 @@ const InfiniteMovieList: React.FC<InfiniteMovieListProps> = ({
   emptyMessage = 'No movies found',
   onAddToWatchlist
 }) => {
-  const [isIntersecting, setIsIntersecting] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!onLoadMore || !hasMore || loading) {
-      setIsIntersecting(false);
       return;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          setIsIntersecting(true);
           onLoadMore();
-        } else {
-          setIsIntersecting(false);
         }
       },
       { threshold: 0.1 }

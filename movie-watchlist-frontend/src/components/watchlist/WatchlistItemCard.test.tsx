@@ -3,13 +3,10 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ThemeProvider } from '@mui/material/styles';
-import { BrowserRouter } from 'react-router-dom';
+import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
 import WatchlistItemCard from './WatchlistItemCard';
 import { mockWatchlistItem, mockWatchlistItemWatched } from '../../__tests__/fixtures/watchlistFixtures';
 import { useNavigate } from 'react-router-dom';
-import { appTheme } from '../../theme';
 
 // Mock navigation
 jest.mock('react-router-dom', () => ({
@@ -24,16 +21,6 @@ describe('WatchlistItemCard', () => {
   const mockOnUpdate = jest.fn();
   const mockOnDelete = jest.fn();
 
-  const renderWithProviders = (ui: React.ReactElement) => {
-    return render(
-      <ThemeProvider theme={appTheme}>
-        <BrowserRouter>
-          {ui}
-        </BrowserRouter>
-      </ThemeProvider>
-    );
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseNavigate.mockReturnValue(mockNavigate);
@@ -42,7 +29,7 @@ describe('WatchlistItemCard', () => {
   });
 
   it('should render watchlist item correctly', () => {
-    renderWithProviders(
+    render(
       <WatchlistItemCard 
         item={mockWatchlistItem}
         onUpdate={mockOnUpdate}
@@ -55,7 +42,7 @@ describe('WatchlistItemCard', () => {
   });
 
   it('should display status chip with correct label', () => {
-    renderWithProviders(
+    render(
       <WatchlistItemCard 
         item={mockWatchlistItem}
         onUpdate={mockOnUpdate}
@@ -67,7 +54,7 @@ describe('WatchlistItemCard', () => {
   });
 
   it('should display TMDB rating', () => {
-    renderWithProviders(
+    render(
       <WatchlistItemCard 
         item={mockWatchlistItem}
         onUpdate={mockOnUpdate}
@@ -80,7 +67,7 @@ describe('WatchlistItemCard', () => {
   });
 
   it('should navigate to details on card click', () => {
-    renderWithProviders(
+    render(
       <WatchlistItemCard 
         item={mockWatchlistItem}
         onUpdate={mockOnUpdate}
@@ -96,7 +83,7 @@ describe('WatchlistItemCard', () => {
   });
 
   it('should open menu on 3-dot icon click', () => {
-    renderWithProviders(
+    render(
       <WatchlistItemCard 
         item={mockWatchlistItem}
         onUpdate={mockOnUpdate}
@@ -112,7 +99,7 @@ describe('WatchlistItemCard', () => {
   });
 
   it('should delete item with confirmation', async () => {
-    renderWithProviders(
+    render(
       <WatchlistItemCard 
         item={mockWatchlistItem}
         onUpdate={mockOnUpdate}
@@ -137,7 +124,7 @@ describe('WatchlistItemCard', () => {
   it('should not delete if user cancels confirmation', async () => {
     global.confirm = jest.fn(() => false);
     
-    renderWithProviders(
+    render(
       <WatchlistItemCard 
         item={mockWatchlistItem}
         onUpdate={mockOnUpdate}
@@ -160,7 +147,7 @@ describe('WatchlistItemCard', () => {
   });
 
   it('should toggle favorite on heart icon click', () => {
-    renderWithProviders(
+    render(
       <WatchlistItemCard 
         item={mockWatchlistItem}
         onUpdate={mockOnUpdate}
@@ -180,7 +167,7 @@ describe('WatchlistItemCard', () => {
   });
 
   it('should show filled heart for favorited items', () => {
-    renderWithProviders(
+    render(
       <WatchlistItemCard 
         item={mockWatchlistItemWatched} // This item is favorited
         onUpdate={mockOnUpdate}
@@ -192,7 +179,7 @@ describe('WatchlistItemCard', () => {
   });
 
   it('should prevent navigation when clicking menu', () => {
-    renderWithProviders(
+    render(
       <WatchlistItemCard 
         item={mockWatchlistItem}
         onUpdate={mockOnUpdate}

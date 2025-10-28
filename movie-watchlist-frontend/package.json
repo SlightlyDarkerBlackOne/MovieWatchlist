@@ -64,6 +64,9 @@
       "/node_modules/",
       "/__tests__/fixtures/"
     ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!(msw|@bundled-es-modules|@mswjs|@standard-schema|@reduxjs|until-async|strict-event-emitter|statuses|data-view-byte-length)/)"
+    ],
     "moduleNameMapper": {
       "^react-router-dom$": "<rootDir>/node_modules/react-router-dom/dist/index.js",
       "^react-router/dom$": "<rootDir>/node_modules/react-router/dist/production/dom-export.js"
@@ -87,5 +90,8 @@
       "!src/__tests__/**",
       "!src/__mocks__/**"
     ]
+  },
+  "devDependencies": {
+    "msw": "^2.11.6"
   }
 }

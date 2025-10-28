@@ -40,7 +40,7 @@ describe('MovieCard', () => {
     jest.clearAllMocks();
     mockedUseNavigate.mockReturnValue(mockNavigate);
     mockedUseWatchlist.mockReturnValue({
-      watchlistMovieIds: [],
+      watchlistMovieIds: new Set<number>(),
       isInWatchlist: mockIsInWatchlist,
     });
     mockIsInWatchlist.mockReturnValue(false);
@@ -67,20 +67,31 @@ describe('MovieCard', () => {
     expect(screen.getByText('1999')).toBeInTheDocument();
   });
 
-  it('should show "In Watchlist" chip when movie is in watchlist', () => {
+  it('should show disabled add button when movie is in watchlist', () => {
     mockIsInWatchlist.mockReturnValue(true);
+    mockedUseWatchlist.mockReturnValue({
+      watchlistMovieIds: new Set<number>([mockMovie.tmdbId]),
+      isInWatchlist: mockIsInWatchlist,
+    });
     
     renderWithProviders(<MovieCard movie={mockMovie} />);
 
-    expect(screen.getByText('In Watchlist')).toBeInTheDocument();
+    const addButton = screen.getByLabelText('Movie in watchlist');
+    expect(addButton).toBeDisabled();
   });
 
-  it('should not show "In Watchlist" chip when movie is not in watchlist', () => {
+  it('should show enabled add button when movie is not in watchlist', () => {
     mockIsInWatchlist.mockReturnValue(false);
+    mockedUseWatchlist.mockReturnValue({
+      watchlistMovieIds: new Set<number>(),
+      isInWatchlist: mockIsInWatchlist,
+    });
     
     renderWithProviders(<MovieCard movie={mockMovie} />);
 
-    expect(screen.queryByText('In Watchlist')).not.toBeInTheDocument();
+    const addButtons = screen.getAllByLabelText('Add to watchlist');
+    const addButton = addButtons[0];
+    expect(addButton).not.toBeDisabled();
   });
 
   it('should navigate to movie details when card is clicked', () => {

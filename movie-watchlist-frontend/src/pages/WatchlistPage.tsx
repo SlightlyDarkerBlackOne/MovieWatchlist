@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Box,
@@ -14,17 +14,14 @@ import { useNavigate } from 'react-router-dom';
 import { WatchlistGrid } from '../components/watchlist';
 import { WatchlistFilters, WatchlistStats } from '../components/pages';
 import { EditWatchlistItemDialog } from '../components/dialogs';
-import { WatchlistItem, WatchlistStatus } from '../types/watchlist.types';
+import { WatchlistItem, UpdateWatchlistRequest } from '../types/watchlist.types';
 import { useAuth } from '../contexts/AuthContext';
-import { useWatchlist } from '../contexts/WatchlistContext';
 import { 
-  useWatchlistQuery, 
-  useUpdateWatchlistItemOperation, 
-  useRemoveFromWatchlistOperation,
-  useWatchlistStatistics
+  useGetWatchlistQuery, 
+  useUpdateWatchlistItemMutation, 
+  useRemoveFromWatchlistMutation,
 } from '../hooks/useWatchlistOperations';
-import { watchlistApi } from '../store/api/watchlistApi';
-import { useDispatch } from 'react-redux';
+import { useWatchlistFilters } from '../hooks/useWatchlistFilters';
 import { ROUTES } from '../constants/routeConstants';
 
 interface TabPanelProps {
@@ -50,14 +47,11 @@ function TabPanel(props: TabPanelProps) {
 
 const WatchlistPage: React.FC = () => {
   const { user } = useAuth();
-  const { watchlistMovieIds } = useWatchlist();
   const navigate = useNavigate();
   
-  const dispatch = useDispatch();
-  const { data: watchlist = [], isLoading: loading, error } = useWatchlistQuery(user?.id);
-  const { data: stats } = useWatchlistStatistics(user?.id);
-  const { updateItem } = useUpdateWatchlistItemOperation();
-  const { removeItem } = useRemoveFromWatchlistOperation();
+  const { data: watchlist = [], isLoading: loading, error } = useGetWatchlistQuery(user?.id ?? 0, { skip: !user });
+  const [updateItem] = useUpdateWatchlistItemMutation();
+  const [removeItem] = useRemoveFromWatchlistMutation();
   
   const [activeTab, setActiveTab] = useState(0);
   const [statusFilter, setStatusFilter] = useState<number | 'all'>('all');
@@ -65,21 +59,11 @@ const WatchlistPage: React.FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
 
-  const filteredItems = useMemo(() => {
-    let filtered = [...watchlist];
-
-    if (activeTab === 1) {
-      filtered = filtered.filter(item => item.isFavorite);
-    } else if (activeTab === 2) {
-      filtered = filtered.filter(item => item.status === WatchlistStatus.Watched);
-    }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(item => item.status === statusFilter);
-    }
-
-    return filtered;
-  }, [watchlist, activeTab, statusFilter]);
+  const { filteredItems, allCount, favoritesCount, watchedCount } = useWatchlistFilters({
+    watchlist,
+    activeTab,
+    statusFilter,
+  });
 
   const handleEditItem = (item: WatchlistItem) => {
     setSelectedItem(item);
@@ -90,14 +74,11 @@ const WatchlistPage: React.FC = () => {
     if (!user?.id) return;
 
     try {
-      const updatePayload: any = {};
+      const updatePayload: UpdateWatchlistRequest = {
+        isFavorite: item.isFavorite,
+      };
       
-      if (item.isFavorite !== undefined) {
-        updatePayload.isFavorite = item.isFavorite;
-      }
-      
-      await updateItem(user.id, item.id, updatePayload);
-      dispatch(watchlistApi.util.invalidateTags(['Watchlist', 'WatchlistStats']));
+      await updateItem({ userId: user.id, itemId: item.id, request: updatePayload }).unwrap();
     } catch (err) {
       const error = err as Error;
       setErrorMessage(error.message || 'Failed to update item');
@@ -108,7 +89,7 @@ const WatchlistPage: React.FC = () => {
     if (!user?.id || !selectedItem) return;
 
     try {
-      const updatePayload: any = {};
+      const updatePayload: UpdateWatchlistRequest = {};
       
       if (updatedFields.isFavorite !== undefined) {
         updatePayload.isFavorite = updatedFields.isFavorite;
@@ -123,10 +104,9 @@ const WatchlistPage: React.FC = () => {
         updatePayload.notes = updatedFields.notes;
       }
       
-      await updateItem(user.id, selectedItem.id, updatePayload);
+      await updateItem({ userId: user.id, itemId: selectedItem.id, request: updatePayload }).unwrap();
       setEditDialogOpen(false);
       setSelectedItem(null);
-      dispatch(watchlistApi.util.invalidateTags(['Watchlist', 'WatchlistStats']));
     } catch (err) {
       const error = err as Error;
       setErrorMessage(error.message || 'Failed to update item');
@@ -137,8 +117,7 @@ const WatchlistPage: React.FC = () => {
     if (!user?.id) return;
 
     try {
-      await removeItem(user.id, itemId);
-      dispatch(watchlistApi.util.invalidateTags(['Watchlist', 'WatchlistStats']));
+      await removeItem({ userId: user.id, itemId }).unwrap();
     } catch (err) {
       const error = err as Error;
       setErrorMessage(error.message || 'Failed to remove item');
@@ -205,13 +184,13 @@ const WatchlistPage: React.FC = () => {
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Tabs value={activeTab} onChange={handleTabChange} aria-label="watchlist tabs">
-          <Tab label={`All (${watchlist.length})`} id="watchlist-tab-0" />
+          <Tab label={`All (${allCount})`} id="watchlist-tab-0" />
           <Tab 
-            label={`Favorites (${watchlist.filter(i => i.isFavorite).length})`} 
+            label={`Favorites (${favoritesCount})`} 
             id="watchlist-tab-1" 
           />
           <Tab 
-            label={`Watched (${watchlist.filter(i => i.status === WatchlistStatus.Watched).length})`} 
+            label={`Watched (${watchedCount})`} 
             id="watchlist-tab-2" 
           />
         </Tabs>

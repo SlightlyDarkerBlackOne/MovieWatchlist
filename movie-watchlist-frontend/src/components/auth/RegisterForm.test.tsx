@@ -3,17 +3,18 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ThemeProvider } from '@mui/material/styles';
-import { BrowserRouter } from 'react-router-dom';
+import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
 import RegisterForm from './RegisterForm';
-import { appTheme } from '../../theme';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Mock the useAuth hook
-jest.mock('../../contexts/AuthContext', () => ({
-  useAuth: jest.fn(),
-}));
+jest.mock('../../contexts/AuthContext', () => {
+  const actual = jest.requireActual('../../contexts/AuthContext');
+  return {
+    ...actual,
+    useAuth: jest.fn(),
+  };
+});
 
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
@@ -21,16 +22,6 @@ describe('RegisterForm', () => {
   const mockRegisterFn = jest.fn();
   const mockOnRegisterSuccess = jest.fn();
   const mockOnBackToLogin = jest.fn();
-
-  const renderWithProviders = (ui: React.ReactElement) => {
-    return render(
-      <ThemeProvider theme={appTheme}>
-        <BrowserRouter>
-          {ui}
-        </BrowserRouter>
-      </ThemeProvider>
-    );
-  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -49,7 +40,7 @@ describe('RegisterForm', () => {
   });
 
   it('should render register form with all fields', () => {
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -66,7 +57,7 @@ describe('RegisterForm', () => {
   });
 
   it('should show back to login link', () => {
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -78,7 +69,7 @@ describe('RegisterForm', () => {
   });
 
   it('should update input fields when typing', () => {
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -93,17 +84,17 @@ describe('RegisterForm', () => {
 
     fireEvent.change(usernameInput, { target: { value: 'newuser' } });
     fireEvent.change(emailInput, { target: { value: 'newuser@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'NewPassword123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'NewPassword123' } });
+    fireEvent.change(passwordInput, { target: { value: 'NewPassword123!' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'NewPassword123!' } });
 
     expect(usernameInput.value).toBe('newuser');
     expect(emailInput.value).toBe('newuser@example.com');
-    expect(passwordInput.value).toBe('NewPassword123');
-    expect(confirmPasswordInput.value).toBe('NewPassword123');
+    expect(passwordInput.value).toBe('NewPassword123!');
+    expect(confirmPasswordInput.value).toBe('NewPassword123!');
   });
 
   it('should toggle password visibility for both password fields', () => {
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -128,7 +119,7 @@ describe('RegisterForm', () => {
   });
 
   it('should show validation errors for empty fields', async () => {
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -147,7 +138,7 @@ describe('RegisterForm', () => {
   });
 
   it('should show validation error for invalid email', async () => {
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -176,7 +167,7 @@ describe('RegisterForm', () => {
   });
 
   it('should show validation error when passwords do not match', async () => {
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -191,8 +182,8 @@ describe('RegisterForm', () => {
 
     fireEvent.change(usernameInput, { target: { value: 'newuser' } });
     fireEvent.change(emailInput, { target: { value: 'newuser@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'DifferentPassword123' } });
+    fireEvent.change(passwordInput, { target: { value: 'Password123!' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'DifferentPassword123!' } });
 
     const submitButton = screen.getByRole('button', { name: /register/i });
     fireEvent.click(submitButton);
@@ -210,7 +201,7 @@ describe('RegisterForm', () => {
       user: { id: 1, username: 'newuser', email: 'newuser@example.com' },
     });
 
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -225,8 +216,8 @@ describe('RegisterForm', () => {
 
     fireEvent.change(usernameInput, { target: { value: 'newuser' } });
     fireEvent.change(emailInput, { target: { value: 'newuser@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123' } });
+    fireEvent.change(passwordInput, { target: { value: 'Password123!' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123!' } });
 
     const submitButton = screen.getByRole('button', { name: /register/i });
     fireEvent.click(submitButton);
@@ -235,7 +226,7 @@ describe('RegisterForm', () => {
       expect(mockRegisterFn).toHaveBeenCalledWith({
         username: 'newuser',
         email: 'newuser@example.com',
-        password: 'Password123',
+        password: 'Password123!',
       });
       expect(mockOnRegisterSuccess).toHaveBeenCalled();
     });
@@ -248,7 +239,7 @@ describe('RegisterForm', () => {
       errorMessage,
     });
 
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -263,8 +254,8 @@ describe('RegisterForm', () => {
 
     fireEvent.change(usernameInput, { target: { value: 'existinguser' } });
     fireEvent.change(emailInput, { target: { value: 'existing@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123' } });
+    fireEvent.change(passwordInput, { target: { value: 'Password123!' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123!' } });
 
     const submitButton = screen.getByRole('button', { name: /register/i });
     fireEvent.click(submitButton);
@@ -279,7 +270,7 @@ describe('RegisterForm', () => {
   it('should handle unexpected errors gracefully', async () => {
     mockRegisterFn.mockRejectedValue(new Error('Network error'));
 
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -294,8 +285,8 @@ describe('RegisterForm', () => {
 
     fireEvent.change(usernameInput, { target: { value: 'newuser' } });
     fireEvent.change(emailInput, { target: { value: 'newuser@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123' } });
+    fireEvent.change(passwordInput, { target: { value: 'Password123!' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123!' } });
 
     const submitButton = screen.getByRole('button', { name: /register/i });
     fireEvent.click(submitButton);
@@ -308,7 +299,7 @@ describe('RegisterForm', () => {
   it('should show loading state during submission', async () => {
     mockRegisterFn.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
 
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -323,8 +314,8 @@ describe('RegisterForm', () => {
 
     fireEvent.change(usernameInput, { target: { value: 'newuser' } });
     fireEvent.change(emailInput, { target: { value: 'newuser@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'Password123' } });
-    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123' } });
+    fireEvent.change(passwordInput, { target: { value: 'Password123!' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'Password123!' } });
 
     const submitButton = screen.getByRole('button', { name: /register/i });
     fireEvent.click(submitButton);
@@ -334,7 +325,7 @@ describe('RegisterForm', () => {
   });
 
   it('should call onBackToLogin when back to login link is clicked', () => {
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -348,7 +339,7 @@ describe('RegisterForm', () => {
   });
 
   it('should clear field errors when user starts typing', async () => {
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}
@@ -371,7 +362,7 @@ describe('RegisterForm', () => {
   });
 
   it('should show password requirements helper text', () => {
-    renderWithProviders(
+    render(
       <RegisterForm 
         onRegisterSuccess={mockOnRegisterSuccess}
         onBackToLogin={mockOnBackToLogin}

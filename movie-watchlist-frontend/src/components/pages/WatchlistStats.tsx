@@ -1,13 +1,13 @@
 import React from 'react';
 import { Box, Paper, Typography, Grid } from '@mui/material';
-import { useWatchlistStatistics } from '../../hooks/useWatchlistOperations';
+import { useGetWatchlistStatisticsQuery } from '../../hooks/useWatchlistOperations';
 
 interface WatchlistStatsProps {
   userId: number | undefined;
 }
 
 const WatchlistStats: React.FC<WatchlistStatsProps> = ({ userId }) => {
-  const { data: stats, isLoading } = useWatchlistStatistics(userId);
+  const { data: stats, isLoading } = useGetWatchlistStatisticsQuery(userId ?? 0, { skip: !userId });
 
   if (isLoading || !stats) {
     return null;

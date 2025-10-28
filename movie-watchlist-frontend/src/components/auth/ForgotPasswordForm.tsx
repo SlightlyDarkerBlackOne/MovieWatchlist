@@ -9,7 +9,7 @@ import {
   CircularProgress,
   Link
 } from '@mui/material';
-import { Controller, ControllerRenderProps } from 'react-hook-form';
+import { Controller } from 'react-hook-form';
 import { useAuth } from '../../contexts/AuthContext';
 import { useForms } from '../../hooks/useForms';
 import { forgotPasswordSchema, ForgotPasswordSchema } from '../../validation/schemas';
@@ -56,7 +56,6 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ onBackToLogin }
         setError(result.message || ERROR_MESSAGES.SEND_RESET_FAILED);
       }
     } catch (error: unknown) {
-      console.error('Forgot password error:', error);
       
       let errorMessage: string = ERROR_MESSAGES.UNEXPECTED_ERROR;
       if (error instanceof Error) {

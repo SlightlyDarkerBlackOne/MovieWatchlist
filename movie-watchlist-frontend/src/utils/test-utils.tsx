@@ -6,25 +6,44 @@ import React, { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
 import { AuthProvider, AuthContextType } from '../contexts/AuthContext';
 import { WatchlistProvider, WatchlistContextType } from '../contexts/WatchlistContext';
 import { appTheme } from '../theme';
+import { moviesApi } from '../store/api/moviesApi';
+import { watchlistApi } from '../store/api/watchlistApi';
 
 interface AllProvidersProps {
   children: React.ReactNode;
 }
 
+const createTestStore = () => {
+  return configureStore({
+    reducer: {
+      [moviesApi.reducerPath]: moviesApi.reducer,
+      [watchlistApi.reducerPath]: watchlistApi.reducer,
+    },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware().concat(moviesApi.middleware, watchlistApi.middleware),
+  });
+};
+
 const AllProviders: React.FC<AllProvidersProps> = ({ children }) => {
+  const store = createTestStore();
+  
   return (
-    <ThemeProvider theme={appTheme}>
-      <BrowserRouter>
-        <AuthProvider>
-          <WatchlistProvider>
-            {children}
-          </WatchlistProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+    <Provider store={store}>
+      <ThemeProvider theme={appTheme}>
+        <BrowserRouter>
+          <AuthProvider>
+            <WatchlistProvider>
+              {children}
+            </WatchlistProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </Provider>
   );
 };
 
@@ -60,18 +79,18 @@ const renderWithMocks = (
   const WatchlistContextModule = require('../contexts/WatchlistContext');
 
   const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // Build wrapper with conditional mocking
+    const store = createTestStore();
+    
     let content = children;
 
-    // Wrap with WatchlistProvider or mocked context
     if (mockWatchlistContext) {
       const defaultWatchlistContext: WatchlistContextType = {
-        watchlistMovieIds: [],
+        watchlistMovieIds: new Set<number>(),
         isInWatchlist: jest.fn(() => false),
-        ...mockWatchlistContext,
       };
       
-      // Use the default export context from WatchlistContext
+      Object.assign(defaultWatchlistContext, mockWatchlistContext);
+      
       const WatchlistContext = WatchlistContextModule.default;
       content = (
         <WatchlistContext.Provider value={defaultWatchlistContext}>
@@ -82,7 +101,6 @@ const renderWithMocks = (
       content = <WatchlistProvider>{content}</WatchlistProvider>;
     }
 
-    // Wrap with AuthProvider or mocked context
     if (mockAuthContext) {
       const defaultAuthContext: AuthContextType = {
         user: null,
@@ -98,7 +116,6 @@ const renderWithMocks = (
         ...mockAuthContext,
       };
       
-      // Use the default export context from AuthContext
       const AuthContext = AuthContextModule.default;
       content = (
         <AuthContext.Provider value={defaultAuthContext}>
@@ -109,23 +126,31 @@ const renderWithMocks = (
       content = <AuthProvider>{content}</AuthProvider>;
     }
 
-    // Wrap with ThemeProvider and BrowserRouter
     return (
-      <ThemeProvider theme={appTheme}>
-        <BrowserRouter>
-          {content}
-        </BrowserRouter>
-      </ThemeProvider>
+      <Provider store={store}>
+        <ThemeProvider theme={appTheme}>
+          <BrowserRouter>
+            {content}
+          </BrowserRouter>
+        </ThemeProvider>
+      </Provider>
     );
   };
 
   return render(ui, { wrapper: Wrapper, ...renderOptions });
 };
 
-// Re-export everything from React Testing Library
-export * from '@testing-library/react';
+// Re-export specific items from React Testing Library (not render)
+export {
+  screen,
+  waitFor,
+  fireEvent,
+  within,
+  waitForElementToBeRemoved,
+  act,
+} from '@testing-library/react';
 
-// Override render method
+// Export our custom render methods
 export { customRender as render, renderWithMocks };
 
 

@@ -7,7 +7,6 @@ import {
   Box,
   Chip,
   IconButton,
-  Rating,
   Menu,
   MenuItem,
   Tooltip,
@@ -20,7 +19,7 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import StarIcon from '@mui/icons-material/Star';
-import { WatchlistItem, WatchlistStatus } from '../../types/watchlist.types';
+import { WatchlistItem } from '../../types/watchlist.types';
 import { ROUTES } from '../../constants/routeConstants';
 import * as movieService from '../../services/movieService';
 import * as watchlistService from '../../services/watchlistService';

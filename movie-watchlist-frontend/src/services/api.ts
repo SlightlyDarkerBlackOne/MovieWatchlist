@@ -1,14 +1,13 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { STORAGE_KEYS, APP_CONFIG } from '../utils/constants';
+import { extractErrorMessage } from '../utils/errorHandler';
 
-// Navigation helper for redirects outside React components
 let navigateHandler: ((path: string) => void) | null = null;
 
 export const setNavigateHandler = (handler: (path: string) => void) => {
   navigateHandler = handler;
 };
 
-// Create axios instance with base configuration
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5250/api',
   timeout: APP_CONFIG.API_TIMEOUT,
@@ -17,7 +16,6 @@ const api = axios.create({
   },
 });
 
-// Request interceptor for adding auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
@@ -31,26 +29,28 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for handling errors
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Don't redirect if we're already on the login endpoint
       const isLoginEndpoint = error.config?.url?.includes('/Auth/login');
       if (!isLoginEndpoint) {
-        // Token expired or invalid - clear tokens
         localStorage.removeItem(STORAGE_KEYS.TOKEN);
         localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
         localStorage.removeItem(STORAGE_KEYS.USER);
         
-        // Navigate to login using React Router
         if (navigateHandler) {
           navigateHandler('/login');
         }
       }
     }
-    return Promise.reject(error);
+    
+    const enhancedError = new Error(extractErrorMessage(error));
+    enhancedError.name = 'ApiError';
+    (enhancedError as any).status = error.response?.status;
+    (enhancedError as any).originalError = error;
+    
+    return Promise.reject(enhancedError);
   }
 );
 

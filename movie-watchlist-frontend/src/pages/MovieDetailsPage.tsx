@@ -10,11 +10,15 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useGetMovieDetailsQuery } from '../store/api/moviesApi';
-import { WatchlistStatus } from '../types/watchlist.types';
+import { WatchlistStatus, AddToWatchlistRequest } from '../types/watchlist.types';
 import { useWatchlist } from '../contexts/WatchlistContext';
-import { useAddToWatchlistOperation, useRemoveFromWatchlistOperation, useWatchlistQuery } from '../hooks/useWatchlistOperations';
+import { useAddToWatchlistMutation, useRemoveFromWatchlistMutation, useGetWatchlistQuery } from '../hooks/useWatchlistOperations';
 import { useAuth } from '../contexts/AuthContext';
-import { MovieDetailsContent } from '../components/pages';
+import MovieMainDetails from '../components/movies/MovieMainDetails';
+import MovieGenres from '../components/movies/MovieGenres';
+import TopCastCrew from '../components/movies/TopCastCrew';
+import TrailerSection from '../components/pages/TrailerSection';
+import { findMainTrailer } from '../services/movieService';
 import { AddToWatchlistDialog } from '../components/dialogs';
 import LoginRequiredDialog from '../components/common/LoginRequiredDialog';
 
@@ -22,10 +26,10 @@ const MovieDetailsPage: React.FC = () => {
   const { tmdbId } = useParams<{ tmdbId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isInWatchlist } = useWatchlist();
-  const { addToWatchlist } = useAddToWatchlistOperation();
-  const { removeItem } = useRemoveFromWatchlistOperation();
-  const { data: watchlistItems } = useWatchlistQuery(user?.id);
+  const { isInWatchlist, addToWatchlist: addToWatchlistFromContext } = useWatchlist();
+  const [addToWatchlist] = useAddToWatchlistMutation();
+  const [removeFromWatchlist] = useRemoveFromWatchlistMutation();
+  const { data: watchlistItems } = useGetWatchlistQuery(user?.id ?? 0, { skip: !user });
   
   const {
     data: movieData,
@@ -55,6 +59,10 @@ const MovieDetailsPage: React.FC = () => {
       setLoginRequiredDialogOpen(true);
       return;
     }
+    if (addToWatchlistFromContext) {
+      addToWatchlistFromContext();
+      return;
+    }
     setAddDialogOpen(true);
   };
 
@@ -62,24 +70,25 @@ const MovieDetailsPage: React.FC = () => {
     if (!movieDetails || !user) return;
     
     try {
-      await addToWatchlist(user.id, {
+      const request: AddToWatchlistRequest = {
         movieId: movieDetails.tmdbId,
         status,
-        notes
-      });
+        notes: notes || undefined
+      };
+      
+      await addToWatchlist({ userId: user.id, request }).unwrap();
       
       setSuccessMessage(`Added "${movieDetails.title}" to your watchlist!`);
       handleCloseDialog();
     } catch (err) {
-      console.error('Failed to add to watchlist:', err);
-      setActionError('Failed to add to watchlist');
+      const error = err as Error;
+      setActionError(error.message || 'Failed to add to watchlist');
     }
   };
 
   const handleRemoveFromWatchlist = async () => {
     if (!movieDetails || !user || !watchlistItems) return;
     
-    // Find the watchlist item by tmdbId
     const watchlistItem = watchlistItems.find(item => item.movie?.tmdbId === movieDetails.tmdbId);
     
     if (!watchlistItem) {
@@ -88,11 +97,11 @@ const MovieDetailsPage: React.FC = () => {
     }
     
     try {
-      await removeItem(user.id, watchlistItem.id);
+      await removeFromWatchlist({ userId: user.id, itemId: watchlistItem.id }).unwrap();
       setSuccessMessage(`Removed "${movieDetails.title}" from your watchlist!`);
     } catch (err) {
-      console.error('Failed to remove from watchlist:', err);
-      setActionError('Failed to remove from watchlist');
+      const error = err as Error;
+      setActionError(error.message || 'Failed to remove from watchlist');
     }
   };
 
@@ -110,7 +119,6 @@ const MovieDetailsPage: React.FC = () => {
     setLoginRequiredDialogOpen(false);
   };
 
-  // Clear success message after timeout
   useEffect(() => {
     if (successMessage) {
       const timer = setTimeout(() => setSuccessMessage(null), 3000);
@@ -168,10 +176,8 @@ const MovieDetailsPage: React.FC = () => {
         </Alert>
       </Snackbar>
 
-      {/* Error Toast removed as we're using local state now */}
-
       {/* Main Movie Details */}
-      <MovieDetailsContent
+      <MovieMainDetails
         movieDetails={movieDetails}
         videos={videos}
         credits={credits}
@@ -181,6 +187,12 @@ const MovieDetailsPage: React.FC = () => {
         onRemoveFromWatchlist={handleRemoveFromWatchlist}
         isInWatchlist={isInWatchlist(movieDetails.tmdbId)}
       />
+
+      <MovieGenres genres={movieDetails.genres} />
+
+      <TrailerSection trailer={findMainTrailer(videos)} show={showTrailer} />
+
+      <TopCastCrew topCast={credits?.cast.slice(0, 10) || []} />
 
       {/* Add to Watchlist Dialog */}
       <AddToWatchlistDialog

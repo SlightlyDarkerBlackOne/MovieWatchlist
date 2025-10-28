@@ -26,7 +26,6 @@ class QueryErrorBoundaryClass extends Component<ErrorBoundaryProps, ErrorBoundar
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('Error caught by QueryErrorBoundary:', error, errorInfo);
     this.setState({ error });
   }
 

@@ -64,7 +64,6 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
         setError(result.message || ERROR_MESSAGES.RESET_FAILED);
       }
     } catch (error: unknown) {
-      console.error('Reset password error:', error);
       
       let errorMessage: string = ERROR_MESSAGES.UNEXPECTED_ERROR;
       if (error instanceof Error) {

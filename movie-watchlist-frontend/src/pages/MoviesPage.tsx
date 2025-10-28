@@ -12,13 +12,12 @@ import LoginRequiredDialog from '../components/common/LoginRequiredDialog';
 import { useSearchMoviesQuery, useGetPopularMoviesQuery } from '../store/api/moviesApi';
 import { Movie } from '../types/movie.types';
 import { WatchlistStatus } from '../types/watchlist.types';
-import { useWatchlist } from '../contexts/WatchlistContext';
-import { useAddToWatchlistOperation } from '../hooks/useWatchlistOperations';
+import { useAddToWatchlistMutation } from '../hooks/useWatchlistOperations';
 import { useAuth } from '../contexts/AuthContext';
 
 const MoviesPage: React.FC = () => {
   const { user } = useAuth();
-  const { addToWatchlist, isLoading: watchlistLoading, error: watchlistError } = useAddToWatchlistOperation();
+  const [addToWatchlist] = useAddToWatchlistMutation();
   const [searchParams] = useSearchParams();
   const searchResultsRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,7 +67,6 @@ const MoviesPage: React.FC = () => {
     const AUTO_REFRESH_INTERVAL = 3 * 60 * 1000;
     
     const intervalId = setInterval(() => {
-      console.log('Auto-refreshing popular movies...');
       refetchPopularMovies();
     }, AUTO_REFRESH_INTERVAL);
 
@@ -81,7 +79,7 @@ const MoviesPage: React.FC = () => {
     if (urlSearchQuery && urlSearchQuery !== searchQuery) {
       setSearchQuery(urlSearchQuery);
     }
-  }, [searchParams]);
+  }, [searchParams, searchQuery]);
 
   // Scroll to search results when they load
   useEffect(() => {
@@ -113,16 +111,19 @@ const MoviesPage: React.FC = () => {
     if (!selectedMovie || !user) return;
     
     try {
-      await addToWatchlist(user.id, {
-        movieId: selectedMovie.tmdbId,
-        status,
-        notes
-      });
+      await addToWatchlist({
+        userId: user.id,
+        request: {
+          movieId: selectedMovie.tmdbId,
+          status,
+          notes: notes || undefined
+        }
+      }).unwrap();
       
       setSuccessMessage(`Added "${selectedMovie.title}" to your watchlist!`);
       handleCloseDialog();
-    } catch (err) {
-      console.error('Failed to add to watchlist:', err);
+    } catch {
+      setSuccessMessage(null);
     }
   };
 
@@ -170,16 +171,6 @@ const MoviesPage: React.FC = () => {
         </Alert>
       </Snackbar>
 
-      <Snackbar
-        open={!!watchlistError}
-        autoHideDuration={5000}
-        onClose={() => {}}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert severity="error" variant="filled" sx={{ width: '100%' }}>
-          {watchlistError ? String(watchlistError) : 'An error occurred'}
-        </Alert>
-      </Snackbar>
 
       {/* Featured Movies Carousel */}
       {featuredMovies.length > 0 && (

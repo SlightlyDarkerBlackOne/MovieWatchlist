@@ -61,7 +61,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onForgotPassword,
         reset({ usernameOrEmail: data.usernameOrEmail, password: '' });
       }
     } catch (error: unknown) {
-      console.error('Login error:', error);
       
       let errorMessage: string = ERROR_MESSAGES.UNEXPECTED_ERROR;
       

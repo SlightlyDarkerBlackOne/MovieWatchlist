@@ -14,7 +14,10 @@ const TrailerSection: React.FC<TrailerSectionProps> = ({ trailer, show }) => {
   useEffect(() => {
     if (show && trailer && trailerRef.current) {
       requestAnimationFrame(() => {
-        trailerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const el = trailerRef.current as unknown as { scrollIntoView?: (opts?: any) => void } | null;
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       });
     }
   }, [show, trailer]);

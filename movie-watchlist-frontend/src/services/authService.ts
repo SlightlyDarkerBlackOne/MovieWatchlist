@@ -114,7 +114,6 @@ class AuthService {
       await api.post(API_ENDPOINTS.AUTH.LOGOUT);
       return true;
     } catch (error) {
-      console.error('Logout error:', error);
       return false;
     } finally {
       // Always clear local storage
@@ -130,7 +129,6 @@ class AuthService {
       if (!userStr) return null;
       return JSON.parse(userStr);
     } catch (error) {
-      console.error('Error getting current user:', error);
       return null;
     }
   }
@@ -163,7 +161,6 @@ class AuthService {
       };
     } catch (error) {
       const axiosError = error as AxiosError;
-      console.error('Refresh token error:', axiosError);
       // Clear tokens if refresh fails
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
       localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
@@ -211,7 +208,6 @@ class AuthService {
       
       return true; // Token is valid
     } catch (error) {
-      console.error('Token validation error:', error);
       // If we can't decode the token, it's invalid
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
       localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);

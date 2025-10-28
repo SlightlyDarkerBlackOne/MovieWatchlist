@@ -42,7 +42,6 @@ class CacheService {
    */
   set<T>(key: string, data: T, ttlHours: number = 6): boolean {
     if (!this.isLocalStorageAvailable()) {
-      console.warn('localStorage not available, caching disabled');
       return false;
     }
 
@@ -65,7 +64,6 @@ class CacheService {
         const error = e as DOMException;
         // Handle quota exceeded error
         if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-          console.warn('localStorage quota exceeded, clearing old cache entries');
           this.clearExpired();
           
           // Try one more time after cleanup
@@ -73,14 +71,12 @@ class CacheService {
             localStorage.setItem(fullKey, serialized);
             return true;
           } catch (retryError) {
-            console.error('Failed to cache after cleanup:', retryError);
             return false;
           }
         }
         throw e;
       }
     } catch (error) {
-      console.error('Cache set error:', error);
       return false;
     }
   }
@@ -106,21 +102,18 @@ class CacheService {
       const entry: CacheEntry<T> = JSON.parse(serialized);
 
       if (entry.version !== CACHE_VERSION) {
-        console.log(`Cache version mismatch for ${key}, invalidating`);
         this.clear(key);
         return null;
       }
 
       const now = Date.now();
       if (now > entry.expiresAt) {
-        console.log(`Cache expired for ${key}`);
         this.clear(key);
         return null;
       }
 
       return entry.data;
     } catch (error) {
-      console.error('Cache get error:', error);
       this.clear(key);
       return null;
     }
@@ -139,7 +132,6 @@ class CacheService {
       const fullKey = this.getFullKey(key);
       localStorage.removeItem(fullKey);
     } catch (error) {
-      console.error('Cache clear error:', error);
     }
   }
 
@@ -158,9 +150,7 @@ class CacheService {
           localStorage.removeItem(key);
         }
       });
-      console.log('All cache cleared');
     } catch (error) {
-      console.error('Cache clearAll error:', error);
     }
   }
 
@@ -197,10 +187,8 @@ class CacheService {
       });
 
       if (clearedCount > 0) {
-        console.log(`Cleared ${clearedCount} expired/invalid cache entries`);
       }
     } catch (error) {
-      console.error('Cache clearExpired error:', error);
     }
   }
 
@@ -233,7 +221,6 @@ class CacheService {
         version: CACHE_VERSION,
       };
     } catch (error) {
-      console.error('Cache getStats error:', error);
       return { totalEntries: 0, totalSize: 0, version: CACHE_VERSION };
     }
   }

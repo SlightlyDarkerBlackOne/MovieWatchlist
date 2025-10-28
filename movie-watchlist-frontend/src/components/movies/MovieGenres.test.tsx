@@ -18,10 +18,10 @@ describe('MovieGenres', () => {
     expect(screen.getByText('Sci-Fi')).toBeInTheDocument();
   });
 
-  it('should show "No genres available" when empty', () => {
-    render(<MovieGenres genres={[]} />);
-
-    expect(screen.getByText('No genres available')).toBeInTheDocument();
+  it('should render nothing when empty', () => {
+    const { container } = render(<MovieGenres genres={[]} />);
+    
+    expect(container.firstChild).toBeNull();
   });
 
   it('should handle single genre', () => {

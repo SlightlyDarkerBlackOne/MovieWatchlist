@@ -61,7 +61,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             localStorage.removeItem(STORAGE_KEYS.USER);
           }
         } catch (error) {
-          console.error('Failed to restore session:', error);
           authService.logout();
           localStorage.removeItem(STORAGE_KEYS.USER);
         }

@@ -79,7 +79,7 @@ const EditWatchlistItemDialog: React.FC<EditWatchlistItemDialogProps> = ({
   const handleSave = async () => {
     if (!item) return;
     
-    const updatedItem: any = {
+    const updatedItem: Partial<WatchlistItem> = {
       status,
       notes: notes || undefined,
       isFavorite,
