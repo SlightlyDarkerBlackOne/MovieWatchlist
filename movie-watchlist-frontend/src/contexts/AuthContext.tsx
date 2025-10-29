@@ -7,7 +7,7 @@ import {
   ForgotPasswordData,
   ResetPasswordData,
   PasswordResetResponse,
-  User
+  UserInfo
 } from '../types/auth.types';
 import { STORAGE_KEYS } from '../utils/constants';
 
@@ -16,7 +16,7 @@ import { STORAGE_KEYS } from '../utils/constants';
  * Defines all authentication-related methods available to components
  */
 export interface AuthContextType {
-  user: User | null;
+  user: UserInfo | null;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<AuthenticationResult>;
   register: (userData: RegisterData) => Promise<AuthenticationResult>;
@@ -41,7 +41,7 @@ interface AuthProviderProps {
  * C# Equivalent: Similar to DI Container or Service Provider
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Restore user session from localStorage on mount

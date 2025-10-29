@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Interfaces;
+using MovieWatchlist.Core.Models;
 using MovieWatchlist.Infrastructure.Data;
 
 namespace MovieWatchlist.Infrastructure.Repositories;
@@ -42,16 +38,6 @@ public class EfRepository<T> : IRepository<T> where T : class
     public async Task<IEnumerable<T>> GetAllAsync()
     {
         return await _dbSet.ToListAsync();
-    }
-
-    /// <summary>
-    /// Finds entities that match the specified predicate asynchronously.
-    /// </summary>
-    /// <param name="predicate">The condition to filter entities</param>
-    /// <returns>A collection of entities matching the predicate</returns>
-    public async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
-    {
-        return await _dbSet.Where(predicate).ToListAsync();
     }
 
     /// <summary>
@@ -107,20 +93,41 @@ public class EfRepository<T> : IRepository<T> where T : class
 public class UnitOfWork : IUnitOfWork
 {
     private readonly MovieWatchlistDbContext _context;
+    private readonly IDomainEventDispatcher _domainEventDispatcher;
     private bool _disposed = false;
 
-    public UnitOfWork(MovieWatchlistDbContext context)
+    public UnitOfWork(MovieWatchlistDbContext context, IDomainEventDispatcher domainEventDispatcher)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
+        _domainEventDispatcher = domainEventDispatcher ?? throw new ArgumentNullException(nameof(domainEventDispatcher));
     }
 
     /// <summary>
     /// Saves all changes made in this unit of work to the database asynchronously.
+    /// Dispatches domain events after successful save.
     /// </summary>
     /// <returns>The number of state entries written to the database</returns>
     public async Task<int> SaveChangesAsync()
     {
-        return await _context.SaveChangesAsync();
+        var entitiesWithEvents = _context.ChangeTracker.Entries<Entity>()
+            .Where(e => e.Entity.DomainEvents.Any())
+            .Select(e => e.Entity)
+            .ToList();
+        
+        var domainEvents = entitiesWithEvents
+            .SelectMany(e => e.DomainEvents)
+            .ToList();
+        
+        var result = await _context.SaveChangesAsync();
+        
+        await _domainEventDispatcher.DispatchAsync(domainEvents);
+        
+        foreach (var entity in entitiesWithEvents)
+        {
+            entity.ClearDomainEvents();
+        }
+        
+        return result;
     }
 
     /// <summary>

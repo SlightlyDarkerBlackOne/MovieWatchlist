@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
 using System.Linq;
@@ -12,9 +13,9 @@ namespace MovieWatchlist.Api.Controllers;
 public class MoviesController : ControllerBase
 {
     private readonly ITmdbService _tmdbService;
-    private readonly IRepository<Movie> _movieRepository;
+    private readonly IMovieRepository _movieRepository;
 
-    public MoviesController(ITmdbService tmdbService, IRepository<Movie> movieRepository)
+    public MoviesController(ITmdbService tmdbService, IMovieRepository movieRepository)
     {
         _tmdbService = tmdbService;
         _movieRepository = movieRepository;
@@ -24,7 +25,7 @@ public class MoviesController : ControllerBase
     public async Task<ActionResult<IEnumerable<Movie>>> SearchMovies([FromQuery] string query, [FromQuery] int page = 1)
     {
         if (string.IsNullOrWhiteSpace(query))
-            return BadRequest("Search query is required");
+            return BadRequest(ErrorMessages.SearchQueryRequired);
 
         var movies = await _tmdbService.SearchMoviesAsync(query, page);
         return Ok(movies);
@@ -67,8 +68,7 @@ public class MoviesController : ControllerBase
         try
         {
             // Check if we have cached data first
-            var cachedMovies = await _movieRepository.FindAsync(m => m.TmdbId == tmdbId);
-            var cachedMovie = cachedMovies.FirstOrDefault();
+            var cachedMovie = await _movieRepository.GetByTmdbIdAsync(tmdbId);
             
             if (cachedMovie != null && !string.IsNullOrEmpty(cachedMovie.CreditsJson) && !string.IsNullOrEmpty(cachedMovie.VideosJson))
             {
@@ -85,7 +85,7 @@ public class MoviesController : ControllerBase
             // Fallback: Fetch from TMDB and cache
             var movie = await _tmdbService.GetMovieDetailsAsync(tmdbId);
             if (movie == null)
-                return NotFound($"Movie with TMDB ID {tmdbId} not found");
+                return NotFound(string.Format(ErrorMessages.MovieWithTmdbIdNotFound, tmdbId));
                 
             // Save to cache
             await _movieRepository.AddAsync(movie);
@@ -105,11 +105,11 @@ public class MoviesController : ControllerBase
         }
         catch (HttpRequestException ex) when (ex.Message.Contains("429"))
         {
-            return StatusCode(StatusCodes.Status429TooManyRequests, new { message = "TMDB API rate limit exceeded. Please try again in a moment.", details = ex.Message });
+            return StatusCode(StatusCodes.Status429TooManyRequests, new { message = ErrorMessages.TmdbRateLimitExceeded, details = ex.Message });
         }
         catch (Exception ex)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Failed to fetch movie data", details = ex.Message });
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ErrorMessages.FailedToFetchMovieData, details = ex.Message });
         }
     }
 } 

@@ -4,9 +4,13 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Api.Constants;
 using MovieWatchlist.Core.Configuration;
+using MovieWatchlist.Infrastructure.Configuration;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Api.Middleware;
-using MovieWatchlist.Core.Validation;
+using MovieWatchlist.Application.Services;
+using MovieWatchlist.Application.Events;
+using MovieWatchlist.Application.Events.Handlers;
+using MovieWatchlist.Core.Events;
 using MovieWatchlist.Infrastructure.Data;
 using MovieWatchlist.Infrastructure.Repositories;
 using MovieWatchlist.Infrastructure.Services;
@@ -106,16 +110,44 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 builder.Services.AddScoped<IWatchlistRepository, WatchlistRepository>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+
+// Register Domain Events infrastructure
+builder.Services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
+
+// Register Domain Event Handlers
+builder.Services.AddScoped<IDomainEventHandler<MovieWatchedEvent>, LogActivityHandler>();
+builder.Services.AddScoped<IDomainEventHandler<MovieRatedEvent>, LogActivityHandler>();
+builder.Services.AddScoped<IDomainEventHandler<MovieFavoritedEvent>, LogActivityHandler>();
+builder.Services.AddScoped<IDomainEventHandler<MovieWatchedEvent>, UpdateStatisticsHandler>();
+
+// Register Authentication Domain Event Handlers
+builder.Services.AddScoped<IDomainEventHandler<UserRegisteredEvent>, UserRegisteredEventHandler>();
+builder.Services.AddScoped<IDomainEventHandler<UserLoggedInEvent>, UserLoggedInEventHandler>();
+builder.Services.AddScoped<IDomainEventHandler<RefreshTokenCreatedEvent>, RefreshTokenCreatedEventHandler>();
+builder.Services.AddScoped<IDomainEventHandler<UserPasswordChangedEvent>, UserPasswordChangedEventHandler>();
+
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-// Register services
+builder.Services.AddMediatR(cfg =>
+{
+    cfg.RegisterServicesFromAssembly(typeof(MovieWatchlist.Application.Handlers.Auth.RegisterCommandHandler).Assembly);
+    cfg.AddOpenBehavior(typeof(MovieWatchlist.Application.Behaviors.LoggingBehavior<,>));
+    cfg.AddOpenBehavior(typeof(MovieWatchlist.Application.Behaviors.TransactionBehavior<,>));
+});
+
+// Register Application services
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+builder.Services.AddScoped<IWatchlistService, WatchlistService>();
+builder.Services.AddScoped<IRetryPolicyService, RetryPolicyService>();
+
+// Register Infrastructure services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
-builder.Services.AddScoped<IInputValidationService, InputValidationService>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IGenreService, GenreService>();
 builder.Services.AddHttpClient<ITmdbService, TmdbService>();
-builder.Services.AddScoped<IWatchlistService, WatchlistService>();
 
 // Add CORS services
 builder.Services.AddCors(options =>

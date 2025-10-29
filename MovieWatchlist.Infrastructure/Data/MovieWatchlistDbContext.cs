@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.ValueObjects;
 
 namespace MovieWatchlist.Infrastructure.Data;
 
@@ -42,11 +43,17 @@ public class MovieWatchlistDbContext : DbContext
             entity.Property(e => e.Username)
                 .IsRequired()
                 .HasMaxLength(50)
+                .HasConversion(
+                    v => v.Value,
+                    v => Username.Create(v).Value!)
                 .HasComment("Unique username for the user");
             
             entity.Property(e => e.Email)
                 .IsRequired()
                 .HasMaxLength(255)
+                .HasConversion(
+                    v => v.Value,
+                    v => Email.Create(v).Value!)
                 .HasComment("User's email address");
             
             entity.Property(e => e.PasswordHash)
@@ -61,6 +68,13 @@ public class MovieWatchlistDbContext : DbContext
             
             entity.Property(e => e.LastLoginAt)
                 .HasComment("Last successful login timestamp");
+            
+            entity.Property(e => e.CachedStatisticsJson)
+                .HasColumnType("jsonb")
+                .HasComment("Cached watchlist statistics as JSONB");
+            
+            entity.Property(e => e.StatisticsLastUpdated)
+                .HasComment("When statistics were last calculated");
 
             // Indexes for performance
             entity.HasIndex(e => e.Username)
@@ -70,6 +84,9 @@ public class MovieWatchlistDbContext : DbContext
             entity.HasIndex(e => e.Email)
                 .IsUnique()
                 .HasDatabaseName("IX_Users_Email");
+            
+            entity.HasIndex(e => e.StatisticsLastUpdated)
+                .HasDatabaseName("IX_Users_StatisticsLastUpdated");
 
             // Relationships
             entity.HasMany(e => e.WatchlistItems)
@@ -131,11 +148,11 @@ public class MovieWatchlistDbContext : DbContext
                 .HasComment("Last time movie data was updated");
 
             // Configure Genres as JSON array for PostgreSQL
-            entity.Property(e => e.Genres)
-                .HasConversion(
-                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>())
-                .HasComment("Movie genres as JSON array");
+        entity.Property(e => e.Genres)
+            .HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>())
+            .HasComment("Movie genres as JSON array");
 
             // Indexes for performance
             entity.HasIndex(e => e.TmdbId)
@@ -187,6 +204,9 @@ public class MovieWatchlistDbContext : DbContext
                 .HasComment("Whether this movie is marked as favorite");
             
             entity.Property(e => e.UserRating)
+                .HasConversion(
+                    v => v != null ? v.Value : (int?)null,
+                    v => v.HasValue ? Rating.Create(v.Value).Value! : null!)
                 .HasComment("User's personal rating (1-10)");
             
             entity.Property(e => e.Notes)

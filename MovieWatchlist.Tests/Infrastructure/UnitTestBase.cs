@@ -30,18 +30,22 @@ public abstract class UnitTestBase
             .WithTitle(title)
             .WithVoteAverage(voteAverage)
             .Build();
-    }
+   }
 
     /// <summary>
     /// Creates a test watchlist item with default values
     /// </summary>
     protected WatchlistItem CreateTestWatchlistItem(int id = 1, int userId = 1, int movieId = 1, WatchlistStatus status = WatchlistStatus.Planned)
     {
-        return TestDataBuilder.WatchlistItem()
-            .WithId(id)
+        var item = TestDataBuilder.WatchlistItem()
             .WithUserId(userId)
             .WithMovieId(movieId)
             .WithStatus(status)
             .Build();
+        
+        // Set Id using reflection for testing purposes
+        typeof(WatchlistItem).GetProperty("Id")!.SetValue(item, id);
+        
+        return item;
     }
 }

@@ -4,9 +4,10 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using MovieWatchlist.Core.Configuration;
-using MovieWatchlist.Core.DTOs;
+using MovieWatchlist.Infrastructure.Configuration;
+using MovieWatchlist.Infrastructure.DTOs;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
 
@@ -17,16 +18,22 @@ public class TmdbService : ITmdbService
     private readonly HttpClient _httpClient;
     private readonly TmdbSettings _settings;
     private readonly IGenreService _genreService;
+    private readonly ILogger<TmdbService> _logger;
 
     private readonly string _baseUrl = "https://api.themoviedb.org/3";
 
-    public TmdbService(HttpClient httpClient, IOptions<TmdbSettings> settings, IGenreService genreService)
+    public TmdbService(HttpClient httpClient, IOptions<TmdbSettings> settings, IGenreService genreService, ILogger<TmdbService> logger)
     {
         _httpClient = httpClient;
         _settings = settings.Value;
         _genreService = genreService;
+        _logger = logger;
     }
 
+    /// <summary>
+    /// Searches for movies by query string. Results are sorted by vote count descending
+    /// to show most popular/relevant movies first.
+    /// </summary>
     public async Task<IEnumerable<Movie>> SearchMoviesAsync(string query, int page = 1)
     {
         var url = $"{_baseUrl}/search/movie?api_key={_settings.ApiKey}&query={Uri.EscapeDataString(query)}&page={page}";
@@ -34,16 +41,18 @@ public class TmdbService : ITmdbService
 
         var movies = MapToMovies(response?.Results ?? Array.Empty<TmdbMovieDto>());
         
-        // Sort by vote count descending to show most popular/relevant movies first
         return movies.OrderByDescending(m => m.VoteCount);
     }
 
+    /// <summary>
+    /// Gets detailed movie information from TMDB API. Uses append_to_response to fetch
+    /// movie details, credits, and videos in a single API call for efficiency.
+    /// Implements retry logic with exponential backoff for rate limiting (429 errors).
+    /// </summary>
     public async Task<Movie?> GetMovieDetailsAsync(int tmdbId)
     {
-        // Use append_to_response to get movie details, credits, and videos in ONE API call
         var url = $"{_baseUrl}/movie/{tmdbId}?api_key={_settings.ApiKey}&append_to_response=credits,videos";
         
-        // Retry logic for rate limiting
         int maxRetries = 3;
         int retryDelayMs = 1000;
         
@@ -58,7 +67,6 @@ public class TmdbService : ITmdbService
 
                 var movie = MapToMovie(response);
                 
-                // Cache credits and videos data from the single API call
                 try
                 {
                     if (response.Credits != null)
@@ -73,20 +81,18 @@ public class TmdbService : ITmdbService
                 }
                 catch (Exception ex)
                 {
-                    // Log error but don't fail - movie data is still valid without credits/videos
-                    Console.WriteLine($"Failed to serialize credits/videos for movie {tmdbId}: {ex.Message}");
+                    _logger.LogWarning(ex, "Failed to serialize credits/videos for movie {TmdbId}", tmdbId);
                 }
                 
                 return movie;
             }
             
-            // Handle rate limiting (429) with exponential backoff
             if (httpResponse.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
             {
                 if (attempt < maxRetries - 1)
                 {
                     var delay = retryDelayMs * (int)Math.Pow(2, attempt);
-                    Console.WriteLine($"Rate limited. Retrying in {delay}ms... (Attempt {attempt + 1}/{maxRetries})");
+                    _logger.LogWarning("Rate limited. Retrying in {Delay}ms... (Attempt {Attempt}/{MaxRetries})", delay, attempt + 1, maxRetries);
                     await Task.Delay(delay);
                     continue;
                 }
@@ -99,18 +105,21 @@ public class TmdbService : ITmdbService
         return null;
     }
 
+    /// <summary>
+    /// Gets popular movies from TMDB. Randomly selects between popular, top-rated, and now-playing
+    /// endpoints for variety. Results are shuffled before returning.
+    /// </summary>
     public async Task<IEnumerable<Movie>> GetPopularMoviesAsync(int page = 1)
     {
         var random = new Random();
-        var randomPage = random.Next(1, 4); // Random page between 1 and 3
+        var randomPage = random.Next(1, 4);
         
-        // Randomly select which endpoint to use for variety
         var endpointChoice = random.Next(0, 3);
         string endpoint = endpointChoice switch
         {
-            0 => "movie/popular",      // Popular movies
-            1 => "movie/top_rated",    // Top rated movies
-            _ => "movie/now_playing"   // Now playing in theaters
+            0 => "movie/popular",
+            1 => "movie/top_rated",
+            _ => "movie/now_playing"
         };
         
         var url = $"{_baseUrl}/{endpoint}?api_key={_settings.ApiKey}&page={randomPage}";
@@ -125,7 +134,6 @@ public class TmdbService : ITmdbService
         var tmdbResponse = await response.Content.ReadFromJsonAsync<TmdbSearchResponse>();
         var movies = MapToMovies(tmdbResponse?.Results ?? Array.Empty<TmdbMovieDto>()).ToList();
         
-        // Shuffle the results to add even more variety
         return movies.OrderBy(m => random.Next()).ToList();
     }
 
@@ -137,10 +145,7 @@ public class TmdbService : ITmdbService
             throw new ArgumentException($"Invalid genre: {genre}. Please use a valid genre name like 'comedy', 'action', 'drama', etc.");
         }
 
-        // Use absolute URL since base address is commented out
         var url = $"{_baseUrl}/discover/movie?api_key={_settings.ApiKey}&with_genres={genreId}&page={page}";
-        Console.WriteLine($"Making request to: {url}");
-        Console.WriteLine($"API Key: {_settings.ApiKey}");
         
         var response = await _httpClient.GetAsync(url);
         
@@ -199,7 +204,6 @@ public class TmdbService : ITmdbService
         DateTime releaseDate = DateTime.MinValue;
         if (DateTime.TryParse(dto.ReleaseDate, out var date))
         {
-            // Ensure the DateTime has UTC kind for PostgreSQL compatibility
             releaseDate = DateTime.SpecifyKind(date, DateTimeKind.Utc);
         }
         else
@@ -207,7 +211,6 @@ public class TmdbService : ITmdbService
             releaseDate = DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
         }
 
-        // Use genre names from TMDB detailed movie response
         var genreNames = dto.Genres.Select(g => g.Name).ToArray();
 
         return new Movie

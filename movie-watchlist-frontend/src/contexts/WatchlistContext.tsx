@@ -62,7 +62,7 @@ export const WatchlistProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } else {
       setWatchlistMovieIds([]);
     }
-  }, [user?.id]);
+  }, [user?.id, refreshWatchlistIds]);
 
   const addToWatchlist = useCallback((movie: Movie) => {
     if (!user) {

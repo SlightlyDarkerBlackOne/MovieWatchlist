@@ -1,10 +1,11 @@
 using FluentAssertions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
-using MovieWatchlist.Core.Configuration;
+using MovieWatchlist.Infrastructure.Configuration;
 using MovieWatchlist.Core.Constants;
-using MovieWatchlist.Core.DTOs;
+using MovieWatchlist.Infrastructure.DTOs;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Infrastructure.Services;
 using MovieWatchlist.Tests.Infrastructure;
@@ -22,6 +23,7 @@ public class TmdbServiceTests : UnitTestBase, IDisposable
     private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
     private readonly HttpClient _httpClient;
     private readonly Mock<IGenreService> _mockGenreService;
+    private readonly Mock<ILogger<TmdbService>> _mockLogger;
     private readonly TmdbSettings _tmdbSettings;
     private readonly TmdbService _tmdbService;
 
@@ -30,6 +32,7 @@ public class TmdbServiceTests : UnitTestBase, IDisposable
         _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
         _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
         _mockGenreService = new Mock<IGenreService>();
+        _mockLogger = new Mock<ILogger<TmdbService>>();
 
         _tmdbSettings = new TmdbSettings
         {
@@ -38,7 +41,7 @@ public class TmdbServiceTests : UnitTestBase, IDisposable
         };
 
         var options = Options.Create(_tmdbSettings);
-        _tmdbService = new TmdbService(_httpClient, options, _mockGenreService.Object);
+        _tmdbService = new TmdbService(_httpClient, options, _mockGenreService.Object, _mockLogger.Object);
     }
 
     public void Dispose()

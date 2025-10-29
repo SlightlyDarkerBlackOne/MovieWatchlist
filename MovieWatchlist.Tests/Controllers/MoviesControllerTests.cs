@@ -12,13 +12,13 @@ namespace MovieWatchlist.Tests.Controllers;
 public class MoviesControllerTests
 {
     private readonly Mock<ITmdbService> _mockTmdbService;
-    private readonly Mock<IRepository<Movie>> _mockMovieRepository;
+    private readonly Mock<IMovieRepository> _mockMovieRepository;
     private readonly MoviesController _controller;
 
     public MoviesControllerTests()
     {
         _mockTmdbService = new Mock<ITmdbService>();
-        _mockMovieRepository = new Mock<IRepository<Movie>>();
+        _mockMovieRepository = new Mock<IMovieRepository>();
         _controller = new MoviesController(_mockTmdbService.Object, _mockMovieRepository.Object);
     }
 

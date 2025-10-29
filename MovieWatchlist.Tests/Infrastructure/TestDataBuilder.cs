@@ -1,4 +1,5 @@
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.ValueObjects;
 
 namespace MovieWatchlist.Tests.Infrastructure;
 
@@ -26,6 +27,11 @@ public static class TestDataBuilder
     /// Creates a new RefreshToken builder with default values
     /// </summary>
     public static RefreshTokenBuilder RefreshToken() => new();
+
+    /// <summary>
+    /// Creates a new PasswordResetToken builder with default values
+    /// </summary>
+    public static PasswordResetTokenBuilder PasswordResetToken() => new();
 }
 
 /// <summary>
@@ -33,58 +39,69 @@ public static class TestDataBuilder
 /// </summary>
 public class UserBuilder
 {
-    private readonly User _user;
-
-    public UserBuilder()
-    {
-        _user = new User
-        {
-            Username = "testuser",
-            Email = "test@example.com",
-            PasswordHash = "hashed_password",
-            CreatedAt = DateTime.UtcNow.AddDays(-30),
-            LastLoginAt = DateTime.UtcNow.AddDays(-1)
-        };
-    }
+    private int _id = 1;
+    private string _username = "testuser";
+    private string _email = "test@example.com";
+    private string _passwordHash = "hashed_password";
+    private DateTime? _lastLoginAt = null;
 
     public UserBuilder WithId(int id)
     {
-        _user.Id = id;
+        _id = id;
         return this;
     }
 
     public UserBuilder WithUsername(string username)
     {
-        _user.Username = username;
+        _username = username;
         return this;
     }
 
     public UserBuilder WithEmail(string email)
     {
-        _user.Email = email;
+        _email = email;
         return this;
     }
 
     public UserBuilder WithPasswordHash(string passwordHash)
     {
-        _user.PasswordHash = passwordHash;
+        _passwordHash = passwordHash;
         return this;
     }
 
     public UserBuilder WithCreatedAt(DateTime createdAt)
     {
-        _user.CreatedAt = createdAt;
+        // Note: CreatedAt is set by factory method, cannot be changed via domain methods
+        // This is kept for backward compatibility but will be ignored
         return this;
     }
 
     public UserBuilder WithLastLoginAt(DateTime? lastLoginAt)
     {
-        _user.LastLoginAt = lastLoginAt;
+        _lastLoginAt = lastLoginAt;
         return this;
     }
 
-
-    public User Build() => _user;
+    public User Build()
+    {
+        // Create Value Objects
+        var username = Username.Create(_username).Value!;
+        var email = Email.Create(_email).Value!;
+        
+        // Create user using domain factory
+        var user = User.Create(username, email, _passwordHash);
+        
+        // Set Id using reflection for testing purposes
+        typeof(User).GetProperty("Id")!.SetValue(user, _id);
+        
+        // Set LastLoginAt using reflection if provided
+        if (_lastLoginAt.HasValue)
+        {
+            typeof(User).GetProperty("LastLoginAt")!.SetValue(user, _lastLoginAt.Value);
+        }
+        
+        return user;
+    }
 }
 
 /// <summary>
@@ -112,7 +129,7 @@ public class MovieBuilder
 
     public MovieBuilder WithId(int id)
     {
-        _movie.Id = id;
+        typeof(Movie).GetProperty("Id")!.SetValue(_movie, id);
         return this;
     }
 
@@ -174,144 +191,276 @@ public class MovieBuilder
 }
 
 /// <summary>
-/// Builder for creating WatchlistItem test data
+/// Builder for creating WatchlistItem test data using domain factory methods
 /// </summary>
 public class WatchlistItemBuilder
 {
-    private readonly WatchlistItem _item;
-
-    public WatchlistItemBuilder()
-    {
-        _item = new WatchlistItem
-        {
-            UserId = 1,
-            MovieId = 1,
-            Status = WatchlistStatus.Planned,
-            IsFavorite = false,
-            UserRating = null,
-            Notes = null,
-            AddedDate = DateTime.UtcNow.AddDays(-7),
-            WatchedDate = null
-        };
-    }
-
-    public WatchlistItemBuilder WithId(int id)
-    {
-        _item.Id = id;
-        return this;
-    }
+    private int _userId = 1;
+    private int _movieId = 1;
+    private WatchlistStatus _status = WatchlistStatus.Planned;
+    private bool _isFavorite = false;
+    private int? _userRating = null;
+    private string? _notes = null;
+    private DateTime _addedDate = DateTime.UtcNow;
+    private DateTime? _watchedDate = null;
+    private static int _uniqueMovieCounter = 100000; // Start at high number to avoid conflicts
 
     public WatchlistItemBuilder WithUserId(int userId)
     {
-        _item.UserId = userId;
+        _userId = userId;
         return this;
     }
 
     public WatchlistItemBuilder WithMovieId(int movieId)
     {
-        _item.MovieId = movieId;
+        _movieId = movieId;
         return this;
     }
 
     public WatchlistItemBuilder WithStatus(WatchlistStatus status)
     {
-        _item.Status = status;
+        _status = status;
         return this;
     }
 
     public WatchlistItemBuilder WithIsFavorite(bool isFavorite)
     {
-        _item.IsFavorite = isFavorite;
+        _isFavorite = isFavorite;
         return this;
     }
 
     public WatchlistItemBuilder WithUserRating(int? userRating)
     {
-        _item.UserRating = userRating;
+        _userRating = userRating;
         return this;
     }
 
     public WatchlistItemBuilder WithNotes(string? notes)
     {
-        _item.Notes = notes;
+        _notes = notes;
         return this;
     }
 
     public WatchlistItemBuilder WithAddedDate(DateTime addedDate)
     {
-        _item.AddedDate = addedDate;
+        _addedDate = addedDate;
         return this;
     }
 
     public WatchlistItemBuilder WithWatchedDate(DateTime? watchedDate)
     {
-        _item.WatchedDate = watchedDate;
+        _watchedDate = watchedDate;
         return this;
     }
 
     public WatchlistItemBuilder WithMovie(Movie movie)
     {
-        _item.Movie = movie;
+        // Note: Movie parameter is ignored - we only use MovieId for foreign key
         return this;
     }
 
-    public WatchlistItem Build() => _item;
+    public WatchlistItem Build()
+    {
+        // Create a unique movie object to satisfy the domain factory requirement
+        // This movie won't be saved to the database - only the MovieId FK is used
+        var uniqueMovie = new Movie
+        {
+            TmdbId = Interlocked.Increment(ref _uniqueMovieCounter), // Thread-safe unique ID
+            Title = $"Test Movie {_movieId}",
+            Overview = "A test movie for watchlist item",
+            PosterPath = "/test.jpg",
+            ReleaseDate = DateTime.UtcNow,
+            VoteAverage = 7.5,
+            VoteCount = 1000,
+            Popularity = 100.0,
+            Genres = new[] { "Action", "Drama" }
+        };
+
+        // Create watchlist item using domain factory
+        var item = WatchlistItem.Create(_userId, uniqueMovie);
+
+        // Update properties that weren't set by factory
+        if (_status != WatchlistStatus.Planned)
+            item.UpdateStatus(_status);
+
+        if (_isFavorite)
+            item.ToggleFavorite();
+
+        if (_userRating.HasValue)
+        {
+            var rating = Rating.Create(_userRating.Value).Value!;
+            item.SetRating(rating);
+        }
+
+        if (_notes != null)
+            item.UpdateNotes(_notes);
+
+        // Clear the navigation property to avoid tracking conflicts
+        // The MovieId foreign key is already set correctly
+        item.Movie = null!;
+
+        return item;
+    }
 }
 
 /// <summary>
-/// Builder for creating RefreshToken test data
+/// Builder for creating RefreshToken test data using domain factory methods
 /// </summary>
 public class RefreshTokenBuilder
 {
-    private readonly RefreshToken _token;
-
-    public RefreshTokenBuilder()
-    {
-        _token = new RefreshToken
-        {
-            UserId = 1,
-            Token = Guid.NewGuid().ToString(),
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
-            IsRevoked = false,
-            CreatedAt = DateTime.UtcNow
-        };
-    }
+    private int _id = 1;
+    private int _userId = 1;
+    private string _token = Guid.NewGuid().ToString();
+    private int _expirationDays = 7;
+    private bool _isRevoked = false;
+    private DateTime? _createdAt = null;
+    private DateTime? _expiresAt = null;
 
     public RefreshTokenBuilder WithId(int id)
     {
-        _token.Id = id;
+        _id = id;
         return this;
     }
 
     public RefreshTokenBuilder WithUserId(int userId)
     {
-        _token.UserId = userId;
+        _userId = userId;
         return this;
     }
 
     public RefreshTokenBuilder WithToken(string token)
     {
-        _token.Token = token;
+        _token = token;
         return this;
     }
 
     public RefreshTokenBuilder WithExpiresAt(DateTime expiresAt)
     {
-        _token.ExpiresAt = expiresAt;
+        _expiresAt = expiresAt;
+        var daysUntilExpiration = (expiresAt - DateTime.UtcNow).Days;
+        _expirationDays = Math.Max(1, daysUntilExpiration);
         return this;
     }
 
     public RefreshTokenBuilder WithIsRevoked(bool isRevoked)
     {
-        _token.IsRevoked = isRevoked;
+        _isRevoked = isRevoked;
         return this;
     }
 
     public RefreshTokenBuilder WithCreatedAt(DateTime createdAt)
     {
-        _token.CreatedAt = createdAt;
+        _createdAt = createdAt;
         return this;
     }
 
-    public RefreshToken Build() => _token;
+    public RefreshToken Build()
+    {
+        RefreshToken token;
+        
+        // If we need to set custom ExpiresAt or CreatedAt dates, create the token using reflection
+        // instead of the factory method to avoid the DateTime.UtcNow calculation
+        if (_expiresAt.HasValue || _createdAt.HasValue)
+        {
+            // Create token using reflection to bypass factory method validation
+            token = (RefreshToken)Activator.CreateInstance(typeof(RefreshToken), true)!;
+            
+            // Set properties using reflection - set CreatedAt first, then ExpiresAt
+            typeof(RefreshToken).GetProperty("UserId")!.SetValue(token, _userId);
+            typeof(RefreshToken).GetProperty("Token")!.SetValue(token, _token);
+            typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(token, false);
+            
+            var createdAtValue = _createdAt ?? DateTime.UtcNow;
+            typeof(RefreshToken).GetProperty("CreatedAt")!.SetValue(token, createdAtValue);
+            
+            var expiresAtValue = _expiresAt ?? DateTime.UtcNow.AddDays(_expirationDays);
+            typeof(RefreshToken).GetProperty("ExpiresAt")!.SetValue(token, expiresAtValue);
+        }
+        else
+        {
+            // Use factory method for normal cases
+            token = RefreshToken.Create(_userId, _token, _expirationDays);
+        }
+
+        if (_isRevoked)
+        {
+            token.Revoke();
+        }
+
+        return token;
+    }
+}
+
+/// <summary>
+/// Builder for creating PasswordResetToken test data using domain factory methods
+/// </summary>
+public class PasswordResetTokenBuilder
+{
+    private int _id = 1;
+    private int _userId = 1;
+    private string _token = Guid.NewGuid().ToString();
+    private int _expirationHours = 1;
+    private bool _isUsed = false;
+    private DateTime? _createdAt = null;
+
+    public PasswordResetTokenBuilder WithId(int id)
+    {
+        _id = id;
+        return this;
+    }
+
+    public PasswordResetTokenBuilder WithUserId(int userId)
+    {
+        _userId = userId;
+        return this;
+    }
+
+    public PasswordResetTokenBuilder WithToken(string token)
+    {
+        _token = token;
+        return this;
+    }
+
+    public PasswordResetTokenBuilder WithExpiresAt(DateTime expiresAt)
+    {
+        // Calculate expiration hours from the provided date
+        var hoursUntilExpiration = (int)(expiresAt - DateTime.UtcNow).TotalHours;
+        _expirationHours = Math.Max(1, hoursUntilExpiration);
+        return this;
+    }
+
+    public PasswordResetTokenBuilder WithIsUsed(bool isUsed)
+    {
+        _isUsed = isUsed;
+        return this;
+    }
+
+    public PasswordResetTokenBuilder WithCreatedAt(DateTime createdAt)
+    {
+        _createdAt = createdAt;
+        return this;
+    }
+
+    public PasswordResetToken Build()
+    {
+        // Create token using domain factory
+        var token = PasswordResetToken.Create(_userId, _token, _expirationHours);
+
+        // Set Id using reflection for testing purposes
+        typeof(PasswordResetToken).GetProperty("Id")!.SetValue(token, _id);
+
+        // Set CreatedAt using reflection if provided
+        if (_createdAt.HasValue)
+        {
+            typeof(PasswordResetToken).GetProperty("CreatedAt")!.SetValue(token, _createdAt.Value);
+        }
+
+        // Mark as used if needed using domain method
+        if (_isUsed)
+        {
+            token.MarkAsUsed();
+        }
+
+        return token;
+    }
 }

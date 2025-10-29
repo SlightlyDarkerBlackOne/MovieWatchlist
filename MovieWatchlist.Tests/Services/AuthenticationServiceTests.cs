@@ -2,14 +2,16 @@ using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Moq;
 using MovieWatchlist.Core.Configuration;
-using MovieWatchlist.Core.DTOs;
+using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.ValueObjects;
+using MovieWatchlist.Application.Services;
 using MovieWatchlist.Infrastructure.Services;
 using MovieWatchlist.Tests.Infrastructure;
-using System.Linq.Expressions;
 using System.Security.Claims;
 using Xunit;
+using MovieWatchlist.Core.Constants;
 
 namespace MovieWatchlist.Tests.Services;
 
@@ -18,23 +20,29 @@ namespace MovieWatchlist.Tests.Services;
 /// </summary>
 public class AuthenticationServiceTests : UnitTestBase
 {
-    private readonly Mock<IRepository<User>> _mockUserRepository;
-    private readonly Mock<IRepository<RefreshToken>> _mockRefreshTokenRepository;
-    private readonly Mock<IRepository<PasswordResetToken>> _mockPasswordResetTokenRepository;
+    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IRefreshTokenRepository> _mockRefreshTokenRepository;
+    private readonly Mock<IPasswordResetTokenRepository> _mockPasswordResetTokenRepository;
     private readonly Mock<IJwtTokenService> _mockJwtTokenService;
-    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
     private readonly Mock<IEmailService> _mockEmailService;
+    private readonly Mock<IPasswordHasher> _mockPasswordHasher;
     private readonly JwtSettings _jwtSettings;
     private readonly AuthenticationService _authenticationService;
 
     public AuthenticationServiceTests()
     {
-        _mockUserRepository = new Mock<IRepository<User>>();
-        _mockRefreshTokenRepository = new Mock<IRepository<RefreshToken>>();
-        _mockPasswordResetTokenRepository = new Mock<IRepository<PasswordResetToken>>();
+        _mockUserRepository = new Mock<IUserRepository>();
+        _mockRefreshTokenRepository = new Mock<IRefreshTokenRepository>();
+        _mockPasswordResetTokenRepository = new Mock<IPasswordResetTokenRepository>();
         _mockJwtTokenService = new Mock<IJwtTokenService>();
-        _mockUnitOfWork = new Mock<IUnitOfWork>();
         _mockEmailService = new Mock<IEmailService>();
+        _mockPasswordHasher = new Mock<IPasswordHasher>();
+
+        // Setup password hasher to use real implementation for testing
+        _mockPasswordHasher.Setup(x => x.HashPassword(It.IsAny<string>()))
+            .Returns<string>(pwd => new MovieWatchlist.Infrastructure.Services.PasswordHasher().HashPassword(pwd));
+        _mockPasswordHasher.Setup(x => x.VerifyPassword(It.IsAny<string>(), It.IsAny<string>()))
+            .Returns<string, string>((pwd, hash) => new MovieWatchlist.Infrastructure.Services.PasswordHasher().VerifyPassword(pwd, hash));
 
         _jwtSettings = new JwtSettings
         {
@@ -51,9 +59,9 @@ public class AuthenticationServiceTests : UnitTestBase
             _mockRefreshTokenRepository.Object,
             _mockPasswordResetTokenRepository.Object,
             _mockJwtTokenService.Object,
-            _mockUnitOfWork.Object,
             options,
-            _mockEmailService.Object);
+            _mockEmailService.Object,
+            _mockPasswordHasher.Object);
     }
 
     #region RegisterAsync Tests
@@ -62,92 +70,150 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task RegisterAsync_WithValidData_ReturnsSuccessResult()
     {
         // Arrange
-        var registerDto = new RegisterDto
-        {
-            Username = TestConstants.Users.DefaultUsername,
-            Email = TestConstants.Users.DefaultEmail,
-            Password = TestConstants.Users.DefaultPassword
-        };
+        var command = new RegisterCommand(
+            Username: TestConstants.Users.DefaultUsername,
+            Email: TestConstants.Users.DefaultEmail,
+            Password: TestConstants.Users.DefaultPassword
+        );
 
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User>()); // No existing users
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
+            .ReturnsAsync((User?)null); // No existing users
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
+            .ReturnsAsync((User?)null); // No existing users
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
             .Returns("test-jwt-token");
-        _mockJwtTokenService.Setup(x => x.GenerateRefreshToken())
-            .Returns("test-refresh-token");
 
         // Act
-        
-        var result = await _authenticationService.RegisterAsync(registerDto);
+        var userResult = await _authenticationService.RegisterUserAsync(command);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        result.Token.Should().Be("test-jwt-token");
-        result.RefreshToken.Should().Be("test-refresh-token");
-        result.User.Should().NotBeNull();
-        result.User!.Username.Should().Be(TestConstants.Users.DefaultUsername);
-        result.User.Email.Should().Be(TestConstants.Users.DefaultEmail);
+        userResult.IsSuccess.Should().BeTrue();
+        userResult.Value.Should().NotBeNull();
+        userResult.Value!.Username.Value.Should().Be(TestConstants.Users.DefaultUsername);
+        userResult.Value.Email.Value.Should().Be(TestConstants.Users.DefaultEmail);
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Once);
-        _mockRefreshTokenRepository.Verify(x => x.AddAsync(It.IsAny<RefreshToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Exactly(2));
+
+        // Test GenerateAuthenticationResult separately
+        var authResult = _authenticationService.GenerateAuthenticationResult(userResult.Value!);
+        authResult.IsSuccess.Should().BeTrue();
+        authResult.Token.Should().Be("test-jwt-token");
+        authResult.User.Should().NotBeNull();
+        authResult.User!.Username.Should().Be(TestConstants.Users.DefaultUsername);
+        authResult.User.Email.Should().Be(TestConstants.Users.DefaultEmail);
     }
 
     [Fact]
     public async Task RegisterAsync_WithExistingEmail_ReturnsFailureResult()
     {
         // Arrange
-        var registerDto = new RegisterDto
-        {
-            Username = "testuser",
-            Email = "existing@example.com",
-            Password = "Password123!"
-        };
+        var command = new RegisterCommand(
+            Username: "testuser",
+            Email: "existing@example.com",
+            Password: "Password123!"
+        );
 
         var existingUser = CreateTestUser(email: "existing@example.com");
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User> { existingUser }); // Existing user with same email
+        var email = Email.Create(command.Email).Value!;
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(email))
+            .ReturnsAsync(existingUser); // Existing user with same email
 
         // Act
-        var result = await _authenticationService.RegisterAsync(registerDto);
+        var result = await _authenticationService.RegisterUserAsync(command);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Email is already registered");
-        result.Token.Should().BeNull();
-        result.User.Should().BeNull();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Email is already registered");
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
     public async Task RegisterAsync_WithExistingUsername_ReturnsFailureResult()
     {
         // Arrange
-        var registerDto = new RegisterDto
-        {
-            Username = "existinguser",
-            Email = "test@example.com",
-            Password = "Password123!"
-        };
+        var command = new RegisterCommand(
+            Username: "existinguser",
+            Email: "test@example.com",
+            Password: "Password123!"
+        );
 
-        // First call returns empty (email check), second call returns existing user (username check)
-        _mockUserRepository.SetupSequence(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User>()) // No existing email
-            .ReturnsAsync(new List<User> { CreateTestUser(username: "existinguser") }); // Existing username
+        // First call returns null (email check), second call returns existing user (username check)
+        var email = Email.Create(command.Email).Value!;
+        var username = Username.Create(command.Username).Value!;
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(email))
+            .ReturnsAsync((User?)null); // No existing email
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(username))
+            .ReturnsAsync(CreateTestUser(username: "existinguser"));
 
         // Act
-        var result = await _authenticationService.RegisterAsync(registerDto);
+        var result = await _authenticationService.RegisterUserAsync(command);
 
         // Assert
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Username is already taken");
-        result.Token.Should().BeNull();
-        result.User.Should().BeNull();
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be("Username is already taken");
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithInvalidPassword_ReturnsFailureResult()
+    {
+        // Arrange
+        var command = new RegisterCommand(
+            Username: TestConstants.Users.DefaultUsername,
+            Email: TestConstants.Users.DefaultEmail,
+            Password: TestConstants.Users.WeakPassword
+        );
+
+        // Act
+        var result = await _authenticationService.RegisterUserAsync(command);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(ValidationConstants.Password.InvalidFormatMessage);
+
+        _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithInvalidEmail_ReturnsFailureResult()
+    {
+        // Arrange
+        var command = new RegisterCommand(
+            Username: TestConstants.Users.DefaultUsername,
+            Email: "invalid-email",
+            Password: TestConstants.Users.DefaultPassword
+        );
+
+        // Act
+        var result = await _authenticationService.RegisterUserAsync(command);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(ValidationConstants.Email.InvalidFormatMessage);
+
+        _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithInvalidUsername_ReturnsFailureResult()
+    {
+        // Arrange
+        var command = new RegisterCommand(
+            Username: "user@name", // Invalid format (contains @)
+            Email: TestConstants.Users.DefaultEmail,
+            Password: TestConstants.Users.DefaultPassword
+        );
+
+        // Act
+        var result = await _authenticationService.RegisterUserAsync(command);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Be(ValidationConstants.Username.InvalidFormatMessage);
+
+        _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
     }
 
     #endregion
@@ -158,132 +224,125 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task LoginAsync_WithValidCredentials_ReturnsSuccessResult()
     {
         // Arrange
-        var loginDto = new LoginDto
-        {
-            UsernameOrEmail = TestConstants.Users.DefaultUsername,
-            Password = TestConstants.Users.DefaultPassword
-        };
+        var command = new LoginCommand(
+            UsernameOrEmail: TestConstants.Users.DefaultUsername,
+            Password: TestConstants.Users.DefaultPassword
+        );
 
-        var user = TestDataBuilder.User()
-            .WithId(1)
-            .WithUsername(TestConstants.Users.DefaultUsername)
-            .WithEmail(TestConstants.Users.DefaultEmail)
-            .WithPasswordHash(PasswordHasher.HashPassword(TestConstants.Users.DefaultPassword))
-            .Build();
+        var user = User.Create(
+            Username.Create(TestConstants.Users.DefaultUsername).Value!,
+            Email.Create(TestConstants.Users.DefaultEmail).Value!,
+            new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword)
+        );
+        typeof(User).GetProperty("Id")!.SetValue(user, 1);
 
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User> { user });
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
+            .ReturnsAsync(user);
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
             .Returns("test-jwt-token");
         _mockJwtTokenService.Setup(x => x.GenerateRefreshToken())
             .Returns("test-refresh-token");
 
         // Act
-        var result = await _authenticationService.LoginAsync(loginDto);
+        var result = await _authenticationService.LoginAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Token.Should().Be("test-jwt-token");
-        result.RefreshToken.Should().Be("test-refresh-token");
-        result.User.Should().NotBeNull();
-        result.User!.Username.Should().Be(TestConstants.Users.DefaultUsername);
+        result.Value!.Token.Should().Be("test-jwt-token");
+        result.Value.RefreshToken.Should().Be("test-refresh-token");
+        result.Value.User.Should().NotBeNull();
+        result.Value.User!.Username.Should().Be(TestConstants.Users.DefaultUsername);
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Once);
         _mockRefreshTokenRepository.Verify(x => x.AddAsync(It.IsAny<RefreshToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Exactly(2));
     }
 
     [Fact]
     public async Task LoginAsync_WithNonExistentUser_ReturnsFailureResult()
     {
         // Arrange
-        var loginDto = new LoginDto
-        {
-            UsernameOrEmail = "nonexistent",
-            Password = "Password123!"
-        };
+        var command = new LoginCommand(
+            UsernameOrEmail: "nonexistent",
+            Password: "Password123!"
+        );
 
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User>()); // No user found
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
+            .ReturnsAsync((User?)null); // No user found
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
+            .ReturnsAsync((User?)null); // No user found
 
         // Act
-        var result = await _authenticationService.LoginAsync(loginDto);
+        var result = await _authenticationService.LoginAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Invalid username/email or password");
-        result.Token.Should().BeNull();
-        result.User.Should().BeNull();
+        result.Error.Should().Be("Invalid username/email or password");
+        result.Value.Should().BeNull();
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
     public async Task LoginAsync_WithInvalidPassword_ReturnsFailureResult()
     {
         // Arrange
-        var loginDto = new LoginDto
-        {
-            UsernameOrEmail = TestConstants.Users.DefaultUsername,
-            Password = "WrongPassword123!"
-        };
+        var command = new LoginCommand(
+            UsernameOrEmail: TestConstants.Users.DefaultUsername,
+            Password: "WrongPassword123!"
+        );
 
-        var user = TestDataBuilder.User()
-            .WithId(1)
-            .WithUsername(TestConstants.Users.DefaultUsername)
-            .WithEmail(TestConstants.Users.DefaultEmail)
-            .WithPasswordHash(PasswordHasher.HashPassword("CorrectPassword123!"))
-            .Build();
+        var user = User.Create(
+            Username.Create(TestConstants.Users.DefaultUsername).Value!,
+            Email.Create(TestConstants.Users.DefaultEmail).Value!,
+            new PasswordHasher().HashPassword("CorrectPassword123!")
+        );
+        typeof(User).GetProperty("Id")!.SetValue(user, 1);
 
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User> { user });
+        _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
+            .ReturnsAsync(user);
 
         // Act
-        var result = await _authenticationService.LoginAsync(loginDto);
+        var result = await _authenticationService.LoginAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Invalid username/email or password");
-        result.Token.Should().BeNull();
-        result.User.Should().BeNull();
+        result.Error.Should().Be("Invalid username/email or password");
+        result.Value.Should().BeNull(); // Value should be null for failure results
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
     public async Task LoginAsync_WithEmail_ReturnsSuccessResult()
     {
         // Arrange
-        var loginDto = new LoginDto
-        {
-            UsernameOrEmail = TestConstants.Users.DefaultEmail,
-            Password = TestConstants.Users.DefaultPassword
-        };
+        var command = new LoginCommand(
+            UsernameOrEmail: TestConstants.Users.DefaultEmail,
+            Password: TestConstants.Users.DefaultPassword
+        );
 
-        var user = TestDataBuilder.User()
-            .WithId(1)
-            .WithUsername(TestConstants.Users.DefaultUsername)
-            .WithEmail(TestConstants.Users.DefaultEmail)
-            .WithPasswordHash(PasswordHasher.HashPassword(TestConstants.Users.DefaultPassword))
-            .Build();
+        var user = User.Create(
+            Username.Create(TestConstants.Users.DefaultUsername).Value!,
+            Email.Create(TestConstants.Users.DefaultEmail).Value!,
+            new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword)
+        );
+        typeof(User).GetProperty("Id")!.SetValue(user, 1);
 
-        _mockUserRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User> { user });
+        _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
+            .ReturnsAsync(user);
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
             .Returns("test-jwt-token");
         _mockJwtTokenService.Setup(x => x.GenerateRefreshToken())
             .Returns("test-refresh-token");
 
         // Act
-        var result = await _authenticationService.LoginAsync(loginDto);
+        var result = await _authenticationService.LoginAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Token.Should().Be("test-jwt-token");
-        result.User.Should().NotBeNull();
-        result.User!.Email.Should().Be(TestConstants.Users.DefaultEmail);
+        result.Value!.Token.Should().Be("test-jwt-token");
+        result.Value.User.Should().NotBeNull();
+        result.Value.User!.Email.Should().Be(TestConstants.Users.DefaultEmail);
     }
 
     #endregion
@@ -335,16 +394,12 @@ public class AuthenticationServiceTests : UnitTestBase
         // Arrange
         var validRefreshToken = "valid-refresh-token";
         var user = CreateTestUser(id: 1, username: TestConstants.Users.DefaultUsername, email: TestConstants.Users.DefaultEmail);
-        var refreshTokenEntity = TestDataBuilder.RefreshToken()
-            .WithId(1)
-            .WithUserId(1)
-            .WithToken(validRefreshToken)
-            .WithExpiresAt(DateTime.UtcNow.AddDays(1))
-            .WithIsRevoked(false)
-            .Build();
+        var refreshTokenEntity = RefreshToken.Create(1, validRefreshToken, 1);
+        typeof(RefreshToken).GetProperty("Id")!.SetValue(refreshTokenEntity, 1);
+        typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(refreshTokenEntity, false);
 
-        _mockRefreshTokenRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<RefreshToken, bool>>>()))
-            .ReturnsAsync(new List<RefreshToken> { refreshTokenEntity });
+        _mockRefreshTokenRepository.Setup(x => x.GetByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync(refreshTokenEntity);
         _mockUserRepository.Setup(x => x.GetByIdAsync(1))
             .ReturnsAsync(user);
         _mockJwtTokenService.Setup(x => x.GenerateToken(user))
@@ -360,7 +415,6 @@ public class AuthenticationServiceTests : UnitTestBase
         
         _mockRefreshTokenRepository.Verify(x => x.UpdateAsync(It.IsAny<RefreshToken>()), Times.Once);
         _mockRefreshTokenRepository.Verify(x => x.AddAsync(It.IsAny<RefreshToken>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -369,8 +423,8 @@ public class AuthenticationServiceTests : UnitTestBase
         // Arrange
         var invalidRefreshToken = "invalid-refresh-token";
         
-        _mockRefreshTokenRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<RefreshToken, bool>>>()))
-            .ReturnsAsync(new List<RefreshToken>()); // No token found
+        _mockRefreshTokenRepository.Setup(x => x.GetByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync((RefreshToken?)null); // No token found
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
@@ -391,8 +445,8 @@ public class AuthenticationServiceTests : UnitTestBase
             .WithIsRevoked(false)
             .Build();
 
-        _mockRefreshTokenRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<RefreshToken, bool>>>()))
-            .ReturnsAsync(new List<RefreshToken> { expiredTokenEntity });
+        _mockRefreshTokenRepository.Setup(x => x.GetByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync(expiredTokenEntity);
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
@@ -405,16 +459,12 @@ public class AuthenticationServiceTests : UnitTestBase
         // Arrange
         var revokedRefreshToken = "revoked-refresh-token";
         
-        var revokedTokenEntity = TestDataBuilder.RefreshToken()
-            .WithId(1)
-            .WithUserId(1)
-            .WithToken(revokedRefreshToken)
-            .WithExpiresAt(DateTime.UtcNow.AddDays(1))
-            .WithIsRevoked(true)
-            .Build();
+        var revokedTokenEntity = RefreshToken.Create(1, revokedRefreshToken, 1);
+        typeof(RefreshToken).GetProperty("Id")!.SetValue(revokedTokenEntity, 1);
+        typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(revokedTokenEntity, true);
 
-        _mockRefreshTokenRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<RefreshToken, bool>>>()))
-            .ReturnsAsync(new List<RefreshToken> { revokedTokenEntity });
+        _mockRefreshTokenRepository.Setup(x => x.GetByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync(revokedTokenEntity);
 
         // Act & Assert
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
@@ -438,13 +488,13 @@ public class AuthenticationServiceTests : UnitTestBase
 
         var refreshTokens = new List<RefreshToken>
         {
-            TestDataBuilder.RefreshToken().WithId(1).WithUserId(1).WithIsRevoked(false).Build(),
-            TestDataBuilder.RefreshToken().WithId(2).WithUserId(1).WithIsRevoked(false).Build()
+            CreateRefreshToken(1, 1, false),
+            CreateRefreshToken(2, 1, false)
         };
 
         _mockJwtTokenService.Setup(x => x.ValidateToken(validToken))
             .Returns(mockPrincipal);
-        _mockRefreshTokenRepository.Setup(x => x.FindAsync(It.IsAny<Expression<Func<RefreshToken, bool>>>()))
+        _mockRefreshTokenRepository.Setup(x => x.GetActiveByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(refreshTokens);
 
         // Act
@@ -453,7 +503,6 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().BeTrue();
         _mockRefreshTokenRepository.Verify(x => x.UpdateAsync(It.IsAny<RefreshToken>()), Times.Exactly(2));
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -471,7 +520,6 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().BeFalse();
         _mockRefreshTokenRepository.Verify(x => x.UpdateAsync(It.IsAny<RefreshToken>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
@@ -494,7 +542,6 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().BeFalse();
         _mockRefreshTokenRepository.Verify(x => x.UpdateAsync(It.IsAny<RefreshToken>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     #endregion
@@ -505,15 +552,15 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task ForgotPasswordAsync_WithValidEmail_ReturnsSuccessAndSendsEmail()
     {
         // Arrange
-        var forgotPasswordDto = new ForgotPasswordDto { Email = TestConstants.Users.DefaultEmail };
+        var command = new ForgotPasswordCommand(Email: TestConstants.Users.DefaultEmail);
         var testUser = CreateTestUser(email: TestConstants.Users.DefaultEmail);
 
         _mockUserRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new[] { testUser });
+            .Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
+            .ReturnsAsync(testUser);
 
         _mockPasswordResetTokenRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<PasswordResetToken, bool>>>()))
+            .Setup(x => x.GetUnusedByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(new List<PasswordResetToken>());
 
         _mockEmailService
@@ -521,7 +568,7 @@ public class AuthenticationServiceTests : UnitTestBase
             .ReturnsAsync(true);
 
         // Act
-        var result = await _authenticationService.ForgotPasswordAsync(forgotPasswordDto);
+        var result = await _authenticationService.ForgotPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();
@@ -533,21 +580,20 @@ public class AuthenticationServiceTests : UnitTestBase
             TestConstants.Users.DefaultEmail, 
             It.IsAny<string>(), 
             testUser.Username), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
     public async Task ForgotPasswordAsync_WithNonExistentEmail_ReturnsSuccessButNoEmail()
     {
         // Arrange
-        var forgotPasswordDto = new ForgotPasswordDto { Email = "nonexistent@example.com" };
+        var command = new ForgotPasswordCommand(Email: "nonexistent@example.com");
 
         _mockUserRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new List<User>());
+            .Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
+            .ReturnsAsync((User?)null);
 
         // Act
-        var result = await _authenticationService.ForgotPasswordAsync(forgotPasswordDto);
+        var result = await _authenticationService.ForgotPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();
@@ -556,7 +602,6 @@ public class AuthenticationServiceTests : UnitTestBase
 
         _mockPasswordResetTokenRepository.Verify(x => x.AddAsync(It.IsAny<PasswordResetToken>()), Times.Never);
         _mockEmailService.Verify(x => x.SendPasswordResetEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     #endregion
@@ -568,34 +613,24 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var resetToken = Guid.NewGuid().ToString();
-        var resetPasswordDto = new ResetPasswordDto 
-        { 
-            Token = resetToken,
-            NewPassword = "NewPassword123!",
-            ConfirmPassword = "NewPassword123!"
-        };
+        var command = new ResetPasswordCommand(
+            Token: resetToken,
+            NewPassword: "NewPassword123!"
+        );
         
         var testUser = CreateTestUser();
-        var passwordResetToken = new PasswordResetToken
-        {
-            Id = 1,
-            UserId = testUser.Id,
-            Token = resetToken,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            CreatedAt = DateTime.UtcNow,
-            IsUsed = false
-        };
+        var passwordResetToken = PasswordResetToken.Create(testUser.Id, resetToken, 1);
 
         _mockPasswordResetTokenRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<PasswordResetToken, bool>>>()))
-            .ReturnsAsync(new[] { passwordResetToken });
+            .Setup(x => x.GetValidByTokenAsync(It.IsAny<string>()))
+            .ReturnsAsync(passwordResetToken);
 
         _mockUserRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<User, bool>>>()))
-            .ReturnsAsync(new[] { testUser });
+            .Setup(x => x.GetByIdAsync(It.IsAny<int>()))
+            .ReturnsAsync(testUser);
 
         // Act
-        var result = await _authenticationService.ResetPasswordAsync(resetPasswordDto);
+        var result = await _authenticationService.ResetPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();
@@ -604,26 +639,23 @@ public class AuthenticationServiceTests : UnitTestBase
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.Is<User>(u => u.Id == testUser.Id)), Times.Once);
         _mockPasswordResetTokenRepository.Verify(x => x.UpdateAsync(It.Is<PasswordResetToken>(t => t.IsUsed == true)), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
     public async Task ResetPasswordAsync_WithInvalidToken_ReturnsFailure()
     {
         // Arrange
-        var resetPasswordDto = new ResetPasswordDto 
-        { 
-            Token = "invalid-token",
-            NewPassword = "NewPassword123!",
-            ConfirmPassword = "NewPassword123!"
-        };
+        var command = new ResetPasswordCommand(
+            Token: "invalid-token",
+            NewPassword: "NewPassword123!"
+        );
 
         _mockPasswordResetTokenRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<PasswordResetToken, bool>>>()))
+            .Setup(x => x.GetUnusedByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(new List<PasswordResetToken>());
 
         // Act
-        var result = await _authenticationService.ResetPasswordAsync(resetPasswordDto);
+        var result = await _authenticationService.ResetPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();
@@ -631,7 +663,6 @@ public class AuthenticationServiceTests : UnitTestBase
         result.Message.Should().Be("Invalid or expired reset token.");
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
@@ -639,30 +670,24 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var resetToken = Guid.NewGuid().ToString();
-        var resetPasswordDto = new ResetPasswordDto 
-        { 
-            Token = resetToken,
-            NewPassword = "NewPassword123!",
-            ConfirmPassword = "NewPassword123!"
-        };
+        var command = new ResetPasswordCommand(
+            Token: resetToken,
+            NewPassword: "NewPassword123!"
+        );
         
-        var expiredToken = new PasswordResetToken
-        {
-            Id = 1,
-            UserId = 1,
-            Token = resetToken,
-            ExpiresAt = DateTime.UtcNow.AddHours(-1), // Expired
-            CreatedAt = DateTime.UtcNow.AddHours(-2),
-            IsUsed = false
-        };
+        var expiredToken = TestDataBuilder.PasswordResetToken()
+            .WithUserId(1)
+            .WithToken(resetToken)
+            .WithExpiresAt(DateTime.UtcNow.AddHours(-1))
+            .Build();
 
         // Mock returns empty list because the token is expired (filtered out by the query)
         _mockPasswordResetTokenRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<PasswordResetToken, bool>>>()))
+            .Setup(x => x.GetUnusedByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(new List<PasswordResetToken>());
 
         // Act
-        var result = await _authenticationService.ResetPasswordAsync(resetPasswordDto);
+        var result = await _authenticationService.ResetPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();
@@ -670,7 +695,6 @@ public class AuthenticationServiceTests : UnitTestBase
         result.Message.Should().Be("Invalid or expired reset token.");
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
     }
 
     [Fact]
@@ -678,30 +702,21 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var resetToken = Guid.NewGuid().ToString();
-        var resetPasswordDto = new ResetPasswordDto 
-        { 
-            Token = resetToken,
-            NewPassword = "NewPassword123!",
-            ConfirmPassword = "NewPassword123!"
-        };
+        var command = new ResetPasswordCommand(
+            Token: resetToken,
+            NewPassword: "NewPassword123!"
+        );
         
-        var usedToken = new PasswordResetToken
-        {
-            Id = 1,
-            UserId = 1,
-            Token = resetToken,
-            ExpiresAt = DateTime.UtcNow.AddHours(1),
-            CreatedAt = DateTime.UtcNow,
-            IsUsed = true // Already used
-        };
+        var usedToken = PasswordResetToken.Create(1, resetToken, 1);
+        typeof(PasswordResetToken).GetProperty("IsUsed")!.SetValue(usedToken, true);
 
         // Mock returns empty list because the token is used (filtered out by the query)
         _mockPasswordResetTokenRepository
-            .Setup(x => x.FindAsync(It.IsAny<Expression<Func<PasswordResetToken, bool>>>()))
+            .Setup(x => x.GetUnusedByUserIdAsync(It.IsAny<int>()))
             .ReturnsAsync(new List<PasswordResetToken>());
 
         // Act
-        var result = await _authenticationService.ResetPasswordAsync(resetPasswordDto);
+        var result = await _authenticationService.ResetPasswordAsync(command);
 
         // Assert
         result.Should().NotBeNull();
@@ -709,7 +724,18 @@ public class AuthenticationServiceTests : UnitTestBase
         result.Message.Should().Be("Invalid or expired reset token.");
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Never);
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private static RefreshToken CreateRefreshToken(int id, int userId, bool isRevoked)
+    {
+        var token = RefreshToken.Create(userId, $"token-{id}", 1);
+        typeof(RefreshToken).GetProperty("Id")!.SetValue(token, id);
+        typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(token, isRevoked);
+        return token;
     }
 
     #endregion

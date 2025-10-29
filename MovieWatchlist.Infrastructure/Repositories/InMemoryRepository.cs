@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading.Tasks;
 using MovieWatchlist.Core.Interfaces;
 
@@ -36,12 +35,6 @@ public class InMemoryRepository<T> : IRepository<T> where T : class
     public Task<IEnumerable<T>> GetAllAsync()
     {
         return Task.FromResult(_items.AsEnumerable());
-    }
-
-    public Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
-    {
-        var func = predicate.Compile();
-        return Task.FromResult(_items.Where(func));
     }
 
     public Task AddAsync(T entity)
