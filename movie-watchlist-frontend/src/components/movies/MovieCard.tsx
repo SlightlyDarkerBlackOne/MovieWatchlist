@@ -17,7 +17,7 @@ import { getPosterUrl } from '../../services/movieService';
 import { ROUTES } from '../../constants/routeConstants';
 import { colors } from '../../theme';
 import { formatVoteCount, getReleaseYear } from '../../utils/formatters';
-import { useWatchlist } from '../../contexts/WatchlistContext';
+import { useWatchlistPresence } from '../../hooks/useWatchlistPresence';
 import { getMovieCardAriaLabel, handleEnterKey } from '../../utils/accessibility';
 
 interface MovieCardProps {
@@ -27,8 +27,7 @@ interface MovieCardProps {
 
 const MovieCard: React.FC<MovieCardProps> = ({ movie, onAddToWatchlist }) => {
   const navigate = useNavigate();
-  const { isInWatchlist: checkIsInWatchlist } = useWatchlist();
-  const isInWatchlist = checkIsInWatchlist(movie.tmdbId);
+  const { isInWatchlist } = useWatchlistPresence(movie.tmdbId);
   const posterUrl = getPosterUrl(movie.posterPath, 'medium');
   const releaseYear = getReleaseYear(movie.releaseDate);
 

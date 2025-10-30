@@ -26,10 +26,6 @@ describe('WatchlistPage', () => {
     user: mockUser,
   };
 
-  const mockWatchlistContext = {
-    watchlistMovieIds: new Set<number>([550, 680, 13]),
-    isInWatchlist: jest.fn(() => false),
-  };
 
   const mockUpdateMutation = jest.fn(() => Promise.resolve({ data: mockWatchlistItems[0] }));
   const mockRemoveMutation = jest.fn(() => Promise.resolve());
@@ -59,7 +55,7 @@ describe('WatchlistPage', () => {
   });
 
   it('should load user watchlist on mount', async () => {
-    renderWithMocks(<WatchlistPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(mockUseGetWatchlistQuery).toHaveBeenCalledWith(mockUser.id, { skip: false });
@@ -67,14 +63,14 @@ describe('WatchlistPage', () => {
   });
 
   it('should display watchlist title and description', async () => {
-    renderWithMocks(<WatchlistPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     expect(screen.getByText('My Watchlist')).toBeInTheDocument();
     expect(screen.getByText(/manage your movie collection/i)).toBeInTheDocument();
   });
 
   it('should display filter by status dropdown', async () => {
-    renderWithMocks(<WatchlistPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByLabelText(/filter by status/i)).toBeInTheDocument();
@@ -82,7 +78,7 @@ describe('WatchlistPage', () => {
   });
 
   it('should show movie count', async () => {
-    renderWithMocks(<WatchlistPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(`${mockWatchlistItems.length} movies`)).toBeInTheDocument();
@@ -90,7 +86,7 @@ describe('WatchlistPage', () => {
   });
 
   it('should render tabs (All, Favorites, Watched)', async () => {
-    renderWithMocks(<WatchlistPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(/all \(/i)).toBeInTheDocument();
@@ -100,7 +96,7 @@ describe('WatchlistPage', () => {
   });
 
   it('should switch between tabs', async () => {
-    renderWithMocks(<WatchlistPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(/all \(/i)).toBeInTheDocument();
@@ -113,7 +109,7 @@ describe('WatchlistPage', () => {
   });
 
   it('should filter by status using dropdown', async () => {
-    renderWithMocks(<WatchlistPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(mockUseGetWatchlistQuery).toHaveBeenCalledWith(mockUser.id, { skip: false });
@@ -125,7 +121,7 @@ describe('WatchlistPage', () => {
   });
 
   it('should handle delete item', async () => {
-    renderWithMocks(<WatchlistPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockWatchlistItems[0].movie!.title)).toBeInTheDocument();
@@ -137,7 +133,7 @@ describe('WatchlistPage', () => {
       user: null,
     };
 
-    renderWithMocks(<WatchlistPage />, { mockAuthContext: mockAuthContextNoUser, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext: mockAuthContextNoUser });
 
     expect(screen.getByText(/please log in/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /go to login/i })).toBeInTheDocument();
@@ -152,7 +148,7 @@ describe('WatchlistPage', () => {
       refetch: jest.fn(),
     });
 
-    renderWithMocks(<WatchlistPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     expect(mockUseGetWatchlistQuery).toHaveBeenCalledWith(mockUser.id, { skip: false });
   });
@@ -166,7 +162,7 @@ describe('WatchlistPage', () => {
       refetch: jest.fn(),
     });
 
-    renderWithMocks(<WatchlistPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(/your watchlist is empty/i)).toBeInTheDocument();
@@ -182,7 +178,7 @@ describe('WatchlistPage', () => {
       refetch: jest.fn(),
     });
 
-    renderWithMocks(<WatchlistPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     await waitFor(() => {
       const errorAlert = screen.queryByRole('alert');

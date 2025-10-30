@@ -11,6 +11,7 @@ import * as moviesApi from '../../store/api/moviesApi';
 import * as watchlistApi from '../../store/api/watchlistApi';
 import { mockMovies, mockMovieDetails, mockMovieCredits, mockMovieVideo } from '../fixtures/movieFixtures';
 import { mockUser } from '../fixtures/authFixtures';
+import { useWatchlistPresence } from '../../hooks/useWatchlistPresence';
 
 jest.mock('../../store/api/moviesApi', () => {
   const actual = jest.requireActual('../../store/api/moviesApi');
@@ -30,18 +31,24 @@ jest.mock('../../store/api/watchlistApi', () => {
   };
 });
 
+jest.mock('../../hooks/useWatchlistPresence', () => ({
+  useWatchlistPresence: jest.fn(),
+}));
+
+const mockedUseWatchlistPresence = useWatchlistPresence as jest.MockedFunction<typeof useWatchlistPresence>;
+
 describe('Movie Browsing Integration', () => {
   const mockAuthContext = {
     user: mockUser,
   };
 
-  const mockWatchlistContext = {
-    watchlistMovieIds: new Set<number>(),
-    isInWatchlist: jest.fn(() => false),
-  };
-
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: false,
+      isLoading: false,
+    });
     
     (moviesApi.useGetPopularMoviesQuery as jest.Mock).mockReturnValue({
       data: {
@@ -80,7 +87,7 @@ describe('Movie Browsing Integration', () => {
 
   it('should complete full flow: Browse → Search → View Details', async () => {
     // Step 1: Load Movies Page
-    renderWithMocks(<MoviesPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<MoviesPage />, { mockAuthContext });
 
     // Should show popular movies
     await waitFor(() => {
@@ -95,7 +102,7 @@ describe('Movie Browsing Integration', () => {
   });
 
   it('should handle add to watchlist from movies page', async () => {
-    renderWithMocks(<MoviesPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<MoviesPage />, { mockAuthContext });
 
     await waitFor(() => {
       const titles = screen.getAllByText(mockMovies[0].title);
@@ -105,7 +112,7 @@ describe('Movie Browsing Integration', () => {
   });
 
   it('should use RTK Query for data fetching', async () => {
-    renderWithMocks(<MoviesPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<MoviesPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(moviesApi.useGetPopularMoviesQuery).toHaveBeenCalled();

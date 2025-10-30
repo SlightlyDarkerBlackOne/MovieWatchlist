@@ -15,6 +15,7 @@ import { mockMovieDetails, mockMovieCredits, mockMovieVideo } from '../__tests__
 import { mockWatchlistItems } from '../__tests__/fixtures/watchlistFixtures';
 import { mockUser } from '../__tests__/fixtures/authFixtures';
 import { useParams } from 'react-router-dom';
+import { useWatchlistPresence } from '../hooks/useWatchlistPresence';
 
 jest.mock('../store/api/moviesApi', () => {
   const actual = jest.requireActual('../store/api/moviesApi');
@@ -44,18 +45,18 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => jest.fn(),
 }));
 
+jest.mock('../hooks/useWatchlistPresence', () => ({
+  useWatchlistPresence: jest.fn(),
+}));
+
 const mockedUseParams = useParams as jest.MockedFunction<typeof useParams>;
+const mockedUseWatchlistPresence = useWatchlistPresence as jest.MockedFunction<typeof useWatchlistPresence>;
 
 describe('MovieDetailsPage', () => {
   const mockTmdbId = '550';
 
   const mockAuthContext = {
     user: mockUser,
-  };
-
-  const mockWatchlistContext = {
-    watchlistMovieIds: new Set<number>(),
-    isInWatchlist: jest.fn(() => false),
   };
 
   const mockMovieData = {
@@ -67,6 +68,11 @@ describe('MovieDetailsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseParams.mockReturnValue({ tmdbId: mockTmdbId });
+
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: false,
+      isLoading: false,
+    });
 
     (moviesApi.useGetMovieDetailsQuery as jest.Mock).mockReturnValue({
       data: mockMovieData,
@@ -95,7 +101,7 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should load movie details on mount using RTK Query', async () => {
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(moviesApi.useGetMovieDetailsQuery).toHaveBeenCalledWith(
@@ -106,7 +112,7 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should display movie title and overview', async () => {
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -114,7 +120,7 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should display genres', async () => {
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       mockMovieDetails.genres.forEach(genre => {
@@ -124,7 +130,7 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should display top cast', async () => {
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText('Top Cast')).toBeInTheDocument();
@@ -140,7 +146,7 @@ describe('MovieDetailsPage', () => {
       refetch: jest.fn(),
     });
 
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
@@ -153,7 +159,7 @@ describe('MovieDetailsPage', () => {
       refetch: jest.fn(),
     });
 
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(/Failed to load movie/i)).toBeInTheDocument();
@@ -161,7 +167,7 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should show/hide trailer on button click', async () => {
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -181,14 +187,7 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should open add to watchlist dialog on button click', async () => {
-    const mockAddToWatchlist = jest.fn();
-    
-    const customMockWatchlistContext = {
-      ...mockWatchlistContext,
-      addToWatchlist: mockAddToWatchlist,
-    };
-
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext: customMockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -197,14 +196,15 @@ describe('MovieDetailsPage', () => {
     const addButton = screen.getByRole('button', { name: /add to watchlist/i });
     fireEvent.click(addButton);
 
-    // Dialog should open (handled by context)
-    expect(mockAddToWatchlist).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
   });
 
   it('should handle missing trailer gracefully', async () => {
     (movieService.findMainTrailer as jest.Mock).mockReturnValue(null);
 
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -214,13 +214,12 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should show "In Watchlist" button when movie is already in watchlist', async () => {
-    const customMockWatchlistContext = {
-      ...mockWatchlistContext,
-      isInWatchlist: jest.fn(() => true),
-      watchlistMovieIds: new Set([mockMovieDetails.tmdbId]),
-    };
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: true,
+      isLoading: false,
+    });
 
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext: customMockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -232,13 +231,12 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should show "Add to Watchlist" button enabled when movie is not in watchlist', async () => {
-    const customMockWatchlistContext = {
-      ...mockWatchlistContext,
-      isInWatchlist: jest.fn(() => false),
-      watchlistMovieIds: new Set<number>(),
-    };
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: false,
+      isLoading: false,
+    });
 
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext: customMockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -256,13 +254,12 @@ describe('MovieDetailsPage', () => {
       { isLoading: false },
     ]);
 
-    const customMockWatchlistContext = {
-      ...mockWatchlistContext,
-      isInWatchlist: jest.fn(() => true),
-      watchlistMovieIds: new Set([mockMovieDetails.tmdbId]),
-    };
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: true,
+      isLoading: false,
+    });
 
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext: customMockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -277,13 +274,12 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should show "Remove from Watchlist" text when hovering over "In Watchlist" button', async () => {
-    const customMockWatchlistContext = {
-      ...mockWatchlistContext,
-      isInWatchlist: jest.fn(() => true),
-      watchlistMovieIds: new Set([mockMovieDetails.tmdbId]),
-    };
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: true,
+      isLoading: false,
+    });
 
-    renderWithMocks(<MovieDetailsPage />, { mockAuthContext, mockWatchlistContext: customMockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();

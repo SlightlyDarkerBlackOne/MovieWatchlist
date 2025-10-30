@@ -19,16 +19,6 @@ jest.mock('./contexts/AuthContext', () => ({
   }),
 }));
 
-// Mock WatchlistContext
-jest.mock('./contexts/WatchlistContext', () => ({
-  WatchlistProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  useWatchlist: () => ({
-    watchlistMovieIds: [],
-    addToWatchlist: jest.fn(),
-    removeFromWatchlistIds: jest.fn(),
-    isInWatchlist: jest.fn(),
-  }),
-}));
 
 // Mock child components to avoid deep rendering
 jest.mock('./routes/AppRoutes', () => {

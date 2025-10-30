@@ -8,23 +8,22 @@ import { ThemeProvider } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import MovieCard from './MovieCard';
 import { mockMovie, mockMovieWithoutPoster } from '../../__tests__/fixtures/movieFixtures';
-import { useWatchlist } from '../../contexts/WatchlistContext';
+import { useWatchlistPresence } from '../../hooks/useWatchlistPresence';
 import { useNavigate } from 'react-router-dom';
 import { appTheme } from '../../theme';
 
-// Mock contexts and navigation
-jest.mock('../../contexts/WatchlistContext');
+// Mock hooks and navigation
+jest.mock('../../hooks/useWatchlistPresence');
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: jest.fn(),
 }));
 
-const mockedUseWatchlist = useWatchlist as jest.MockedFunction<typeof useWatchlist>;
+const mockedUseWatchlistPresence = useWatchlistPresence as jest.MockedFunction<typeof useWatchlistPresence>;
 const mockedUseNavigate = useNavigate as jest.MockedFunction<typeof useNavigate>;
 
 describe('MovieCard', () => {
   const mockNavigate = jest.fn();
-  const mockIsInWatchlist = jest.fn();
 
   const renderWithProviders = (ui: React.ReactElement) => {
     return render(
@@ -39,11 +38,10 @@ describe('MovieCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseNavigate.mockReturnValue(mockNavigate);
-    mockedUseWatchlist.mockReturnValue({
-      watchlistMovieIds: new Set<number>(),
-      isInWatchlist: mockIsInWatchlist,
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: false,
+      isLoading: false,
     });
-    mockIsInWatchlist.mockReturnValue(false);
   });
 
   it('should render movie information correctly', () => {
@@ -68,10 +66,9 @@ describe('MovieCard', () => {
   });
 
   it('should show disabled add button when movie is in watchlist', () => {
-    mockIsInWatchlist.mockReturnValue(true);
-    mockedUseWatchlist.mockReturnValue({
-      watchlistMovieIds: new Set<number>([mockMovie.tmdbId]),
-      isInWatchlist: mockIsInWatchlist,
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: true,
+      isLoading: false,
     });
     
     renderWithProviders(<MovieCard movie={mockMovie} />);
@@ -81,10 +78,9 @@ describe('MovieCard', () => {
   });
 
   it('should show enabled add button when movie is not in watchlist', () => {
-    mockIsInWatchlist.mockReturnValue(false);
-    mockedUseWatchlist.mockReturnValue({
-      watchlistMovieIds: new Set<number>(),
-      isInWatchlist: mockIsInWatchlist,
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: false,
+      isLoading: false,
     });
     
     renderWithProviders(<MovieCard movie={mockMovie} />);

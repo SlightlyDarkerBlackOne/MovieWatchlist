@@ -22,12 +22,11 @@ jest.mock('../store/api/watchlistApi', () => ({
   useAddToWatchlistMutation: jest.fn(),
 }));
 
-jest.mock('../contexts/WatchlistContext', () => ({
-  ...jest.requireActual('../contexts/WatchlistContext'),
-  useWatchlist: () => ({
-    watchlistMovieIds: new Set<number>(),
-    isInWatchlist: jest.fn(() => false),
-  }),
+jest.mock('../hooks/useWatchlistPresence', () => ({
+  useWatchlistPresence: jest.fn(() => ({
+    isInWatchlist: false,
+    isLoading: false,
+  })),
 }));
 
 jest.mock('react-router-dom', () => ({

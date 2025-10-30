@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, CircularProgress, Box } from '@mui/material';
 import AppRoutes from './routes/AppRoutes';
-import { WatchlistProvider } from './contexts/WatchlistContext';
 import { useAuth } from './contexts/AuthContext';
 import { appTheme } from './theme';
 import SkipLink from './components/common/SkipLink';
@@ -51,12 +50,10 @@ function AppContent() {
   }
 
   return (
-    <WatchlistProvider>
-      <AppRoutes
-        resetToken={resetToken}
-        onResetPasswordSuccess={handleResetPasswordSuccess}
-      />
-    </WatchlistProvider>
+    <AppRoutes
+      resetToken={resetToken}
+      onResetPasswordSuccess={handleResetPasswordSuccess}
+    />
   );
 }
 

@@ -11,7 +11,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useGetMovieDetailsQuery } from '../store/api/moviesApi';
 import { WatchlistStatus, AddToWatchlistRequest } from '../types/watchlist.types';
-import { useWatchlist } from '../contexts/WatchlistContext';
+import { useWatchlistPresence } from '../hooks/useWatchlistPresence';
 import { useAddToWatchlistMutation, useRemoveFromWatchlistMutation, useGetWatchlistQuery } from '../hooks/useWatchlistOperations';
 import { useAuth } from '../contexts/AuthContext';
 import MovieMainDetails from '../components/movies/MovieMainDetails';
@@ -26,7 +26,6 @@ const MovieDetailsPage: React.FC = () => {
   const { tmdbId } = useParams<{ tmdbId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isInWatchlist, addToWatchlist: addToWatchlistFromContext } = useWatchlist();
   const [addToWatchlist] = useAddToWatchlistMutation();
   const [removeFromWatchlist] = useRemoveFromWatchlistMutation();
   const { data: watchlistItems } = useGetWatchlistQuery(user?.id ?? 0, { skip: !user });
@@ -41,6 +40,7 @@ const MovieDetailsPage: React.FC = () => {
   );
 
   const movieDetails = movieData?.movie;
+  const { isInWatchlist: isMovieInWatchlist } = useWatchlistPresence(movieDetails?.tmdbId ?? 0);
   const videos = movieData?.videos || [];
   const credits = movieData?.credits || null;
   
@@ -57,10 +57,6 @@ const MovieDetailsPage: React.FC = () => {
   const handleAddToWatchlist = () => {
     if (!user) {
       setLoginRequiredDialogOpen(true);
-      return;
-    }
-    if (addToWatchlistFromContext) {
-      addToWatchlistFromContext();
       return;
     }
     setAddDialogOpen(true);
@@ -185,7 +181,7 @@ const MovieDetailsPage: React.FC = () => {
         onToggleTrailer={handleToggleTrailer}
         onAddToWatchlist={handleAddToWatchlist}
         onRemoveFromWatchlist={handleRemoveFromWatchlist}
-        isInWatchlist={isInWatchlist(movieDetails.tmdbId)}
+        isInWatchlist={isMovieInWatchlist}
       />
 
       <MovieGenres genres={movieDetails.genres} />

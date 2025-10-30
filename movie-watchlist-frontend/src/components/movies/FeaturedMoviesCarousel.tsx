@@ -9,7 +9,7 @@ import StarIcon from '@mui/icons-material/Star';
 import { Movie } from '../../types/movie.types';
 import * as movieService from '../../services/movieService';
 import { colors } from '../../theme';
-import { useWatchlist } from '../../contexts/WatchlistContext';
+import { useWatchlistPresence } from '../../hooks/useWatchlistPresence';
 
 interface FeaturedMoviesCarouselProps {
   movies: Movie[];
@@ -25,12 +25,11 @@ const FeaturedMoviesCarousel: React.FC<FeaturedMoviesCarouselProps> = ({
   rotateInterval = 5000,
 }) => {
   const navigate = useNavigate();
-  const { isInWatchlist } = useWatchlist();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
   const currentMovie = movies[currentIndex];
-  const isCurrentMovieInWatchlist = currentMovie ? isInWatchlist(currentMovie.tmdbId) : false;
+  const { isInWatchlist: isCurrentMovieInWatchlist } = useWatchlistPresence(currentMovie?.tmdbId ?? 0);
 
   const handleBackgroundClick = () => {
     if (currentMovie) {

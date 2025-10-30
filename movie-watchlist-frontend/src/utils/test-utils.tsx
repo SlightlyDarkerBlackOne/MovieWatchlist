@@ -9,7 +9,6 @@ import { ThemeProvider } from '@mui/material/styles';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { AuthProvider, AuthContextType } from '../contexts/AuthContext';
-import { WatchlistProvider, WatchlistContextType } from '../contexts/WatchlistContext';
 import { appTheme } from '../theme';
 import { moviesApi } from '../store/api/moviesApi';
 import { watchlistApi } from '../store/api/watchlistApi';
@@ -37,9 +36,7 @@ const AllProviders: React.FC<AllProvidersProps> = ({ children }) => {
       <ThemeProvider theme={appTheme}>
         <BrowserRouter>
           <AuthProvider>
-            <WatchlistProvider>
-              {children}
-            </WatchlistProvider>
+            {children}
           </AuthProvider>
         </BrowserRouter>
       </ThemeProvider>
@@ -57,7 +54,6 @@ const customRender = (
 
 // Custom render options with context mocking support
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
-  mockWatchlistContext?: Partial<WatchlistContextType>;
   mockAuthContext?: Partial<AuthContextType>;
 }
 
@@ -65,41 +61,22 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
  * Render function with support for mocked contexts
  * Allows tests to provide their own context mocks while keeping other providers real
  * 
- * Note: This uses React Context directly, bypassing the useAuth/useWatchlist hooks
+ * Note: This uses React Context directly, bypassing the useAuth hook
  * The components must be wrapped in a way that the mocked context values are available
  */
 const renderWithMocks = (
   ui: ReactElement,
   options?: CustomRenderOptions
 ) => {
-  const { mockWatchlistContext, mockAuthContext, ...renderOptions } = options || {};
+  const { mockAuthContext, ...renderOptions } = options || {};
 
   // Import the actual context objects (not the hooks)
   const AuthContextModule = require('../contexts/AuthContext');
-  const WatchlistContextModule = require('../contexts/WatchlistContext');
 
   const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const store = createTestStore();
     
     let content = children;
-
-    if (mockWatchlistContext) {
-      const defaultWatchlistContext: WatchlistContextType = {
-        watchlistMovieIds: new Set<number>(),
-        isInWatchlist: jest.fn(() => false),
-      };
-      
-      Object.assign(defaultWatchlistContext, mockWatchlistContext);
-      
-      const WatchlistContext = WatchlistContextModule.default;
-      content = (
-        <WatchlistContext.Provider value={defaultWatchlistContext}>
-          {content}
-        </WatchlistContext.Provider>
-      );
-    } else {
-      content = <WatchlistProvider>{content}</WatchlistProvider>;
-    }
 
     if (mockAuthContext) {
       const defaultAuthContext: AuthContextType = {
