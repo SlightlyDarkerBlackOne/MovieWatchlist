@@ -5,8 +5,8 @@ export const API_ENDPOINTS = {
     LOGIN: '/Auth/login',
     REGISTER: '/Auth/register',
     LOGOUT: '/Auth/logout',
-    VALIDATE: '/Auth/validate',
     REFRESH: '/Auth/refresh',
+    ME: '/Auth/me',
     FORGOT_PASSWORD: '/Auth/forgot-password',
     RESET_PASSWORD: '/Auth/reset-password',
   },
@@ -34,11 +34,7 @@ export const API_ENDPOINTS = {
 };
 
 // Local storage keys
-export const STORAGE_KEYS = {
-  TOKEN: 'token',
-  REFRESH_TOKEN: 'refreshToken',
-  USER: 'user',
-};
+export const STORAGE_KEYS = {} as const;
 
 // App configuration
 export const APP_CONFIG = {

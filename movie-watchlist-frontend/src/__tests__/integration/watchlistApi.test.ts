@@ -8,6 +8,7 @@ import { mockWatchlistItems, mockWatchlistItem } from '../fixtures/watchlistFixt
 import { WatchlistStatus } from '../../types/watchlist.types';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import { TestConstants } from '../TestConstants';
 
 const server = setupServer();
 
@@ -17,7 +18,7 @@ afterAll(() => server.close());
 
 describe('Watchlist RTK Query API', () => {
   let store: any;
-  const userId = 1;
+  const userId = TestConstants.Users.DefaultUserId;
 
   beforeEach(() => {
     store = configureStore({
@@ -32,7 +33,7 @@ describe('Watchlist RTK Query API', () => {
   describe('getWatchlist', () => {
     it('should fetch user watchlist successfully', async () => {
       server.use(
-        http.get('*/Watchlist/user/:userId', () => {
+        http.get(TestConstants.ApiEndpoints.WatchlistUser, () => {
           return HttpResponse.json(mockWatchlistItems);
         })
       );
@@ -61,8 +62,8 @@ describe('Watchlist RTK Query API', () => {
 
     it('should handle fetch errors', async () => {
       server.use(
-        http.get('*/Watchlist/user/:userId', () => {
-          return HttpResponse.json({ message: 'Server error' }, { status: 500 });
+        http.get(TestConstants.ApiEndpoints.WatchlistUser, () => {
+          return HttpResponse.json({ message: TestConstants.ErrorMessages.ServerError }, { status: TestConstants.HttpStatusCodes.InternalServerError });
         })
       );
 
@@ -77,13 +78,13 @@ describe('Watchlist RTK Query API', () => {
   describe('addToWatchlist', () => {
     it('should add movie to watchlist successfully', async () => {
       const request = {
-        movieId: 550,
+        movieId: TestConstants.Watchlist.DefaultMovieId,
         status: WatchlistStatus.Planned,
-        notes: 'Must watch!',
+        notes: TestConstants.Watchlist.DefaultNotes,
       };
 
       server.use(
-        http.post('*/Watchlist/user/:userId', () => {
+        http.post(TestConstants.ApiEndpoints.WatchlistAdd, () => {
           return HttpResponse.json(mockWatchlistItem);
         })
       );
@@ -96,13 +97,13 @@ describe('Watchlist RTK Query API', () => {
     });
 
     it('should handle duplicate movie error', async () => {
-      const request = { movieId: 550 };
+      const request = { movieId: TestConstants.Watchlist.DefaultMovieId };
 
       server.use(
-        http.post('*/Watchlist/user/:userId', () => {
+        http.post(TestConstants.ApiEndpoints.WatchlistAdd, () => {
           return HttpResponse.json(
-            { message: 'Movie is already in watchlist' },
-            { status: 400 }
+            { message: TestConstants.ErrorMessages.MovieAlreadyInWatchlist },
+            { status: TestConstants.HttpStatusCodes.BadRequest }
           );
         })
       );
@@ -118,14 +119,14 @@ describe('Watchlist RTK Query API', () => {
       const request = { movieId: 0 };
 
       server.use(
-        http.post('*/Watchlist/user/:userId', () => {
+        http.post(TestConstants.ApiEndpoints.WatchlistAdd, () => {
           return HttpResponse.json(
             {
               errors: {
-                movieId: ['Movie ID is required'],
+                movieId: [TestConstants.ErrorMessages.MovieIdRequired],
               }
             },
-            { status: 400 }
+            { status: TestConstants.HttpStatusCodes.BadRequest }
           );
         })
       );
@@ -138,13 +139,13 @@ describe('Watchlist RTK Query API', () => {
     });
 
     it('should invalidate cache after adding', async () => {
-      const request = { movieId: 550 };
+      const request = { movieId: TestConstants.Watchlist.DefaultMovieId };
 
       server.use(
         http.get('*/Watchlist/user/:userId', () => {
           return HttpResponse.json(mockWatchlistItems);
         }),
-        http.post('*/Watchlist/user/:userId', () => {
+        http.post(TestConstants.ApiEndpoints.WatchlistAdd, () => {
           return HttpResponse.json(mockWatchlistItem);
         })
       );
@@ -161,12 +162,12 @@ describe('Watchlist RTK Query API', () => {
 
   describe('updateWatchlistItem', () => {
     it('should update watchlist item successfully', async () => {
-      const itemId = 1;
+      const itemId = TestConstants.Watchlist.DefaultItemId;
       const request = { userRating: 4.5 };
       const updatedItem = { ...mockWatchlistItem, userRating: 4.5 };
 
       server.use(
-        http.put('*/Watchlist/user/:userId/item/:itemId', () => {
+        http.put(TestConstants.ApiEndpoints.WatchlistItem, () => {
           return HttpResponse.json(updatedItem);
         })
       );
@@ -179,12 +180,12 @@ describe('Watchlist RTK Query API', () => {
     });
 
     it('should handle item not found error', async () => {
-      const itemId = 999;
+      const itemId = TestConstants.Users.NonExistentUserId;
       const request = { userRating: 5 };
 
       server.use(
-        http.put('*/Watchlist/user/:userId/item/:itemId', () => {
-          return HttpResponse.json({ message: 'Item not found' }, { status: 404 });
+        http.put(TestConstants.ApiEndpoints.WatchlistItem, () => {
+          return HttpResponse.json({ message: TestConstants.ErrorMessages.FailedToLoad }, { status: TestConstants.HttpStatusCodes.NotFound });
         })
       );
 
@@ -196,11 +197,11 @@ describe('Watchlist RTK Query API', () => {
     });
 
     it('should invalidate cache after updating', async () => {
-      const itemId = 1;
+      const itemId = TestConstants.Watchlist.DefaultItemId;
       const request = { userRating: 4.5 };
 
       server.use(
-        http.put('*/Watchlist/user/:userId/item/:itemId', () => {
+        http.put(TestConstants.ApiEndpoints.WatchlistItem, () => {
           return HttpResponse.json(mockWatchlistItem);
         })
       );
@@ -215,10 +216,10 @@ describe('Watchlist RTK Query API', () => {
 
   describe('removeFromWatchlist', () => {
     it('should remove item successfully', async () => {
-      const itemId = 1;
+      const itemId = TestConstants.Watchlist.DefaultItemId;
 
       server.use(
-        http.delete('*/Watchlist/user/:userId/item/:itemId', () => {
+        http.delete(TestConstants.ApiEndpoints.WatchlistItem, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
@@ -232,11 +233,11 @@ describe('Watchlist RTK Query API', () => {
     });
 
     it('should handle deletion errors', async () => {
-      const itemId = 999;
+      const itemId = TestConstants.Users.NonExistentUserId;
 
       server.use(
-        http.delete('*/Watchlist/user/:userId/item/:itemId', () => {
-          return HttpResponse.json({ message: 'Item not found' }, { status: 404 });
+        http.delete(TestConstants.ApiEndpoints.WatchlistItem, () => {
+          return HttpResponse.json({ message: TestConstants.ErrorMessages.FailedToLoad }, { status: TestConstants.HttpStatusCodes.NotFound });
         })
       );
 
@@ -248,10 +249,10 @@ describe('Watchlist RTK Query API', () => {
     });
 
     it('should invalidate cache after removing', async () => {
-      const itemId = 1;
+      const itemId = TestConstants.Watchlist.DefaultItemId;
 
       server.use(
-        http.delete('*/Watchlist/user/:userId/item/:itemId', () => {
+        http.delete(TestConstants.ApiEndpoints.WatchlistItem, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
@@ -280,7 +281,7 @@ describe('Watchlist RTK Query API', () => {
       };
 
       server.use(
-        http.get('*/Watchlist/user/:userId/statistics', () => {
+        http.get(TestConstants.ApiEndpoints.WatchlistStatistics, () => {
           return HttpResponse.json(mockStats);
         })
       );
@@ -294,8 +295,8 @@ describe('Watchlist RTK Query API', () => {
 
     it('should handle statistics fetch errors', async () => {
       server.use(
-        http.get('*/Watchlist/user/:userId/statistics', () => {
-          return HttpResponse.json(null, { status: 500 });
+        http.get(TestConstants.ApiEndpoints.WatchlistStatistics, () => {
+          return HttpResponse.json(null, { status: TestConstants.HttpStatusCodes.InternalServerError });
         })
       );
 
@@ -310,7 +311,7 @@ describe('Watchlist RTK Query API', () => {
   describe('Cache Behavior', () => {
     it('should cache and reuse watchlist data', async () => {
       server.use(
-        http.get('*/Watchlist/user/:userId', () => {
+        http.get(TestConstants.ApiEndpoints.WatchlistUser, () => {
           return HttpResponse.json(mockWatchlistItems);
         })
       );

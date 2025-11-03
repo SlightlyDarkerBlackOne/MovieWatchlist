@@ -1,21 +1,12 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { WatchlistItem, WatchlistStatistics, AddToWatchlistRequest, UpdateWatchlistRequest } from '../../types/watchlist.types';
-import { STORAGE_KEYS } from '../../utils/constants';
+ 
 
 const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5250/api';
 
 export const watchlistApi = createApi({
   reducerPath: 'watchlistApi',
-  baseQuery: fetchBaseQuery({ 
-    baseUrl,
-    prepareHeaders: (headers) => {
-      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
+  baseQuery: fetchBaseQuery({ baseUrl, credentials: 'include' }),
   tagTypes: ['Watchlist', 'WatchlistStats'],
   endpoints: (builder) => ({
     getWatchlist: builder.query<WatchlistItem[], number>({

@@ -30,9 +30,7 @@ describe('ForgotPasswordForm', () => {
       logout: jest.fn(),
       register: jest.fn(),
       resetPassword: jest.fn(),
-      validateToken: jest.fn(),
       isAuthenticated: jest.fn(() => false),
-      getToken: jest.fn(() => null),
       user: null,
       isLoading: false,
     });

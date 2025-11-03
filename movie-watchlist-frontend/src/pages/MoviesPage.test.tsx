@@ -10,6 +10,8 @@ import { mockMovies } from '../__tests__/fixtures/movieFixtures';
 import { useSearchParams } from 'react-router-dom';
 import * as moviesApi from '../store/api/moviesApi';
 import * as watchlistApi from '../store/api/watchlistApi';
+import { useWatchlistPresence } from '../hooks/useWatchlistPresence';
+import { TestConstants } from '../__tests__/TestConstants';
 
 jest.mock('../store/api/moviesApi', () => ({
   ...jest.requireActual('../store/api/moviesApi'),
@@ -23,10 +25,7 @@ jest.mock('../store/api/watchlistApi', () => ({
 }));
 
 jest.mock('../hooks/useWatchlistPresence', () => ({
-  useWatchlistPresence: jest.fn(() => ({
-    isInWatchlist: false,
-    isLoading: false,
-  })),
+  useWatchlistPresence: jest.fn(),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -38,12 +37,18 @@ const mockUseGetPopularMoviesQuery = moviesApi.useGetPopularMoviesQuery as jest.
 const mockUseSearchMoviesQuery = moviesApi.useSearchMoviesQuery as jest.Mock;
 const mockUseAddToWatchlistMutation = watchlistApi.useAddToWatchlistMutation as jest.Mock;
 const mockedUseSearchParams = useSearchParams as jest.MockedFunction<typeof useSearchParams>;
+const mockedUseWatchlistPresence = useWatchlistPresence as jest.MockedFunction<typeof useWatchlistPresence>;
 
 describe('MoviesPage', () => {
   const mockAddMutation = jest.fn(() => Promise.resolve({ data: {} }));
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Reset and set up the mocks
+    mockUseGetPopularMoviesQuery.mockClear();
+    mockUseSearchMoviesQuery.mockClear();
+    mockUseAddToWatchlistMutation.mockClear();
     
     mockUseGetPopularMoviesQuery.mockReturnValue({
       data: {
@@ -55,6 +60,7 @@ describe('MoviesPage', () => {
       isLoading: false,
       isError: false,
       error: undefined,
+      status: 'fulfilled',
       refetch: jest.fn(),
     });
 
@@ -63,22 +69,35 @@ describe('MoviesPage', () => {
       isLoading: false,
       isError: false,
       error: undefined,
+      status: 'uninitialized',
     });
 
     mockUseAddToWatchlistMutation.mockReturnValue([
       mockAddMutation,
-      { isLoading: false },
+      { isLoading: false, isError: false, error: undefined, status: 'idle' },
     ]);
 
     mockedUseSearchParams.mockReturnValue([new URLSearchParams(), jest.fn()]);
+
+    mockedUseWatchlistPresence.mockImplementation((tmdbId: number) => ({
+      isInWatchlist: false,
+      isLoading: false,
+    }));
   });
 
   it('should load popular movies on mount', async () => {
     render(<MoviesPage />);
 
     await waitFor(() => {
-      expect(mockUseGetPopularMoviesQuery).toHaveBeenCalledWith({ page: 1 });
+      expect(mockUseGetPopularMoviesQuery).toHaveBeenCalled();
     });
+    
+    expect(mockUseGetPopularMoviesQuery).toHaveBeenCalledWith(
+      { page: TestConstants.TestValues.DefaultPage },
+      expect.objectContaining({
+        pollingInterval: expect.any(Number)
+      })
+    );
   });
 
   it('should render featured carousel with popular movies', async () => {
@@ -95,7 +114,7 @@ describe('MoviesPage', () => {
     render(<MoviesPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Popular Movies')).toBeInTheDocument();
+      expect(screen.getByText(TestConstants.UI.PopularMovies)).toBeInTheDocument();
     });
   });
 
@@ -103,24 +122,25 @@ describe('MoviesPage', () => {
     render(<MoviesPage />);
 
     await waitFor(() => {
-      const refreshButton = screen.getByRole('button', { name: /refresh popular movies/i });
+      const refreshButton = screen.getByRole('button', { name: new RegExp(TestConstants.UI.RefreshPopularMovies, 'i') });
       expect(refreshButton).toBeInTheDocument();
     });
   });
 
   it('should handle search from URL params', async () => {
-    const searchQuery = 'fight club';
+    const searchQuery = TestConstants.SearchQueries.FightClub;
     
     mockUseSearchMoviesQuery.mockReturnValue({
       data: {
         movies: [mockMovies[0]],
         totalResults: 1,
         totalPages: 1,
-        currentPage: 1,
+        currentPage: TestConstants.TestValues.DefaultPage,
       },
       isLoading: false,
       isError: false,
       error: undefined,
+      status: 'fulfilled',
     });
 
     mockedUseSearchParams.mockReturnValue([new URLSearchParams({ search: searchQuery }), jest.fn()]);
@@ -129,60 +149,43 @@ describe('MoviesPage', () => {
 
     await waitFor(() => {
       expect(mockUseSearchMoviesQuery).toHaveBeenCalledWith(
-        { query: searchQuery, page: 1 },
+        { query: searchQuery, page: TestConstants.TestValues.DefaultPage },
         { skip: false }
       );
     });
   });
 
   it('should display error message on API failure', async () => {
+    const errorMessage = new Error(TestConstants.ErrorMessages.FailedToFetchMovies);
     mockUseGetPopularMoviesQuery.mockReturnValue({
       data: undefined,
       isLoading: false,
       isError: true,
-      error: { status: 500, data: { message: 'Failed to fetch movies' } },
+      error: errorMessage,
+      status: 'rejected',
       refetch: jest.fn(),
     });
 
     render(<MoviesPage />);
 
     await waitFor(() => {
-      const errorAlert = screen.queryByRole('alert');
-      expect(errorAlert).toBeInTheDocument();
+      const errorText = screen.getByText(new RegExp(TestConstants.ErrorMessages.FailedToLoadPopularMovies, 'i'));
+      expect(errorText).toBeInTheDocument();
     });
   });
 
-  it('should auto-refresh popular movies every 3 minutes', async () => {
-    jest.useFakeTimers();
-    const mockRefetch = jest.fn();
-
-    mockUseGetPopularMoviesQuery.mockReturnValue({
-      data: {
-        movies: mockMovies,
-        totalResults: 3,
-        totalPages: 1,
-        currentPage: 1,
-      },
-      isLoading: false,
-      isError: false,
-      error: undefined,
-      refetch: mockRefetch,
-    });
-
+  it('should configure polling interval for popular movies', async () => {
     render(<MoviesPage />);
 
     await waitFor(() => {
       expect(mockUseGetPopularMoviesQuery).toHaveBeenCalled();
     });
 
-    act(() => {
-      jest.advanceTimersByTime(3 * 60 * 1000);
-    });
-
-    await waitFor(() => {
-      expect(mockRefetch).toHaveBeenCalled();
-    });
-
-    jest.useRealTimers();
+    expect(mockUseGetPopularMoviesQuery).toHaveBeenCalledWith(
+      { page: TestConstants.TestValues.DefaultPage },
+      expect.objectContaining({
+        pollingInterval: TestConstants.TestValues.PollingIntervalMinutes * 60 * 1000
+      })
+    );
   });
 });

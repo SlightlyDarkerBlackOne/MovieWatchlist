@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MovieWatchlist.Infrastructure.Data;
 using MovieWatchlist.Api;
+using MovieWatchlist.Api.DTOs;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.ValueObjects;
@@ -27,18 +28,18 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
 
     protected EnhancedIntegrationTestBase(WebApplicationFactory<Program> factory)
     {
+        var databaseName = $"test_db_{Guid.NewGuid():N}";
+        
         Factory = factory
-            .ConfigureForIntegrationTesting()
+            .ConfigureForIntegrationTesting(databaseName)
             .WithAuthentication()
             .WithTmdbTestConfig();
 
         Client = Factory.CreateClient();
         
-        // Create a scope to access services
         Scope = Factory.Services.CreateScope();
         Context = Scope.ServiceProvider.GetRequiredService<MovieWatchlistDbContext>();
         
-        // Configure JSON serialization options
         JsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -51,11 +52,15 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
     /// </summary>
     protected async Task InitializeDatabaseAsync()
     {
-        // For PostgreSQL, delete and recreate the database with migrations
-        await Context.Database.EnsureDeletedAsync();
-        
-        // Use MigrateAsync instead of EnsureCreatedAsync for proper migration handling
-        await Context.Database.MigrateAsync();
+        try
+        {
+            await Context.Database.EnsureDeletedAsync();
+            await Context.Database.MigrateAsync();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Failed to initialize test database", ex);
+        }
     }
 
     /// <summary>
@@ -63,7 +68,13 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
     /// </summary>
     protected async Task CleanupDatabaseAsync()
     {
-        await Context.Database.EnsureDeletedAsync();
+        try
+        {
+            await Context.Database.EnsureDeletedAsync();
+        }
+        catch (Exception)
+        {
+        }
     }
 
     #region Authentication Helpers
@@ -72,9 +83,9 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
     /// Registers a test user and returns the authentication result
     /// </summary>
     protected async Task<AuthTestResult> RegisterTestUserAsync(
-        string username = "testuser", 
-        string email = "test@example.com", 
-        string password = "TestPassword123!")
+        string username = TestConstants.Users.DefaultUsername, 
+        string email = TestConstants.Users.DefaultEmail, 
+        string password = TestConstants.Users.DefaultPassword)
     {
         var registerRequest = new
         {
@@ -83,24 +94,46 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
             Password = password
         };
 
-        var response = await Client.PostAsJsonAsync("/api/Auth/register", registerRequest);
+        var response = await Client.PostAsJsonAsync(TestConstants.ApiEndpoints.AuthRegister, registerRequest);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Registration failed with status {response.StatusCode}: {errorContent}");
+        }
+        
         response.IsSuccessStatusCode.Should().BeTrue();
 
+        var cookies = response.Headers.GetValues(TestConstants.HttpHeaders.SetCookie).ToList();
+        cookies.Should().Contain(c => c.Contains(TestConstants.CookieNames.AccessToken));
+        cookies.Should().Contain(c => c.Contains(TestConstants.CookieNames.RefreshToken));
+
         var content = await response.Content.ReadAsStringAsync();
-        var authResult = JsonSerializer.Deserialize<AuthTestResult>(content, JsonOptions);
+        var responseDto = JsonSerializer.Deserialize<RegisterResponse>(content, JsonOptions);
         
-        authResult.Should().NotBeNull();
-        authResult!.IsSuccess.Should().BeTrue();
+        responseDto.Should().NotBeNull();
+        responseDto!.User.Should().NotBeNull();
         
-        return authResult;
+        return new AuthTestResult
+        {
+            IsSuccess = true,
+            User = new UserTestDto
+            {
+                Id = responseDto.User.Id,
+                Username = responseDto.User.Username,
+                Email = responseDto.User.Email,
+                CreatedAt = responseDto.User.CreatedAt
+            },
+            ExpiresAt = responseDto.ExpiresAt
+        };
     }
 
     /// <summary>
     /// Logs in a test user and returns the authentication result
     /// </summary>
     protected async Task<AuthTestResult> LoginTestUserAsync(
-        string usernameOrEmail = "testuser",
-        string password = "TestPassword123!")
+        string usernameOrEmail = TestConstants.Users.DefaultUsername,
+        string password = TestConstants.Users.DefaultPassword)
     {
         var loginRequest = new
         {
@@ -108,30 +141,84 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
             Password = password
         };
 
-        var response = await Client.PostAsJsonAsync("/api/Auth/login", loginRequest);
+        var response = await Client.PostAsJsonAsync(TestConstants.ApiEndpoints.AuthLogin, loginRequest);
         response.IsSuccessStatusCode.Should().BeTrue();
 
+        var cookies = response.Headers.GetValues(TestConstants.HttpHeaders.SetCookie).ToList();
+        cookies.Should().Contain(c => c.Contains(TestConstants.CookieNames.AccessToken));
+        cookies.Should().Contain(c => c.Contains(TestConstants.CookieNames.RefreshToken));
+
         var content = await response.Content.ReadAsStringAsync();
-        var authResult = JsonSerializer.Deserialize<AuthTestResult>(content, JsonOptions);
+        var responseDto = JsonSerializer.Deserialize<LoginResponse>(content, JsonOptions);
         
-        authResult.Should().NotBeNull();
-        authResult!.IsSuccess.Should().BeTrue();
+        responseDto.Should().NotBeNull();
+        responseDto!.User.Should().NotBeNull();
         
-        return authResult;
+        return new AuthTestResult
+        {
+            IsSuccess = true,
+            User = new UserTestDto
+            {
+                Id = responseDto.User.Id,
+                Username = responseDto.User.Username,
+                Email = responseDto.User.Email,
+                CreatedAt = responseDto.User.CreatedAt
+            },
+            ExpiresAt = responseDto.ExpiresAt
+        };
     }
 
     /// <summary>
-    /// Creates an authenticated HTTP client with JWT token
+    /// Creates an authenticated HTTP client with cookies
     /// </summary>
     protected async Task<HttpClient> CreateAuthenticatedClientAsync(
-        string username = "testuser",
-        string password = "TestPassword123!")
+        string username = TestConstants.Users.DefaultUsername,
+        string password = TestConstants.Users.DefaultPassword)
     {
-        var authResult = await LoginTestUserAsync(username, password);
-        
-        var authenticatedClient = Factory.CreateClient();
-        authenticatedClient.DefaultRequestHeaders.Authorization = 
-            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authResult.Token);
+        var loginRequest = new
+        {
+            UsernameOrEmail = username,
+            Password = password
+        };
+
+        var loginResponse = await Client.PostAsJsonAsync(TestConstants.ApiEndpoints.AuthLogin, loginRequest);
+        loginResponse.IsSuccessStatusCode.Should().BeTrue();
+
+        var handler = new HttpClientHandler
+        {
+            UseCookies = true,
+            CookieContainer = new System.Net.CookieContainer()
+        };
+
+        var baseUri = Client.BaseAddress ?? new Uri("http://localhost");
+        var authenticatedClient = new HttpClient(handler)
+        {
+            BaseAddress = baseUri
+        };
+
+        var cookies = loginResponse.Headers.GetValues(TestConstants.HttpHeaders.SetCookie);
+        foreach (var cookieHeader in cookies)
+        {
+            var cookieParts = cookieHeader.Split(';');
+            if (cookieParts.Length > 0)
+            {
+                var nameValue = cookieParts[0].Trim();
+                var nameValueParts = nameValue.Split('=', 2);
+                if (nameValueParts.Length == 2)
+                {
+                    var cookieName = nameValueParts[0].Trim();
+                    var cookieValue = nameValueParts[1].Trim();
+                    var cookie = new System.Net.Cookie(cookieName, cookieValue)
+                    {
+                        Domain = baseUri.Host,
+                        Path = "/",
+                        HttpOnly = cookieHeader.Contains("HttpOnly", StringComparison.OrdinalIgnoreCase),
+                        Secure = cookieHeader.Contains("Secure", StringComparison.OrdinalIgnoreCase)
+                    };
+                    handler.CookieContainer.Add(baseUri, cookie);
+                }
+            }
+        }
         
         return authenticatedClient;
     }
@@ -254,6 +341,14 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
 
     public virtual void Dispose()
     {
+        try
+        {
+            Context?.Database.EnsureDeleted();
+        }
+        catch (Exception)
+        {
+        }
+        
         Client?.Dispose();
         Context?.Dispose();
         Scope?.Dispose();
@@ -263,15 +358,20 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
 
 /// <summary>
 /// Test result for authentication operations
+/// Note: Tokens are now in httpOnly cookies, not in response body
 /// </summary>
 public class AuthTestResult
 {
     public bool IsSuccess { get; set; }
-    public string? Token { get; set; }
-    public string? RefreshToken { get; set; }
     public DateTime? ExpiresAt { get; set; }
     public UserTestDto? User { get; set; }
     public string? ErrorMessage { get; set; }
+    
+    [Obsolete("Tokens are now in httpOnly cookies. Use cookies from Set-Cookie header instead.")]
+    public string? Token { get; set; }
+    
+    [Obsolete("Tokens are now in httpOnly cookies. Use cookies from Set-Cookie header instead.")]
+    public string? RefreshToken { get; set; }
 }
 
 /// <summary>

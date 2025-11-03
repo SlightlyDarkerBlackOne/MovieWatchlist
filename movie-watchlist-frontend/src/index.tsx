@@ -5,6 +5,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { AuthProvider } from './contexts/AuthContext';
+import { ErrorProvider } from './contexts/ErrorContext';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { store } from './store';
 
@@ -15,9 +16,11 @@ root.render(
   <React.StrictMode>
     <Provider store={store}>
       <ErrorBoundary>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <ErrorProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </ErrorProvider>
       </ErrorBoundary>
     </Provider>
   </React.StrictMode>

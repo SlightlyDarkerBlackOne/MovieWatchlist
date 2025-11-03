@@ -1,22 +1,59 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { MovieSearchResult, MovieDetails, MovieCredits, MovieVideo, Movie } from '../../types/movie.types';
+import { MovieSearchResult, MovieDetails, MovieCredits, MovieVideo, Movie, CastMember, CrewMember } from '../../types/movie.types';
 import { transformCastMember, transformCrewMember, transformVideo } from '../../utils/tmdbTransformers';
-import { STORAGE_KEYS } from '../../utils/constants';
+
+interface TmdbCastMemberRaw {
+  id: number;
+  cast_id?: number;
+  castId?: number;
+  character: string;
+  name: string;
+  profile_path?: string | null;
+  profilePath?: string | null;
+  order: number;
+  gender: number;
+  known_for_department?: string;
+  knownForDepartment?: string;
+}
+
+interface TmdbCrewMemberRaw {
+  id: number;
+  credit_id?: string;
+  creditId?: string;
+  name: string;
+  job: string;
+  department: string;
+  profile_path?: string | null;
+  profilePath?: string | null;
+  gender: number;
+}
+
+interface TmdbVideoRaw {
+  id: string;
+  key: string;
+  name: string;
+  site: string;
+  type: string;
+  official: boolean;
+  published_at?: string;
+  publishedAt?: string;
+  size: number;
+}
+
+interface MovieDetailsApiResponse {
+  movie: MovieDetails;
+  credits: {
+    cast: TmdbCastMemberRaw[];
+    crew: TmdbCrewMemberRaw[];
+  };
+  videos: TmdbVideoRaw[];
+}
 
 const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5250/api';
 
 export const moviesApi = createApi({
   reducerPath: 'moviesApi',
-  baseQuery: fetchBaseQuery({ 
-    baseUrl,
-    prepareHeaders: (headers) => {
-      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
+  baseQuery: fetchBaseQuery({ baseUrl, credentials: 'include' }),
   tagTypes: ['Movies', 'MovieDetails'],
   endpoints: (builder) => ({
     searchMovies: builder.query<MovieSearchResult, { query: string; page?: number }>({
@@ -105,11 +142,7 @@ export const moviesApi = createApi({
       videos: MovieVideo[];
     }, { tmdbId: number }>({
       query: ({ tmdbId }) => `/Movies/tmdb/${tmdbId}`,
-      transformResponse: (response: {
-        movie: MovieDetails;
-        credits: { cast: any[]; crew: any[] };
-        videos: any[];
-      }) => ({
+      transformResponse: (response: MovieDetailsApiResponse) => ({
         movie: response.movie,
         credits: {
           cast: (response.credits?.cast || []).map(transformCastMember),

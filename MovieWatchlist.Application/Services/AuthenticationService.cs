@@ -89,6 +89,28 @@ public class AuthenticationService : IAuthenticationService
         );
     }
 
+    public async Task<AuthenticationResult> GenerateAuthenticationResultWithRefreshTokenAsync(User user)
+    {
+        var token = _jwtTokenService.GenerateToken(user);
+        var refreshToken = _jwtTokenService.GenerateRefreshToken();
+
+        var refreshTokenEntity = RefreshToken.Create(user.Id, refreshToken, _jwtSettings.RefreshTokenExpirationDays);
+        await _refreshTokenRepository.AddAsync(refreshTokenEntity);
+
+        return new AuthenticationResult(
+            IsSuccess: true,
+            Token: token,
+            RefreshToken: refreshToken,
+            ExpiresAt: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes),
+            User: new UserInfo(
+                Id: user.Id,
+                Username: user.Username.Value,
+                Email: user.Email.Value,
+                CreatedAt: user.CreatedAt
+            )
+        );
+    }
+
     public async Task<Result<RefreshTokenResult>> CreateRefreshTokenAsync(int userId)
     {
         var user = await _userRepository.GetByIdAsync(userId);
@@ -126,25 +148,7 @@ public class AuthenticationService : IAuthenticationService
         user.UpdateLastLogin();
         await _userRepository.UpdateAsync(user);
 
-        var token = _jwtTokenService.GenerateToken(user);
-        var refreshToken = _jwtTokenService.GenerateRefreshToken();
-
-        var refreshTokenEntity = RefreshToken.Create(user.Id, refreshToken, _jwtSettings.RefreshTokenExpirationDays);
-
-        await _refreshTokenRepository.AddAsync(refreshTokenEntity);
-
-        var authResult = new AuthenticationResult(
-            IsSuccess: true,
-            Token: token,
-            RefreshToken: refreshToken,
-            ExpiresAt: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes),
-            User: new UserInfo(
-                Id: user.Id,
-                Username: user.Username.Value,
-                Email: user.Email.Value,
-                CreatedAt: user.CreatedAt
-            )
-        );
+        var authResult = await GenerateAuthenticationResultWithRefreshTokenAsync(user);
 
         return Result<AuthenticationResult>.Success(authResult);
     }
@@ -155,7 +159,7 @@ public class AuthenticationService : IAuthenticationService
         return Task.FromResult(principal != null);
     }
 
-    public async Task<string> RefreshTokenAsync(string refreshToken)
+    public async Task<AuthenticationResult> RefreshTokenAsync(string refreshToken)
     {
         var token = await _refreshTokenRepository.GetByTokenAsync(refreshToken);
 
@@ -180,7 +184,18 @@ public class AuthenticationService : IAuthenticationService
 
         await _refreshTokenRepository.AddAsync(newRefreshTokenEntity);
 
-        return newToken;
+        return new AuthenticationResult(
+            IsSuccess: true,
+            Token: newToken,
+            RefreshToken: newRefreshToken,
+            ExpiresAt: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes),
+            User: new UserInfo(
+                Id: user.Id,
+                Username: user.Username.Value,
+                Email: user.Email.Value,
+                CreatedAt: user.CreatedAt
+            )
+        );
     }
 
     public async Task<bool> LogoutAsync(string token)

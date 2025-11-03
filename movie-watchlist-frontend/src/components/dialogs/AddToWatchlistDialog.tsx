@@ -16,14 +16,17 @@ import {
 import { WatchlistStatus } from '../../types/watchlist.types';
 import { trapFocus } from '../../utils/accessibility';
 
+interface AddToWatchlistForm {
+  status: WatchlistStatus;
+  notes: string;
+}
+
 interface AddToWatchlistDialogProps {
   open: boolean;
   onClose: () => void;
-  onConfirm: () => void;
-  status: WatchlistStatus;
-  setStatus: (status: WatchlistStatus) => void;
-  notes: string;
-  setNotes: (notes: string) => void;
+  onConfirm: (form: AddToWatchlistForm) => void;
+  form: AddToWatchlistForm;
+  onChange: (form: AddToWatchlistForm) => void;
   movieTitle?: string;
   loading?: boolean;
 }
@@ -32,10 +35,8 @@ const AddToWatchlistDialog: React.FC<AddToWatchlistDialogProps> = ({
   open,
   onClose,
   onConfirm,
-  status,
-  setStatus,
-  notes,
-  setNotes,
+  form,
+  onChange,
   movieTitle,
   loading = false
 }) => {
@@ -47,6 +48,18 @@ const AddToWatchlistDialog: React.FC<AddToWatchlistDialogProps> = ({
       return cleanup;
     }
   }, [open]);
+
+  const handleStatusChange = (status: WatchlistStatus) => {
+    onChange({ ...form, status });
+  };
+
+  const handleNotesChange = (notes: string) => {
+    onChange({ ...form, notes });
+  };
+
+  const handleConfirm = () => {
+    onConfirm(form);
+  };
 
   return (
     <Dialog 
@@ -72,9 +85,9 @@ const AddToWatchlistDialog: React.FC<AddToWatchlistDialogProps> = ({
             <InputLabel id="status-label">Status</InputLabel>
             <Select
               labelId="status-label"
-              value={status}
+              value={form.status}
               label="Status"
-              onChange={(e) => setStatus(e.target.value as WatchlistStatus)}
+              onChange={(e) => handleStatusChange(e.target.value as WatchlistStatus)}
             >
               <MenuItem value={WatchlistStatus.Planned}>Planned</MenuItem>
               <MenuItem value={WatchlistStatus.Watching}>Watching</MenuItem>
@@ -87,8 +100,8 @@ const AddToWatchlistDialog: React.FC<AddToWatchlistDialogProps> = ({
             label="Notes (optional)"
             multiline
             rows={3}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={form.notes}
+            onChange={(e) => handleNotesChange(e.target.value)}
             placeholder="Add your thoughts about this movie..."
             fullWidth
           />
@@ -96,7 +109,7 @@ const AddToWatchlistDialog: React.FC<AddToWatchlistDialogProps> = ({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={loading}>Cancel</Button>
-        <Button onClick={onConfirm} variant="contained" color="primary" disabled={loading}>
+        <Button onClick={handleConfirm} variant="contained" color="primary" disabled={loading}>
           Add to Watchlist
         </Button>
       </DialogActions>

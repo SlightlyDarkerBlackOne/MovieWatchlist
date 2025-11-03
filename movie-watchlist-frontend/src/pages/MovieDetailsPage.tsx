@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -13,6 +13,7 @@ import { useGetMovieDetailsQuery } from '../store/api/moviesApi';
 import { WatchlistStatus, AddToWatchlistRequest } from '../types/watchlist.types';
 import { useWatchlistPresence } from '../hooks/useWatchlistPresence';
 import { useAddToWatchlistMutation, useRemoveFromWatchlistMutation, useGetWatchlistQuery } from '../hooks/useWatchlistOperations';
+import { useAddToWatchlistDialog } from '../hooks/useAddToWatchlistDialog';
 import { useAuth } from '../contexts/AuthContext';
 import MovieMainDetails from '../components/movies/MovieMainDetails';
 import MovieGenres from '../components/movies/MovieGenres';
@@ -48,39 +49,43 @@ const MovieDetailsPage: React.FC = () => {
   const [showTrailer, setShowTrailer] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
-  // Dialog state
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [loginRequiredDialogOpen, setLoginRequiredDialogOpen] = useState(false);
-  const [status, setStatus] = useState<WatchlistStatus>(WatchlistStatus.Planned);
-  const [notes, setNotes] = useState('');
+  const dialog = useAddToWatchlistDialog();
 
   const handleAddToWatchlist = () => {
     if (!user) {
       setLoginRequiredDialogOpen(true);
       return;
     }
-    setAddDialogOpen(true);
+    if (movieDetails) {
+      dialog.openDialog(movieDetails);
+    }
   };
 
   const handleConfirmAdd = async () => {
-    if (!movieDetails || !user) return;
+    if (!dialog.selectedMovie || !user) return;
     
     try {
       const request: AddToWatchlistRequest = {
-        movieId: movieDetails.tmdbId,
-        status,
-        notes: notes || undefined
+        movieId: dialog.selectedMovie.tmdbId,
+        status: dialog.status,
+        notes: dialog.notes || undefined
       };
       
       await addToWatchlist({ userId: user.id, request }).unwrap();
       
-      setSuccessMessage(`Added "${movieDetails.title}" to your watchlist!`);
-      handleCloseDialog();
+      setSuccessMessage(`Added "${dialog.selectedMovie.title}" to your watchlist!`);
+      dialog.closeDialog();
     } catch (err) {
       const error = err as Error;
       setActionError(error.message || 'Failed to add to watchlist');
     }
   };
+
+  const handleFormChange = useCallback((form: { status: WatchlistStatus; notes: string }) => {
+    dialog.setStatus(form.status);
+    dialog.setNotes(form.notes);
+  }, [dialog]);
 
   const handleRemoveFromWatchlist = async () => {
     if (!movieDetails || !user || !watchlistItems) return;
@@ -103,12 +108,6 @@ const MovieDetailsPage: React.FC = () => {
 
   const handleToggleTrailer = () => {
     setShowTrailer(!showTrailer);
-  };
-
-  const handleCloseDialog = () => {
-    setAddDialogOpen(false);
-    setStatus(WatchlistStatus.Planned);
-    setNotes('');
   };
 
   const handleCloseLoginDialog = () => {
@@ -192,14 +191,12 @@ const MovieDetailsPage: React.FC = () => {
 
       {/* Add to Watchlist Dialog */}
       <AddToWatchlistDialog
-        open={addDialogOpen}
-        onClose={handleCloseDialog}
+        open={dialog.isOpen}
+        onClose={dialog.closeDialog}
         onConfirm={handleConfirmAdd}
-        status={status}
-        setStatus={setStatus}
-        notes={notes}
-        setNotes={setNotes}
-        movieTitle={movieDetails?.title}
+        form={{ status: dialog.status, notes: dialog.notes }}
+        onChange={handleFormChange}
+        movieTitle={dialog.selectedMovie?.title}
       />
 
       {/* Login Required Dialog */}

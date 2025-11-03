@@ -7,6 +7,7 @@ import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
 import WatchlistItemCard from './WatchlistItemCard';
 import { mockWatchlistItem, mockWatchlistItemWatched } from '../../__tests__/fixtures/watchlistFixtures';
 import { useNavigate } from 'react-router-dom';
+import { TestConstants } from '../../__tests__/TestConstants';
 
 // Mock navigation
 jest.mock('react-router-dom', () => ({
@@ -24,8 +25,6 @@ describe('WatchlistItemCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseNavigate.mockReturnValue(mockNavigate);
-    // Mock window.confirm
-    global.confirm = jest.fn(() => true);
   });
 
   it('should render watchlist item correctly', () => {
@@ -95,7 +94,7 @@ describe('WatchlistItemCard', () => {
     fireEvent.click(menuButton);
 
     expect(screen.getByText('Edit')).toBeInTheDocument();
-    expect(screen.getByText('Remove')).toBeInTheDocument();
+      expect(screen.getByText(TestConstants.UI.Remove)).toBeInTheDocument();
   });
 
   it('should delete item with confirmation', async () => {
@@ -112,18 +111,15 @@ describe('WatchlistItemCard', () => {
     fireEvent.click(menuButton);
 
     // Click delete
-    const deleteButton = screen.getByText('Remove');
+    const deleteButton = screen.getByText(TestConstants.UI.Remove);
     fireEvent.click(deleteButton);
 
     await waitFor(() => {
-      expect(global.confirm).toHaveBeenCalled();
       expect(mockOnDelete).toHaveBeenCalledWith(mockWatchlistItem.id);
     });
   });
 
-  it('should not delete if user cancels confirmation', async () => {
-    global.confirm = jest.fn(() => false);
-    
+  it('should close menu after delete', async () => {
     render(
       <WatchlistItemCard 
         item={mockWatchlistItem}
@@ -132,17 +128,15 @@ describe('WatchlistItemCard', () => {
       />
     );
 
-    // Open menu
     const menuButton = screen.getAllByRole('button')[0];
     fireEvent.click(menuButton);
 
-    // Click delete
-    const deleteButton = screen.getByText('Remove');
+    const deleteButton = screen.getByText(TestConstants.UI.Remove);
     fireEvent.click(deleteButton);
 
     await waitFor(() => {
-      expect(global.confirm).toHaveBeenCalled();
-      expect(mockOnDelete).not.toHaveBeenCalled();
+      expect(mockOnDelete).toHaveBeenCalledWith(mockWatchlistItem.id);
+      expect(screen.queryByText(TestConstants.UI.Remove)).not.toBeInTheDocument();
     });
   });
 

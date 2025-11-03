@@ -1,178 +1,89 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import {
-  Container,
-  Snackbar,
-  Alert
-} from '@mui/material';
-import { useSearchParams } from 'react-router-dom';
+import React, { useCallback } from 'react';
+import { Container } from '@mui/material';
 import { FeaturedMoviesCarousel } from '../components/movies';
 import { SearchResults, PopularMoviesSection } from '../components/pages';
 import { AddToWatchlistDialog } from '../components/dialogs';
 import LoginRequiredDialog from '../components/common/LoginRequiredDialog';
-import { useSearchMoviesQuery, useGetPopularMoviesQuery } from '../store/api/moviesApi';
+import SuccessToast from '../components/ui/SuccessToast';
 import { Movie } from '../types/movie.types';
 import { WatchlistStatus } from '../types/watchlist.types';
 import { useAddToWatchlistMutation } from '../hooks/useWatchlistOperations';
 import { useAuth } from '../contexts/AuthContext';
+import { useMovieSearch } from '../hooks/useMovieSearch';
+import { useFeaturedMovies } from '../hooks/useFeaturedMovies';
+import { useAddToWatchlistDialog } from '../hooks/useAddToWatchlistDialog';
+import { useSuccessToast } from '../hooks/useSuccessToast';
 
 const MoviesPage: React.FC = () => {
   const { user } = useAuth();
   const [addToWatchlist] = useAddToWatchlistMutation();
-  const [searchParams] = useSearchParams();
-  const searchResultsRef = useRef<HTMLDivElement>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [featuredMovies, setFeaturedMovies] = useState<Movie[]>([]);
+  const [loginRequiredDialogOpen, setLoginRequiredDialogOpen] = React.useState(false);
+  const successToast = useSuccessToast();
   
   const { 
-    data: popularMovies, 
-    isLoading: popularMoviesLoading, 
-    error: popularMoviesError,
-    refetch: refetchPopularMovies
-  } = useGetPopularMoviesQuery({ page: 1 });
+    searchQuery, 
+    searchResults, 
+    searchLoading, 
+    searchError,
+    searchResultsRef,
+    setSearchQuery
+  } = useMovieSearch();
 
   const { 
-    data: searchResults, 
-    isLoading: searchLoading, 
-    error: searchError
-  } = useSearchMoviesQuery(
-    { query: searchQuery, page: 1 },
-    { skip: !searchQuery.trim() }
-  );
-  
-  // Dialog state
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [loginRequiredDialogOpen, setLoginRequiredDialogOpen] = useState(false);
-  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
-  const [status, setStatus] = useState<WatchlistStatus>(WatchlistStatus.Planned);
-  const [notes, setNotes] = useState('');
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    featuredMovies,
+    featuredMovieIds,
+    popularMoviesError,
+    refetchPopularMovies
+  } = useFeaturedMovies();
 
-  const loading = popularMoviesLoading || searchLoading;
-  const error = popularMoviesError || searchError;
+  const dialog = useAddToWatchlistDialog();
 
-  // Set featured movies from the first few popular movies
-  useEffect(() => {
-    if (popularMovies?.movies && popularMovies.movies.length > 0) {
-      setFeaturedMovies(popularMovies.movies.slice(0, 5));
-    }
-  }, [popularMovies]);
-
-  // Memoize featured movie IDs to prevent infinite loops
-  const featuredMovieIds = useMemo(() => {
-    return featuredMovies.map(m => m.tmdbId);
-  }, [featuredMovies]);
-
-  // Auto-refresh popular movies every 3 minutes
-  useEffect(() => {
-    const AUTO_REFRESH_INTERVAL = 3 * 60 * 1000;
-    
-    const intervalId = setInterval(() => {
-      refetchPopularMovies();
-    }, AUTO_REFRESH_INTERVAL);
-
-    return () => clearInterval(intervalId);
-  }, [refetchPopularMovies]);
-
-  // Handle search from URL parameters
-  useEffect(() => {
-    const urlSearchQuery = searchParams.get('search');
-    if (urlSearchQuery && urlSearchQuery !== searchQuery) {
-      setSearchQuery(urlSearchQuery);
-    }
-  }, [searchParams, searchQuery]);
-
-  // Scroll to search results when they load
-  useEffect(() => {
-    if (searchResults && searchQuery) {
-      setTimeout(() => {
-        searchResultsRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
-        });
-      }, 100);
-    }
-  }, [searchResults, searchQuery]);
-
-  const handleRefreshPopularMovies = () => {
-    refetchPopularMovies();
-  };
-
-  // Watchlist handlers
-  const handleAddToWatchlist = (movie: Movie) => {
+  const handleAddToWatchlist = useCallback((movie: Movie) => {
     if (!user) {
       setLoginRequiredDialogOpen(true);
       return;
     }
-    setSelectedMovie(movie);
-    setAddDialogOpen(true);
-  };
+    dialog.openDialog(movie);
+  }, [user, dialog]);
 
-  const handleConfirmAdd = async () => {
-    if (!selectedMovie || !user) return;
+  const handleConfirmAdd = useCallback(async () => {
+    if (!dialog.selectedMovie || !user) return;
     
     try {
       await addToWatchlist({
         userId: user.id,
         request: {
-          movieId: selectedMovie.tmdbId,
-          status,
-          notes: notes || undefined
+          movieId: dialog.selectedMovie.tmdbId,
+          status: dialog.status,
+          notes: dialog.notes || undefined
         }
       }).unwrap();
       
-      setSuccessMessage(`Added "${selectedMovie.title}" to your watchlist!`);
-      handleCloseDialog();
+      successToast.showMessage(`Added "${dialog.selectedMovie.title}" to your watchlist!`);
+      dialog.closeDialog();
     } catch {
-      setSuccessMessage(null);
+      successToast.hideMessage();
     }
-  };
+  }, [dialog.selectedMovie, dialog.status, dialog.notes, user, addToWatchlist, dialog, successToast]);
 
-  const handleCloseDialog = () => {
-    setAddDialogOpen(false);
-    setSelectedMovie(null);
-    setStatus(WatchlistStatus.Planned);
-    setNotes('');
-  };
-
-  const handleCloseLoginDialog = () => {
+  const handleCloseLoginDialog = useCallback(() => {
     setLoginRequiredDialogOpen(false);
-  };
+  }, []);
 
-  // Clear success message after timeout
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [successMessage]);
+
+  const handleFormChange = useCallback((form: { status: WatchlistStatus; notes: string }) => {
+    dialog.setStatus(form.status);
+    dialog.setNotes(form.notes);
+  }, [dialog]);
+
+  const handleRetrySearch = useCallback(() => {
+    setSearchQuery(searchQuery);
+  }, [searchQuery, setSearchQuery]);
 
   return (
     <>
-      {/* Success Toast */}
-      <Snackbar
-        open={!!successMessage}
-        autoHideDuration={3000}
-        onClose={() => {}}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert severity="success" variant="filled" sx={{ width: '100%' }}>
-          {successMessage}
-        </Alert>
-      </Snackbar>
+      <SuccessToast message={successToast.message} onClose={successToast.hideMessage} />
 
-      {/* Error Toasts */}
-      <Snackbar
-        open={!!error}
-        autoHideDuration={5000}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert severity="error" variant="filled" sx={{ width: '100%' }}>
-          {error ? String(error) : 'An error occurred'}
-        </Alert>
-      </Snackbar>
-
-
-      {/* Featured Movies Carousel */}
       {featuredMovies.length > 0 && (
         <FeaturedMoviesCarousel
           movies={featuredMovies}
@@ -182,42 +93,39 @@ const MoviesPage: React.FC = () => {
         />
       )}
 
-      {/* Main Content */}
       <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Search Results Section */}
         {searchResults && (
           <SearchResults
             query={searchQuery}
             movies={searchResults.movies}
-            loading={loading}
+            loading={searchLoading}
+            error={searchError}
+            onRetry={handleRetrySearch}
             containerRef={searchResultsRef}
             onAddToWatchlist={handleAddToWatchlist}
           />
         )}
 
-        {/* Popular Movies Section */}
         {!searchResults && (
           <PopularMoviesSection
-            onRefresh={handleRefreshPopularMovies}
+            onRefresh={refetchPopularMovies}
             excludeTmdbIds={featuredMovieIds}
+            error={popularMoviesError}
+            onRetry={refetchPopularMovies}
             onAddToWatchlist={handleAddToWatchlist}
           />
         )}
       </Container>
 
-      {/* Add to Watchlist Dialog */}
       <AddToWatchlistDialog
-        open={addDialogOpen}
-        onClose={handleCloseDialog}
+        open={dialog.isOpen}
+        onClose={dialog.closeDialog}
         onConfirm={handleConfirmAdd}
-        status={status}
-        setStatus={setStatus}
-        notes={notes}
-        setNotes={setNotes}
-        movieTitle={selectedMovie?.title}
+        form={{ status: dialog.status, notes: dialog.notes }}
+        onChange={handleFormChange}
+        movieTitle={dialog.selectedMovie?.title}
       />
 
-      {/* Login Required Dialog */}
       <LoginRequiredDialog 
         open={loginRequiredDialogOpen} 
         onClose={handleCloseLoginDialog} 

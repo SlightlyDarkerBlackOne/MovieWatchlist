@@ -42,9 +42,7 @@ describe('LoginForm', () => {
       logout: jest.fn(),
       forgotPassword: jest.fn(),
       resetPassword: jest.fn(),
-      validateToken: jest.fn(),
       isAuthenticated: jest.fn(() => false),
-      getToken: jest.fn(() => null),
       user: null,
       isLoading: false,
     });

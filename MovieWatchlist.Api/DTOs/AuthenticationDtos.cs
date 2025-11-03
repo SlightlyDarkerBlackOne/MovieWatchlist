@@ -2,6 +2,41 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MovieWatchlist.Api.DTOs;
 
+public record LoginResponse(
+    UserInfo User,
+    DateTime ExpiresAt
+);
+
+public record RegisterResponse(
+    UserInfo User,
+    DateTime ExpiresAt
+);
+
+public record RefreshTokenResponse(
+    UserInfo User,
+    DateTime ExpiresAt
+);
+
+public record LogoutResponse(
+    string Message
+);
+
+public record ValidateTokenResponse(
+    bool IsValid
+);
+
+public record PasswordResetResponse(
+    bool Success,
+    string Message
+);
+
+public record UserInfo(
+    int Id,
+    string Username,
+    string Email,
+    DateTime CreatedAt
+);
+
 public record RegisterDto(
     [Required(ErrorMessage = "Username is required")]
     [StringLength(50, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 50 characters")]

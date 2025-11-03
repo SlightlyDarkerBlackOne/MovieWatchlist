@@ -81,7 +81,7 @@ public class AuthenticationServiceTests : UnitTestBase
         _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
             .ReturnsAsync((User?)null); // No existing users
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
-            .Returns("test-jwt-token");
+            .Returns(TestConstants.Jwt.TestJwtToken);
 
         // Act
         var userResult = await _authenticationService.RegisterUserAsync(command);
@@ -97,7 +97,7 @@ public class AuthenticationServiceTests : UnitTestBase
         // Test GenerateAuthenticationResult separately
         var authResult = _authenticationService.GenerateAuthenticationResult(userResult.Value!);
         authResult.IsSuccess.Should().BeTrue();
-        authResult.Token.Should().Be("test-jwt-token");
+        authResult.Token.Should().Be(TestConstants.Jwt.TestJwtToken);
         authResult.User.Should().NotBeNull();
         authResult.User!.Username.Should().Be(TestConstants.Users.DefaultUsername);
         authResult.User.Email.Should().Be(TestConstants.Users.DefaultEmail);
@@ -239,17 +239,17 @@ public class AuthenticationServiceTests : UnitTestBase
         _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
             .ReturnsAsync(user);
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
-            .Returns("test-jwt-token");
+            .Returns(TestConstants.Jwt.TestJwtToken);
         _mockJwtTokenService.Setup(x => x.GenerateRefreshToken())
-            .Returns("test-refresh-token");
+            .Returns(TestConstants.Jwt.TestRefreshToken);
 
         // Act
         var result = await _authenticationService.LoginAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value!.Token.Should().Be("test-jwt-token");
-        result.Value.RefreshToken.Should().Be("test-refresh-token");
+        result.Value!.Token.Should().Be(TestConstants.Jwt.TestJwtToken);
+        result.Value.RefreshToken.Should().Be(TestConstants.Jwt.TestRefreshToken);
         result.Value.User.Should().NotBeNull();
         result.Value.User!.Username.Should().Be(TestConstants.Users.DefaultUsername);
 
@@ -331,16 +331,16 @@ public class AuthenticationServiceTests : UnitTestBase
         _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
             .ReturnsAsync(user);
         _mockJwtTokenService.Setup(x => x.GenerateToken(It.IsAny<User>()))
-            .Returns("test-jwt-token");
+            .Returns(TestConstants.Jwt.TestJwtToken);
         _mockJwtTokenService.Setup(x => x.GenerateRefreshToken())
-            .Returns("test-refresh-token");
+            .Returns(TestConstants.Jwt.TestRefreshToken);
 
         // Act
         var result = await _authenticationService.LoginAsync(command);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value!.Token.Should().Be("test-jwt-token");
+        result.Value!.Token.Should().Be(TestConstants.Jwt.TestJwtToken);
         result.Value.User.Should().NotBeNull();
         result.Value.User!.Email.Should().Be(TestConstants.Users.DefaultEmail);
     }
@@ -353,7 +353,7 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task ValidateTokenAsync_WithValidToken_ReturnsTrue()
     {
         // Arrange
-        var validToken = "valid-jwt-token";
+        var validToken = TestConstants.Jwt.ValidJwtToken;
         var mockPrincipal = new ClaimsPrincipal();
         
         _mockJwtTokenService.Setup(x => x.ValidateToken(validToken))
@@ -371,7 +371,7 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task ValidateTokenAsync_WithInvalidToken_ReturnsFalse()
     {
         // Arrange
-        var invalidToken = "invalid-jwt-token";
+        var invalidToken = TestConstants.Jwt.InvalidJwtToken;
         
         _mockJwtTokenService.Setup(x => x.ValidateToken(invalidToken))
             .Returns((ClaimsPrincipal?)null);
@@ -392,7 +392,7 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task RefreshTokenAsync_WithValidRefreshToken_ReturnsNewToken()
     {
         // Arrange
-        var validRefreshToken = "valid-refresh-token";
+        var validRefreshToken = TestConstants.Jwt.ValidRefreshToken;
         var user = CreateTestUser(id: 1, username: TestConstants.Users.DefaultUsername, email: TestConstants.Users.DefaultEmail);
         var refreshTokenEntity = RefreshToken.Create(1, validRefreshToken, 1);
         typeof(RefreshToken).GetProperty("Id")!.SetValue(refreshTokenEntity, 1);
@@ -403,15 +403,20 @@ public class AuthenticationServiceTests : UnitTestBase
         _mockUserRepository.Setup(x => x.GetByIdAsync(1))
             .ReturnsAsync(user);
         _mockJwtTokenService.Setup(x => x.GenerateToken(user))
-            .Returns("new-jwt-token");
+            .Returns(TestConstants.Jwt.NewJwtToken);
         _mockJwtTokenService.Setup(x => x.GenerateRefreshToken())
-            .Returns("new-refresh-token");
+            .Returns(TestConstants.Jwt.NewRefreshToken);
 
         // Act
         var result = await _authenticationService.RefreshTokenAsync(validRefreshToken);
 
         // Assert
-        result.Should().Be("new-jwt-token");
+        result.Should().NotBeNull();
+        result.Token.Should().Be(TestConstants.Jwt.NewJwtToken);
+        result.RefreshToken.Should().Be(TestConstants.Jwt.NewRefreshToken);
+        result.User.Should().NotBeNull();
+        result.User!.Username.Should().Be(TestConstants.Users.DefaultUsername);
+        result.User.Email.Should().Be(TestConstants.Users.DefaultEmail);
         
         _mockRefreshTokenRepository.Verify(x => x.UpdateAsync(It.IsAny<RefreshToken>()), Times.Once);
         _mockRefreshTokenRepository.Verify(x => x.AddAsync(It.IsAny<RefreshToken>()), Times.Once);
@@ -421,7 +426,7 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task RefreshTokenAsync_WithInvalidRefreshToken_ThrowsUnauthorizedAccessException()
     {
         // Arrange
-        var invalidRefreshToken = "invalid-refresh-token";
+        var invalidRefreshToken = TestConstants.Jwt.InvalidRefreshToken;
         
         _mockRefreshTokenRepository.Setup(x => x.GetByTokenAsync(It.IsAny<string>()))
             .ReturnsAsync((RefreshToken?)null); // No token found
@@ -435,7 +440,7 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task RefreshTokenAsync_WithExpiredRefreshToken_ThrowsUnauthorizedAccessException()
     {
         // Arrange
-        var expiredRefreshToken = "expired-refresh-token";
+        var expiredRefreshToken = TestConstants.Jwt.ExpiredRefreshToken;
         
         var expiredTokenEntity = TestDataBuilder.RefreshToken()
             .WithId(1)
@@ -457,7 +462,7 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task RefreshTokenAsync_WithRevokedRefreshToken_ThrowsUnauthorizedAccessException()
     {
         // Arrange
-        var revokedRefreshToken = "revoked-refresh-token";
+        var revokedRefreshToken = TestConstants.Jwt.RevokedRefreshToken;
         
         var revokedTokenEntity = RefreshToken.Create(1, revokedRefreshToken, 1);
         typeof(RefreshToken).GetProperty("Id")!.SetValue(revokedTokenEntity, 1);
@@ -479,7 +484,7 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task LogoutAsync_WithValidToken_ReturnsTrue()
     {
         // Arrange
-        var validToken = "valid-jwt-token";
+        var validToken = TestConstants.Jwt.ValidJwtToken;
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, "1")
@@ -509,7 +514,7 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task LogoutAsync_WithInvalidToken_ReturnsFalse()
     {
         // Arrange
-        var invalidToken = "invalid-jwt-token";
+        var invalidToken = TestConstants.Jwt.InvalidJwtToken;
         
         _mockJwtTokenService.Setup(x => x.ValidateToken(invalidToken))
             .Returns((ClaimsPrincipal?)null);
@@ -526,7 +531,7 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task LogoutAsync_WithInvalidUserIdClaim_ReturnsFalse()
     {
         // Arrange
-        var validToken = "valid-jwt-token";
+        var validToken = TestConstants.Jwt.ValidJwtToken;
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, "invalid-id")
@@ -646,7 +651,7 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var command = new ResetPasswordCommand(
-            Token: "invalid-token",
+            Token: TestConstants.Jwt.InvalidToken,
             NewPassword: "NewPassword123!"
         );
 

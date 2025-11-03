@@ -9,6 +9,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { AuthProvider, AuthContextType } from '../contexts/AuthContext';
+import { ErrorProvider } from '../contexts/ErrorContext';
 import { appTheme } from '../theme';
 import { moviesApi } from '../store/api/moviesApi';
 import { watchlistApi } from '../store/api/watchlistApi';
@@ -35,9 +36,11 @@ const AllProviders: React.FC<AllProvidersProps> = ({ children }) => {
     <Provider store={store}>
       <ThemeProvider theme={appTheme}>
         <BrowserRouter>
+          <ErrorProvider>
           <AuthProvider>
             {children}
           </AuthProvider>
+          </ErrorProvider>
         </BrowserRouter>
       </ThemeProvider>
     </Provider>
@@ -87,20 +90,24 @@ const renderWithMocks = (
         logout: jest.fn(),
         forgotPassword: jest.fn(),
         resetPassword: jest.fn(),
-        validateToken: jest.fn(),
         isAuthenticated: jest.fn(() => false),
-        getToken: jest.fn(() => null),
         ...mockAuthContext,
       };
       
       const AuthContext = AuthContextModule.default;
       content = (
+        <ErrorProvider>
         <AuthContext.Provider value={defaultAuthContext}>
           {content}
         </AuthContext.Provider>
+        </ErrorProvider>
       );
     } else {
-      content = <AuthProvider>{content}</AuthProvider>;
+      content = (
+        <ErrorProvider>
+          <AuthProvider>{content}</AuthProvider>
+        </ErrorProvider>
+      );
     }
 
     return (
@@ -129,5 +136,6 @@ export {
 
 // Export our custom render methods
 export { customRender as render, renderWithMocks };
+export { AllProviders };
 
 

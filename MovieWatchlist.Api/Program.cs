@@ -97,6 +97,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
+
+        // Read JWT from httpOnly cookies when Authorization header is not present
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (string.IsNullOrEmpty(context.Token))
+                {
+                    var tokenFromCookie = context.Request.Cookies["accessToken"];
+                    if (!string.IsNullOrEmpty(tokenFromCookie))
+                    {
+                        context.Token = tokenFromCookie;
+                    }
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
