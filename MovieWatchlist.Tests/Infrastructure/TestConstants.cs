@@ -58,6 +58,39 @@ public static class TestConstants
         public const string TestAudience = "MovieWatchlistTestUsers";
         public const int TestExpirationMinutes = 60;
         public const int TestRefreshTokenExpirationDays = 7;
+        public const string TestJwtToken = "test-jwt-token";
+        public const string TestRefreshToken = "test-refresh-token";
+        public const string NewJwtToken = "new-jwt-token";
+        public const string NewRefreshToken = "new-refresh-token";
+        public const string ValidRefreshToken = "valid-refresh-token";
+        public const string ValidJwtToken = "valid-jwt-token";
+        public const string InvalidJwtToken = "invalid-jwt-token";
+        public const string InvalidRefreshToken = "invalid-refresh-token";
+        public const string ExpiredRefreshToken = "expired-refresh-token";
+        public const string RevokedRefreshToken = "revoked-refresh-token";
+        public const string InvalidToken = "invalid-token";
+    }
+
+    // Test Cookie Names
+    public static class CookieNames
+    {
+        public const string AccessToken = "accessToken";
+        public const string RefreshToken = "refreshToken";
+    }
+
+    // Test HTTP Headers
+    public static class HttpHeaders
+    {
+        public const string SetCookie = "Set-Cookie";
+        public const string Cookie = "Cookie";
+    }
+
+    // Test Cookie Attributes
+    public static class CookieAttributes
+    {
+        public const string HttpOnly = "HttpOnly";
+        public const string SameSiteStrict = "SameSite=Strict";
+        public const string Expires = "expires=";
     }
 
     // Test TMDB Data
@@ -77,6 +110,7 @@ public static class TestConstants
         public const string AuthLogin = "/api/Auth/login";
         public const string AuthLogout = "/api/Auth/logout";
         public const string AuthRefresh = "/api/Auth/refresh";
+        public const string AuthMe = "/api/Auth/me";
         
         public const string MoviesSearch = "/api/Movies/search";
         public const string MoviesPopular = "/api/Movies/popular";

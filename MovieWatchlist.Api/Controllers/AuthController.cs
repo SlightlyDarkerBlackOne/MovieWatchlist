@@ -1,10 +1,18 @@
 using System.Net;
 using MediatR;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using MovieWatchlist.Api.DTOs;
 using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Exceptions;
+using MovieWatchlist.Core.Interfaces;
+using System.Security.Claims;
+using CoreUserInfo = MovieWatchlist.Core.Commands.UserInfo;
+using ApiUserInfo = MovieWatchlist.Api.DTOs.UserInfo;
+using CorePasswordResetResponse = MovieWatchlist.Core.Commands.PasswordResetResponse;
+using ApiPasswordResetResponse = MovieWatchlist.Api.DTOs.PasswordResetResponse;
 
 namespace MovieWatchlist.Api.Controllers;
 
@@ -14,17 +22,23 @@ public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
+    private readonly IUserRepository _userRepository;
+    private readonly IWebHostEnvironment _environment;
 
     public AuthController(
         IMediator mediator,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IUserRepository userRepository,
+        IWebHostEnvironment environment)
     {
         _mediator = mediator;
         _logger = logger;
+        _userRepository = userRepository;
+        _environment = environment;
     }
 
     [HttpPost("register")]
-    public async Task<ActionResult<AuthenticationResult>> Register([FromBody] RegisterDto dto)
+    public async Task<ActionResult<RegisterResponse>> Register([FromBody] RegisterDto dto)
     {
         var command = new RegisterCommand(dto.Username, dto.Email, dto.Password);
         var result = await _mediator.Send(command);
@@ -33,7 +47,40 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = result.Error });
 
         _logger.LogInformation("User registered successfully: {Username}", dto.Username);
-        return Ok(result.Value);
+
+        var auth = result.Value;
+        if (auth.User == null || !auth.ExpiresAt.HasValue)
+            return BadRequest(new { error = "Invalid authentication result" });
+
+        var expiresAt = auth.ExpiresAt.Value;
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !_environment.IsDevelopment() && !_environment.IsEnvironment("Testing"),
+            SameSite = SameSiteMode.Strict,
+            Expires = expiresAt
+        };
+
+        if (!string.IsNullOrEmpty(auth.Token))
+        {
+            Response.Cookies.Append("accessToken", auth.Token, cookieOptions);
+        }
+        if (!string.IsNullOrEmpty(auth.RefreshToken))
+        {
+            Response.Cookies.Append("refreshToken", auth.RefreshToken, cookieOptions);
+        }
+
+        var response = new RegisterResponse(
+            new ApiUserInfo(
+                auth.User.Id,
+                auth.User.Username,
+                auth.User.Email,
+                auth.User.CreatedAt
+            ),
+            expiresAt
+        );
+
+        return Ok(response);
     }
 
     [HttpPost("create-refresh-token")]
@@ -49,7 +96,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
-    public async Task<ActionResult<AuthenticationResult>> Login([FromBody] LoginDto dto)
+    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -64,61 +111,126 @@ public class AuthController : ControllerBase
         if (result.IsFailure)
             return Unauthorized(new { error = result.Error });
 
-        return Ok(result.Value);
+        var auth = result.Value;
+        if (auth.User == null || !auth.ExpiresAt.HasValue)
+            return BadRequest(new { error = "Invalid authentication result" });
+
+        var expiresAt = auth.ExpiresAt.Value;
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !_environment.IsDevelopment() && !_environment.IsEnvironment("Testing"),
+            SameSite = SameSiteMode.Strict,
+            Expires = expiresAt
+        };
+
+        if (!string.IsNullOrEmpty(auth.Token))
+        {
+            Response.Cookies.Append("accessToken", auth.Token, cookieOptions);
+        }
+        if (!string.IsNullOrEmpty(auth.RefreshToken))
+        {
+            Response.Cookies.Append("refreshToken", auth.RefreshToken, cookieOptions);
+        }
+
+        var response = new LoginResponse(
+            new ApiUserInfo(
+                auth.User.Id,
+                auth.User.Username,
+                auth.User.Email,
+                auth.User.CreatedAt
+            ),
+            expiresAt
+        );
+
+        return Ok(response);
     }
 
     [HttpPost("refresh")]
-    public async Task<ActionResult<object>> RefreshToken([FromBody] RefreshTokenDto refreshTokenDto)
+    public async Task<ActionResult<RefreshTokenResponse>> RefreshToken()
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        var refreshToken = Request.Cookies["refreshToken"];
+        if (string.IsNullOrEmpty(refreshToken))
+            return Unauthorized(new { message = "Refresh token not provided" });
 
-        var command = new RefreshTokenCommand(refreshTokenDto.RefreshToken);
+        var command = new RefreshTokenCommand(refreshToken);
         var result = await _mediator.Send(command);
 
         if (result.IsFailure)
             return Unauthorized(new { message = result.Error });
 
-        return Ok(new { token = result.Value });
+        var auth = result.Value;
+        if (auth.User == null || !auth.ExpiresAt.HasValue)
+            return BadRequest(new { error = "Invalid authentication result" });
+
+        var expiresAt = auth.ExpiresAt.Value;
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = !_environment.IsDevelopment() && !_environment.IsEnvironment("Testing"),
+            SameSite = SameSiteMode.Strict,
+            Expires = expiresAt
+        };
+
+        if (!string.IsNullOrEmpty(auth.Token))
+        {
+            Response.Cookies.Append("accessToken", auth.Token, cookieOptions);
+        }
+        if (!string.IsNullOrEmpty(auth.RefreshToken))
+        {
+            Response.Cookies.Append("refreshToken", auth.RefreshToken, cookieOptions);
+        }
+
+        var response = new RefreshTokenResponse(
+            new ApiUserInfo(
+                auth.User.Id,
+                auth.User.Username,
+                auth.User.Email,
+                auth.User.CreatedAt
+            ),
+            expiresAt
+        );
+
+        return Ok(response);
     }
 
     [HttpPost("logout")]
-    public async Task<ActionResult> Logout()
+    public async Task<ActionResult<LogoutResponse>> Logout()
     {
-        var token = GetTokenFromHeader();
-        if (string.IsNullOrEmpty(token))
-            return BadRequest(new { message = ErrorMessages.TokenNotProvided });
+        var token = Request.Cookies["accessToken"];
+        if (!string.IsNullOrEmpty(token))
+        {
+            var command = new LogoutCommand(token);
+            var result = await _mediator.Send(command);
+            if (result.IsFailure)
+                return BadRequest(new { message = result.Error });
+            if (!result.Value)
+                return BadRequest(new { message = ErrorMessages.LogoutFailed });
+        }
 
-        var command = new LogoutCommand(token);
-        var result = await _mediator.Send(command);
-
-        if (result.IsFailure)
-            return BadRequest(new { message = result.Error });
-
-        if (!result.Value)
-            return BadRequest(new { message = ErrorMessages.LogoutFailed });
-
-        return Ok(new { message = ErrorMessages.LogoutSuccess });
+        Response.Cookies.Delete("accessToken");
+        Response.Cookies.Delete("refreshToken");
+        return Ok(new LogoutResponse(ErrorMessages.LogoutSuccess));
     }
 
     [HttpPost("validate")]
-    public async Task<ActionResult<object>> ValidateToken()
+    public async Task<ActionResult<ValidateTokenResponse>> ValidateToken()
     {
         var token = GetTokenFromHeader();
         if (string.IsNullOrEmpty(token))
-            return BadRequest(new { message = ErrorMessages.TokenNotProvided, isValid = false });
+            return BadRequest(new ValidateTokenResponse(false));
 
         var command = new ValidateTokenCommand(token);
         var result = await _mediator.Send(command);
 
         if (result.IsFailure)
-            return BadRequest(new { message = result.Error, isValid = false });
+            return BadRequest(new ValidateTokenResponse(false));
 
-        return Ok(new { isValid = result.Value });
+        return Ok(new ValidateTokenResponse(result.Value));
     }
 
     [HttpPost("forgot-password")]
-    public async Task<ActionResult<PasswordResetResponse>> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    public async Task<ActionResult<ApiPasswordResetResponse>> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
         try
         {
@@ -134,7 +246,13 @@ public class AuthController : ControllerBase
             if (result.IsFailure)
                 return BadRequest(new { error = result.Error });
 
-            return Ok(result.Value);
+            var coreResponse = result.Value!;
+            var response = new ApiPasswordResetResponse(
+                coreResponse.Success,
+                coreResponse.Message
+            );
+
+            return Ok(response);
         }
         catch (ValidationException)
         {
@@ -148,7 +266,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("reset-password")]
-    public async Task<ActionResult<PasswordResetResponse>> ResetPassword([FromBody] ResetPasswordDto dto)
+    public async Task<ActionResult<ApiPasswordResetResponse>> ResetPassword([FromBody] ResetPasswordDto dto)
     {
         try
         {
@@ -170,7 +288,13 @@ public class AuthController : ControllerBase
             if (result.IsFailure)
                 return BadRequest(new { error = result.Error });
 
-            return Ok(result.Value);
+            var coreResponse = result.Value!;
+            var response = new ApiPasswordResetResponse(
+                coreResponse.Success,
+                coreResponse.Message
+            );
+
+            return Ok(response);
         }
         catch (ValidationException)
         {
@@ -191,6 +315,26 @@ public class AuthController : ControllerBase
             return authHeader.Substring("Bearer ".Length).Trim();
         }
         return null;
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<ActionResult<ApiUserInfo>> Me()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return NotFound();
+
+        return Ok(new ApiUserInfo(
+            user.Id,
+            user.Username.Value,
+            user.Email.Value,
+            user.CreatedAt
+        ));
     }
 }
 

@@ -3,17 +3,18 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ThemeProvider } from '@mui/material/styles';
-import { BrowserRouter } from 'react-router-dom';
+import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
 import LoginForm from './LoginForm';
-import { appTheme } from '../../theme';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Mock the useAuth hook
-jest.mock('../../contexts/AuthContext', () => ({
-  useAuth: jest.fn(),
-}));
+jest.mock('../../contexts/AuthContext', () => {
+  const actual = jest.requireActual('../../contexts/AuthContext');
+  return {
+    ...actual,
+    useAuth: jest.fn(),
+  };
+});
 
 // Mock Header component
 jest.mock('../common/Header', () => {
@@ -30,16 +31,6 @@ describe('LoginForm', () => {
   const mockOnForgotPassword = jest.fn();
   const mockOnRegister = jest.fn();
 
-  const renderWithProviders = (ui: React.ReactElement) => {
-    return render(
-      <ThemeProvider theme={appTheme}>
-        <BrowserRouter>
-          {ui}
-        </BrowserRouter>
-      </ThemeProvider>
-    );
-  };
-
   // Helper to get password input by name attribute (avoid ambiguity with multiple password fields)
   const getPasswordInput = () => document.querySelector<HTMLInputElement>('input[name="password"]')!;
 
@@ -51,16 +42,14 @@ describe('LoginForm', () => {
       logout: jest.fn(),
       forgotPassword: jest.fn(),
       resetPassword: jest.fn(),
-      validateToken: jest.fn(),
       isAuthenticated: jest.fn(() => false),
-      getToken: jest.fn(() => null),
       user: null,
       isLoading: false,
     });
   });
 
   it('should render login form with all fields', () => {
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -75,7 +64,7 @@ describe('LoginForm', () => {
   });
 
   it('should show forgot password link', () => {
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -88,7 +77,7 @@ describe('LoginForm', () => {
   });
 
   it('should show register link', () => {
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -101,7 +90,7 @@ describe('LoginForm', () => {
   });
 
   it('should update input fields when typing', () => {
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -120,7 +109,7 @@ describe('LoginForm', () => {
   });
 
   it('should toggle password visibility', () => {
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -141,7 +130,7 @@ describe('LoginForm', () => {
   });
 
   it('should show validation errors for empty fields', async () => {
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -161,7 +150,7 @@ describe('LoginForm', () => {
   });
 
   it('should show validation error for short username', async () => {
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -191,7 +180,7 @@ describe('LoginForm', () => {
       user: { id: 1, username: 'testuser', email: 'test@example.com' },
     });
 
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -224,7 +213,7 @@ describe('LoginForm', () => {
       errorMessage,
     });
 
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -254,7 +243,7 @@ describe('LoginForm', () => {
       errorMessage: 'Invalid credentials',
     });
 
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -280,7 +269,7 @@ describe('LoginForm', () => {
   it('should handle unexpected errors gracefully', async () => {
     mockLoginFn.mockRejectedValue(new Error('Network error'));
 
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -305,7 +294,7 @@ describe('LoginForm', () => {
   it('should show loading state during submission', async () => {
     mockLoginFn.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
 
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -329,7 +318,7 @@ describe('LoginForm', () => {
   it('should disable inputs during loading', async () => {
     mockLoginFn.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
 
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -351,7 +340,7 @@ describe('LoginForm', () => {
   });
 
   it('should call onForgotPassword when forgot password link is clicked', () => {
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -366,7 +355,7 @@ describe('LoginForm', () => {
   });
 
   it('should call onRegister when register link is clicked', () => {
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}
@@ -381,7 +370,7 @@ describe('LoginForm', () => {
   });
 
   it('should clear field errors when user starts typing', async () => {
-    renderWithProviders(
+    render(
       <LoginForm 
         onLoginSuccess={mockOnLoginSuccess}
         onForgotPassword={mockOnForgotPassword}

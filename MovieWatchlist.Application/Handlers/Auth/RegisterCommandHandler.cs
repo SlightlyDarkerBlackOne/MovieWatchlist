@@ -9,13 +9,16 @@ namespace MovieWatchlist.Application.Handlers.Auth;
 public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<AuthenticationResult>>
 {
     private readonly IAuthenticationService _authService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<RegisterCommandHandler> _logger;
 
     public RegisterCommandHandler(
         IAuthenticationService authService,
+        IUnitOfWork unitOfWork,
         ILogger<RegisterCommandHandler> logger)
     {
         _authService = authService;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -30,7 +33,9 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         if (userResult.IsFailure)
             return Result<AuthenticationResult>.Failure(userResult.Error);
 
-        var authResult = _authService.GenerateAuthenticationResult(userResult.Value!);
+        await _unitOfWork.SaveChangesAsync();
+
+        var authResult = await _authService.GenerateAuthenticationResultWithRefreshTokenAsync(userResult.Value!);
         
         _logger.LogInformation("User registration completed successfully for: {Username}", request.Username);
         

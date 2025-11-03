@@ -1,5 +1,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import authService from '../services/authService';
+import api from '../services/api';
+import { API_ENDPOINTS } from '../utils/constants';
 import { 
   LoginCredentials, 
   RegisterData, 
@@ -9,7 +11,7 @@ import {
   PasswordResetResponse,
   UserInfo
 } from '../types/auth.types';
-import { STORAGE_KEYS } from '../utils/constants';
+ 
 
 /**
  * Auth Context Interface
@@ -23,9 +25,7 @@ export interface AuthContextType {
   logout: () => Promise<boolean>;
   forgotPassword: (data: ForgotPasswordData) => Promise<PasswordResetResponse>;
   resetPassword: (data: ResetPasswordData) => Promise<PasswordResetResponse>;
-  validateToken: () => Promise<boolean>;
   isAuthenticated: () => boolean;
-  getToken: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,29 +44,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore user session from localStorage on mount
+  // Restore user session via /Auth/me on mount
   useEffect(() => {
     const restoreSession = async () => {
-      const storedUser = localStorage.getItem(STORAGE_KEYS.USER);
-      const token = authService.getToken();
-      
-      if (storedUser && token) {
-        try {
-          const isValid = await authService.validateToken();
-          if (isValid) {
-            const user = JSON.parse(storedUser);
-            setUser(user);
-          } else {
-            authService.logout();
-            localStorage.removeItem(STORAGE_KEYS.USER);
-          }
-        } catch (error) {
-          console.error('Failed to restore session:', error);
-          authService.logout();
-          localStorage.removeItem(STORAGE_KEYS.USER);
-        }
+      try {
+        const response = await api.get(API_ENDPOINTS.AUTH.ME);
+        setUser(response.data);
+      } catch {
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
 
     restoreSession();
@@ -76,7 +64,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const result = await authService.login(credentials);
     if (result.isSuccess && result.user) {
       setUser(result.user);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(result.user));
     }
     return result;
   };
@@ -85,7 +72,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const result = await authService.register(userData);
     if (result.isSuccess && result.user) {
       setUser(result.user);
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(result.user));
     }
     return result;
   };
@@ -93,7 +79,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<boolean> => {
     const result = await authService.logout();
     setUser(null);
-    localStorage.removeItem(STORAGE_KEYS.USER);
     return result;
   };
 
@@ -105,9 +90,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     forgotPassword: (data) => authService.forgotPassword(data),
     resetPassword: (data) => authService.resetPassword(data),
-    validateToken: () => authService.validateToken(),
-    isAuthenticated: () => authService.isAuthenticated(),
-    getToken: () => authService.getToken(),
+    isAuthenticated: () => !!user,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -12,9 +12,10 @@ import {
   InputAdornment
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
-import { RegisterData } from '../../types/auth.types';
-import ValidationService from '../../utils/validationService';
+import { Controller } from 'react-hook-form';
 import { useAuth } from '../../contexts/AuthContext';
+import { useForms } from '../../hooks/useForms';
+import { registerSchema, RegisterSchema } from '../../validation/schemas';
 import { 
   FORM_LABELS, 
   FORM_TITLES, 
@@ -29,104 +30,35 @@ interface RegisterFormProps {
   onBackToLogin: () => void;
 }
 
-interface FormErrors {
-  username?: string;
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-}
-
 const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess, onBackToLogin }) => {
-  const { register } = useAuth();
-  const [formData, setFormData] = useState<RegisterData & { confirmPassword: string }>({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
-  const [loading, setLoading] = useState(false);
+  const { register: registerUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear field-specific error when user starts typing
-    if (fieldErrors[name as keyof FormErrors]) {
-      setFieldErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
+  const form = useForms<RegisterSchema>({
+    schema: registerSchema,
+    defaultValues: {
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: ''
     }
-    
-    // Clear general error when user makes changes
-    if (error) {
-      setError(null);
-    }
-  };
+  });
 
-  const validateForm = (): boolean => {
-    const errors: FormErrors = {};
-    let isValid = true;
+  const { control, handleSubmit, formState: { errors, isSubmitting } } = form;
 
-    // Validate username
-    const usernameValidation = ValidationService.validateUsernameField(formData.username);
-    if (!usernameValidation.isValid) {
-      errors.username = usernameValidation.error || 'Invalid username';
-      isValid = false;
-    }
-
-    // Validate email
-    const emailValidation = ValidationService.validateEmailField(formData.email);
-    if (!emailValidation.isValid) {
-      errors.email = emailValidation.error || 'Invalid email address';
-      isValid = false;
-    }
-
-    // Validate password
-    const passwordValidation = ValidationService.validateLoginPassword(formData.password);
-    if (!passwordValidation.isValid) {
-      errors.password = passwordValidation.error || 'Invalid password';
-      isValid = false;
-    }
-
-    // Validate confirm password
-    if (!formData.confirmPassword) {
-      errors.confirmPassword = ERROR_MESSAGES.CONFIRM_PASSWORD_REQUIRED;
-      isValid = false;
-    } else if (formData.password !== formData.confirmPassword) {
-      errors.confirmPassword = ERROR_MESSAGES.PASSWORDS_DO_NOT_MATCH;
-      isValid = false;
-    }
-
-    setFieldErrors(errors);
-    return isValid;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    setLoading(true);
+  const onSubmit = handleSubmit(async (data) => {
     setError(null);
 
     try {
-      const registerData: RegisterData = {
-        username: formData.username,
-        email: formData.email,
-        password: formData.password
+      const registerData = {
+        username: data.username,
+        email: data.email,
+        password: data.password
       };
 
-      const result = await register(registerData);
+      const result = await registerUser(registerData);
       
       if (result.isSuccess) {
         onRegisterSuccess();
@@ -135,10 +67,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess, onBackTo
       }
     } catch (error) {
       setError(ERROR_MESSAGES.UNEXPECTED_ERROR);
-    } finally {
-      setLoading(false);
     }
-  };
+  });
 
   return (
     <Paper 
@@ -164,114 +94,146 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess, onBackTo
         </Alert>
       )}
 
-      <Box component="form" onSubmit={handleSubmit} noValidate>
-        <TextField
-          fullWidth
-          label={FORM_LABELS.USERNAME}
+      <Box component="form" onSubmit={onSubmit} noValidate>
+        <Controller
           name="username"
-          value={formData.username}
-          onChange={handleInputChange}
-          margin="normal"
-          required
-          disabled={loading}
-          error={!!fieldErrors.username}
-          helperText={fieldErrors.username}
-          autoComplete={AUTOCOMPLETE_VALUES.USERNAME}
-          inputProps={{
-            'aria-label': ARIA_LABELS.USERNAME_INPUT,
-            minLength: 3,
-            maxLength: 50
-          }}
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              label={FORM_LABELS.USERNAME}
+              margin="normal"
+              required
+              disabled={isSubmitting}
+              error={!!errors.username}
+              helperText={errors.username?.message}
+              autoComplete={AUTOCOMPLETE_VALUES.USERNAME}
+              inputProps={{
+                'aria-label': ARIA_LABELS.USERNAME_INPUT,
+                minLength: 3,
+                maxLength: 50
+              }}
+              onChange={(e) => {
+                field.onChange(e);
+                if (error) setError(null);
+              }}
+            />
+          )}
         />
         
-        <TextField
-          fullWidth
-          label={FORM_LABELS.EMAIL}
+        <Controller
           name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleInputChange}
-          margin="normal"
-          required
-          disabled={loading}
-          error={!!fieldErrors.email}
-          helperText={fieldErrors.email}
-          autoComplete={AUTOCOMPLETE_VALUES.EMAIL}
-          inputProps={{
-            'aria-label': ARIA_LABELS.EMAIL_INPUT
-          }}
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              label={FORM_LABELS.EMAIL}
+              type="email"
+              margin="normal"
+              required
+              disabled={isSubmitting}
+              error={!!errors.email}
+              helperText={errors.email?.message}
+              autoComplete={AUTOCOMPLETE_VALUES.EMAIL}
+              inputProps={{
+                'aria-label': ARIA_LABELS.EMAIL_INPUT
+              }}
+              onChange={(e) => {
+                field.onChange(e);
+                if (error) setError(null);
+              }}
+            />
+          )}
         />
         
-        <TextField
-          fullWidth
-          label={FORM_LABELS.PASSWORD}
+        <Controller
           name="password"
-          type={showPassword ? 'text' : 'password'}
-          value={formData.password}
-          onChange={handleInputChange}
-          margin="normal"
-          required
-          disabled={loading}
-          error={!!fieldErrors.password}
-          helperText={fieldErrors.password || 'Must be at least 8 characters with uppercase, lowercase, and number'}
-          autoComplete={AUTOCOMPLETE_VALUES.NEW_PASSWORD}
-          slotProps={{
-            input: {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    aria-label="toggle password visibility"
-                    onClick={() => setShowPassword(!showPassword)}
-                    onMouseDown={(e) => e.preventDefault()}
-                    edge="end"
-                    disabled={loading}
-                  >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              )
-            }
-          }}
-          inputProps={{
-            'aria-label': ARIA_LABELS.PASSWORD_INPUT,
-            minLength: 8
-          }}
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              label={FORM_LABELS.PASSWORD}
+              type={showPassword ? 'text' : 'password'}
+              margin="normal"
+              required
+              disabled={isSubmitting}
+              error={!!errors.password}
+              helperText={errors.password?.message || 'Must be at least 8 characters with uppercase, lowercase, and number'}
+              autoComplete={AUTOCOMPLETE_VALUES.NEW_PASSWORD}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword(!showPassword)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        edge="end"
+                        disabled={isSubmitting}
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }
+              }}
+              inputProps={{
+                'aria-label': ARIA_LABELS.PASSWORD_INPUT,
+                minLength: 8
+              }}
+              onChange={(e) => {
+                field.onChange(e);
+                if (error) setError(null);
+              }}
+            />
+          )}
         />
 
-        <TextField
-          fullWidth
-          label={FORM_LABELS.CONFIRM_PASSWORD}
+        <Controller
           name="confirmPassword"
-          type={showConfirmPassword ? 'text' : 'password'}
-          value={formData.confirmPassword}
-          onChange={handleInputChange}
-          margin="normal"
-          required
-          disabled={loading}
-          error={!!fieldErrors.confirmPassword}
-          helperText={fieldErrors.confirmPassword}
-          autoComplete={AUTOCOMPLETE_VALUES.NEW_PASSWORD}
-          slotProps={{
-            input: {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    aria-label="toggle confirm password visibility"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    onMouseDown={(e) => e.preventDefault()}
-                    edge="end"
-                    disabled={loading}
-                  >
-                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              )
-            }
-          }}
-          inputProps={{
-            'aria-label': ARIA_LABELS.CONFIRM_PASSWORD_INPUT,
-            minLength: 8
-          }}
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              label={FORM_LABELS.CONFIRM_PASSWORD}
+              type={showConfirmPassword ? 'text' : 'password'}
+              margin="normal"
+              required
+              disabled={isSubmitting}
+              error={!!errors.confirmPassword}
+              helperText={errors.confirmPassword?.message}
+              autoComplete={AUTOCOMPLETE_VALUES.NEW_PASSWORD}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle confirm password visibility"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        edge="end"
+                        disabled={isSubmitting}
+                      >
+                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }
+              }}
+              inputProps={{
+                'aria-label': ARIA_LABELS.CONFIRM_PASSWORD_INPUT,
+                minLength: 8
+              }}
+              onChange={(e) => {
+                field.onChange(e);
+                if (error) setError(null);
+              }}
+            />
+          )}
         />
         
         <Button
@@ -279,10 +241,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess, onBackTo
           fullWidth
           variant="contained"
           sx={{ mt: 3, mb: 2 }}
-          disabled={loading}
-          aria-label={loading ? ARIA_LABELS.REGISTER_BUTTON_LOADING : ARIA_LABELS.REGISTER_BUTTON}
+          disabled={isSubmitting}
+          aria-label={isSubmitting ? ARIA_LABELS.REGISTER_BUTTON_LOADING : ARIA_LABELS.REGISTER_BUTTON}
         >
-          {loading ? (
+          {isSubmitting ? (
             <>
               <CircularProgress 
                 size={FORM_SETTINGS.LOADING_SPINNER_SIZE} 
@@ -304,7 +266,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess, onBackTo
             component="button"
             variant="body2"
             onClick={onBackToLogin}
-            disabled={loading}
+            disabled={isSubmitting}
             sx={{ cursor: 'pointer' }}
           >
             {FORM_LABELS.BACK_TO_LOGIN}

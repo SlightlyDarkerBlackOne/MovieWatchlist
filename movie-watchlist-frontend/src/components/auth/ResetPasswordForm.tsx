@@ -9,8 +9,11 @@ import {
   CircularProgress,
   Link
 } from '@mui/material';
+import { Controller } from 'react-hook-form';
 import ValidationService from '../../utils/validationService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useForms } from '../../hooks/useForms';
+import { resetPasswordSchema, ResetPasswordSchema } from '../../validation/schemas';
 import {
   FORM_LABELS,
   FORM_TITLES,
@@ -27,84 +30,32 @@ interface ResetPasswordFormProps {
   onBackToLogin: () => void;
 }
 
-interface FormErrors {
-  newPassword?: string;
-  confirmPassword?: string;
-}
-
 const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({ 
   token, 
   onSuccess, 
   onBackToLogin 
 }) => {
   const { resetPassword } = useAuth();
-  const [passwords, setPasswords] = useState({
-    newPassword: '',
-    confirmPassword: ''
-  });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setPasswords(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear field error when user starts typing
-    if (fieldErrors[name as keyof FormErrors]) {
-      setFieldErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
+  const form = useForms<ResetPasswordSchema>({
+    schema: resetPasswordSchema,
+    defaultValues: {
+      newPassword: '',
+      confirmPassword: ''
     }
-    
-    // Clear general error when user starts typing
-    if (error) {
-      setError(null);
-    }
-  };
+  });
 
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-    
-    // Validate new password with full strength requirements
-    const passwordValidation = ValidationService.validatePasswordStrength(
-      passwords.newPassword
-    );
-    if (!passwordValidation.isValid) {
-      newErrors.newPassword = passwordValidation.error;
-    }
-    
-    // Validate confirm password
-    if (!passwords.confirmPassword) {
-      newErrors.confirmPassword = ERROR_MESSAGES.CONFIRM_PASSWORD_REQUIRED;
-    } else if (passwords.newPassword !== passwords.confirmPassword) {
-      newErrors.confirmPassword = ERROR_MESSAGES.PASSWORDS_DO_NOT_MATCH;
-    }
-    
-    setFieldErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const { control, handleSubmit, formState: { errors, isSubmitting } } = form;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form before submission
-    if (!validateForm()) {
-      return;
-    }
-    
-    setLoading(true);
+  const onSubmit = handleSubmit(async (data) => {
     setError(null);
 
     try {
       const result = await resetPassword({
         token,
-        newPassword: passwords.newPassword,
-        confirmPassword: passwords.confirmPassword
+        newPassword: data.newPassword,
+        confirmPassword: data.confirmPassword
       });
       
       if (result.success) {
@@ -113,7 +64,6 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
         setError(result.message || ERROR_MESSAGES.RESET_FAILED);
       }
     } catch (error: unknown) {
-      console.error('Reset password error:', error);
       
       let errorMessage: string = ERROR_MESSAGES.UNEXPECTED_ERROR;
       if (error instanceof Error) {
@@ -121,10 +71,8 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
       }
       
       setError(errorMessage);
-    } finally {
-      setLoading(false);
     }
-  };
+  });
 
   return (
     <Paper elevation={3} sx={{ p: FORM_SETTINGS.PAPER_PADDING, maxWidth: FORM_SETTINGS.MAX_FORM_WIDTH, mx: 'auto', mt: FORM_SETTINGS.MARGIN_TOP }}>
@@ -147,42 +95,58 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
         </Alert>
       )}
 
-      <Box component="form" onSubmit={handleSubmit} noValidate>
-        <TextField
-          fullWidth
-          label={FORM_LABELS.NEW_PASSWORD}
+      <Box component="form" onSubmit={onSubmit} noValidate>
+        <Controller
           name="newPassword"
-          type="password"
-          value={passwords.newPassword}
-          onChange={handleInputChange}
-          margin="normal"
-          required
-          disabled={loading}
-          error={!!fieldErrors.newPassword}
-          helperText={fieldErrors.newPassword}
-          autoComplete={AUTOCOMPLETE_VALUES.NEW_PASSWORD}
-          autoFocus
-          aria-label={ARIA_LABELS.NEW_PASSWORD_INPUT}
-          aria-required="true"
-          aria-invalid={!!fieldErrors.newPassword}
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              label={FORM_LABELS.NEW_PASSWORD}
+              type="password"
+              margin="normal"
+              required
+              disabled={isSubmitting}
+              error={!!errors.newPassword}
+              helperText={errors.newPassword?.message}
+              autoComplete={AUTOCOMPLETE_VALUES.NEW_PASSWORD}
+              autoFocus
+              aria-label={ARIA_LABELS.NEW_PASSWORD_INPUT}
+              aria-required="true"
+              aria-invalid={!!errors.newPassword}
+              onChange={(e) => {
+                field.onChange(e);
+                if (error) setError(null);
+              }}
+            />
+          )}
         />
         
-        <TextField
-          fullWidth
-          label={FORM_LABELS.CONFIRM_PASSWORD}
+        <Controller
           name="confirmPassword"
-          type="password"
-          value={passwords.confirmPassword}
-          onChange={handleInputChange}
-          margin="normal"
-          required
-          disabled={loading}
-          error={!!fieldErrors.confirmPassword}
-          helperText={fieldErrors.confirmPassword}
-          autoComplete={AUTOCOMPLETE_VALUES.NEW_PASSWORD}
-          aria-label={ARIA_LABELS.CONFIRM_PASSWORD_INPUT}
-          aria-required="true"
-          aria-invalid={!!fieldErrors.confirmPassword}
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              label={FORM_LABELS.CONFIRM_PASSWORD}
+              type="password"
+              margin="normal"
+              required
+              disabled={isSubmitting}
+              error={!!errors.confirmPassword}
+              helperText={errors.confirmPassword?.message}
+              autoComplete={AUTOCOMPLETE_VALUES.NEW_PASSWORD}
+              aria-label={ARIA_LABELS.CONFIRM_PASSWORD_INPUT}
+              aria-required="true"
+              aria-invalid={!!errors.confirmPassword}
+              onChange={(e) => {
+                field.onChange(e);
+                if (error) setError(null);
+              }}
+            />
+          )}
         />
 
         <Alert severity="info" sx={{ mt: 2, mb: 2 }}>
@@ -196,10 +160,10 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
           fullWidth
           variant="contained"
           sx={{ mt: 1, mb: FORM_SETTINGS.MARGIN_BOTTOM }}
-          disabled={loading}
-          aria-label={loading ? ARIA_LABELS.RESET_PASSWORD_BUTTON_LOADING : ARIA_LABELS.RESET_PASSWORD_BUTTON}
+          disabled={isSubmitting}
+          aria-label={isSubmitting ? ARIA_LABELS.RESET_PASSWORD_BUTTON_LOADING : ARIA_LABELS.RESET_PASSWORD_BUTTON}
         >
-          {loading ? (
+          {isSubmitting ? (
             <>
               <CircularProgress size={FORM_SETTINGS.LOADING_SPINNER_SIZE} sx={{ mr: 1 }} color="inherit" />
               {FORM_LABELS.RESETTING}
@@ -215,12 +179,12 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
             type="button"
             variant="body2"
             onClick={onBackToLogin}
-            disabled={loading}
+            disabled={isSubmitting}
             sx={{ 
               textDecoration: 'none',
               '&:hover': { textDecoration: 'underline' },
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.5 : 1
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting ? 0.5 : 1
             }}
           >
             {FORM_LABELS.BACK_TO_LOGIN}

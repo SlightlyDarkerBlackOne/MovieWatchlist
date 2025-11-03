@@ -29,7 +29,7 @@ public record ResetPasswordCommand(
 
 public record RefreshTokenCommand(
     string RefreshToken
-) : IRequest<Result<string>>;
+) : IRequest<Result<AuthenticationResult>>;
 
 public record LogoutCommand(
     string Token

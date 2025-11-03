@@ -3,33 +3,24 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { ThemeProvider } from '@mui/material/styles';
-import { BrowserRouter } from 'react-router-dom';
+import { render, screen, fireEvent, waitFor } from '../../utils/test-utils';
 import ForgotPasswordForm from './ForgotPasswordForm';
-import { appTheme } from '../../theme';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Mock the useAuth hook
-jest.mock('../../contexts/AuthContext', () => ({
-  useAuth: jest.fn(),
-}));
+jest.mock('../../contexts/AuthContext', () => {
+  const actual = jest.requireActual('../../contexts/AuthContext');
+  return {
+    ...actual,
+    useAuth: jest.fn(),
+  };
+});
 
 const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
 describe('ForgotPasswordForm', () => {
   const mockForgotPasswordFn = jest.fn();
   const mockOnBackToLogin = jest.fn();
-
-  const renderWithProviders = (ui: React.ReactElement) => {
-    return render(
-      <ThemeProvider theme={appTheme}>
-        <BrowserRouter>
-          {ui}
-        </BrowserRouter>
-      </ThemeProvider>
-    );
-  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -39,16 +30,14 @@ describe('ForgotPasswordForm', () => {
       logout: jest.fn(),
       register: jest.fn(),
       resetPassword: jest.fn(),
-      validateToken: jest.fn(),
       isAuthenticated: jest.fn(() => false),
-      getToken: jest.fn(() => null),
       user: null,
       isLoading: false,
     });
   });
 
   it('should render forgot password form with email field', () => {
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     expect(screen.getByRole('heading', { name: /forgot password/i })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /email/i })).toBeInTheDocument();
@@ -56,19 +45,19 @@ describe('ForgotPasswordForm', () => {
   });
 
   it('should show form description', () => {
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     expect(screen.getByText(/enter your email address/i)).toBeInTheDocument();
   });
 
   it('should show back to login link', () => {
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     expect(screen.getByText(/back to login/i)).toBeInTheDocument();
   });
 
   it('should update email field when typing', () => {
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     const emailInput = screen.getByRole('textbox', { name: /email/i }) as HTMLInputElement;
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -77,7 +66,7 @@ describe('ForgotPasswordForm', () => {
   });
 
   it('should show validation error for empty email', async () => {
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     const submitButton = screen.getByRole('button', { name: /send reset link/i });
     fireEvent.click(submitButton);
@@ -90,7 +79,7 @@ describe('ForgotPasswordForm', () => {
   });
 
   it('should show validation error for invalid email format', async () => {
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     const emailInput = screen.getByRole('textbox', { name: /email/i });
     fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
@@ -111,7 +100,7 @@ describe('ForgotPasswordForm', () => {
       message: 'Password reset email sent successfully',
     });
 
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     const emailInput = screen.getByRole('textbox', { name: /email/i }) as HTMLInputElement;
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -131,7 +120,7 @@ describe('ForgotPasswordForm', () => {
       message: errorMessage,
     });
 
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     const emailInput = screen.getByRole('textbox', { name: /email/i });
     fireEvent.change(emailInput, { target: { value: 'nonexistent@example.com' } });
@@ -147,7 +136,7 @@ describe('ForgotPasswordForm', () => {
   it('should handle unexpected errors gracefully', async () => {
     mockForgotPasswordFn.mockRejectedValue(new Error('Network error'));
 
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     const emailInput = screen.getByRole('textbox', { name: /email/i });
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -163,7 +152,7 @@ describe('ForgotPasswordForm', () => {
   it('should show loading state during submission', async () => {
     mockForgotPasswordFn.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
 
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     const emailInput = screen.getByRole('textbox', { name: /email/i });
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -182,7 +171,7 @@ describe('ForgotPasswordForm', () => {
       message: 'Password reset email sent successfully',
     });
 
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     const emailInput = screen.getByRole('textbox', { name: /email/i });
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
@@ -197,7 +186,7 @@ describe('ForgotPasswordForm', () => {
   });
 
   it('should call onBackToLogin when back to login link is clicked', () => {
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     const backToLoginLink = screen.getByText(/back to login/i);
     fireEvent.click(backToLoginLink);
@@ -206,7 +195,7 @@ describe('ForgotPasswordForm', () => {
   });
 
   it('should clear field error when user starts typing', async () => {
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     const submitButton = screen.getByRole('button', { name: /send reset link/i });
     fireEvent.click(submitButton);
@@ -229,7 +218,7 @@ describe('ForgotPasswordForm', () => {
       message: 'Email not found',
     });
 
-    renderWithProviders(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
+    render(<ForgotPasswordForm onBackToLogin={mockOnBackToLogin} />);
 
     const emailInput = screen.getByRole('textbox', { name: /email/i });
     fireEvent.change(emailInput, { target: { value: 'nonexistent@example.com' } });

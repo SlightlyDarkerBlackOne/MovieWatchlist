@@ -12,10 +12,11 @@ import {
   InputAdornment
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { Controller } from 'react-hook-form';
 import Header from '../common/Header';
-import { LoginCredentials } from '../../types/auth.types';
-import ValidationService from '../../utils/validationService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useForms } from '../../hooks/useForms';
+import { loginSchema, LoginSchema } from '../../validation/schemas';
 import { 
   FORM_LABELS, 
   FORM_TITLES, 
@@ -32,91 +33,35 @@ interface LoginFormProps {
   onRegister: () => void;
 }
 
-interface FormErrors {
-  usernameOrEmail?: string;
-  password?: string;
-}
-
 const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onForgotPassword, onRegister }) => {
   const { login } = useAuth();
-  const [credentials, setCredentials] = useState<LoginCredentials>({
-    usernameOrEmail: '',
-    password: ''
-  });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setCredentials(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear field error when user starts typing
-    if (fieldErrors[name as keyof FormErrors]) {
-      setFieldErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
+  const form = useForms<LoginSchema>({
+    schema: loginSchema,
+    defaultValues: {
+      usernameOrEmail: '',
+      password: ''
     }
-    
-    // Clear general error when user starts typing
-    if (error) {
-      setError(null);
-    }
-  };
+  });
 
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-    
-    // Validate username/email using backend validation rules
-    const usernameOrEmailValidation = ValidationService.validateUsernameOrEmail(
-      credentials.usernameOrEmail
-    );
-    if (!usernameOrEmailValidation.isValid) {
-      newErrors.usernameOrEmail = usernameOrEmailValidation.error;
-    }
-    
-    // Validate password
-    const passwordValidation = ValidationService.validateLoginPassword(
-      credentials.password
-    );
-    if (!passwordValidation.isValid) {
-      newErrors.password = passwordValidation.error;
-    }
-    
-    setFieldErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const { control, handleSubmit, formState: { errors, isSubmitting }, reset } = form;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate form before submission
-    if (!validateForm()) {
-      return;
-    }
-    
-    setLoading(true);
+  const onSubmit = handleSubmit(async (data) => {
     setError(null);
 
     try {
-      const result = await login(credentials);
+      const result = await login(data as unknown as LoginSchema);
       
       if (result.isSuccess) {
         onLoginSuccess();
       } else {
         setError(result.errorMessage || ERROR_MESSAGES.LOGIN_FAILED);
-        // Clear password on failed login for security
-        setCredentials(prev => ({ ...prev, password: '' }));
+        reset({ usernameOrEmail: data.usernameOrEmail, password: '' });
       }
     } catch (error: unknown) {
-      console.error('Login error:', error);
       
-      // Better error message based on error type
       let errorMessage: string = ERROR_MESSAGES.UNEXPECTED_ERROR;
       
       if (error instanceof Error) {
@@ -126,12 +71,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onForgotPassword,
       }
       
       setError(errorMessage);
-      // Clear password on error
-      setCredentials(prev => ({ ...prev, password: '' }));
-    } finally {
-      setLoading(false);
+      reset({ usernameOrEmail: data.usernameOrEmail, password: '' });
     }
-  };
+  });
 
   return (
     <>
@@ -152,57 +94,73 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onForgotPassword,
         </Alert>
       )}
 
-      <Box component="form" onSubmit={handleSubmit} noValidate>
-        <TextField
-          fullWidth
-          label={FORM_LABELS.USERNAME_OR_EMAIL}
+      <Box component="form" onSubmit={onSubmit} noValidate>
+        <Controller
           name="usernameOrEmail"
-          value={credentials.usernameOrEmail}
-          onChange={handleInputChange}
-          margin="normal"
-          required
-          disabled={loading}
-          error={!!fieldErrors.usernameOrEmail}
-          helperText={fieldErrors.usernameOrEmail}
-          autoComplete={AUTOCOMPLETE_VALUES.USERNAME}
-          aria-label={ARIA_LABELS.USERNAME_OR_EMAIL_INPUT}
-          aria-required="true"
-          aria-invalid={!!fieldErrors.usernameOrEmail}
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              label={FORM_LABELS.USERNAME_OR_EMAIL}
+              margin="normal"
+              required
+              disabled={isSubmitting}
+              error={!!errors.usernameOrEmail}
+              helperText={errors.usernameOrEmail?.message}
+              autoComplete={AUTOCOMPLETE_VALUES.USERNAME}
+              aria-label={ARIA_LABELS.USERNAME_OR_EMAIL_INPUT}
+              aria-required="true"
+              aria-invalid={!!errors.usernameOrEmail}
+              onChange={(e) => {
+                field.onChange(e);
+                if (error) setError(null);
+              }}
+            />
+          )}
         />
         
-        <TextField
-          fullWidth
-          label={FORM_LABELS.PASSWORD}
+        <Controller
           name="password"
-          type={showPassword ? 'text' : 'password'}
-          value={credentials.password}
-          onChange={handleInputChange}
-          margin="normal"
-          required
-          disabled={loading}
-          error={!!fieldErrors.password}
-          helperText={fieldErrors.password}
-          autoComplete={AUTOCOMPLETE_VALUES.CURRENT_PASSWORD}
-          aria-label={ARIA_LABELS.PASSWORD_INPUT}
-          aria-required="true"
-          aria-invalid={!!fieldErrors.password}
-          slotProps={{
-            input: {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    aria-label="toggle password visibility"
-                    onClick={() => setShowPassword(!showPassword)}
-                    onMouseDown={(e) => e.preventDefault()}
-                    edge="end"
-                    disabled={loading}
-                  >
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              )
-            }
-          }}
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              fullWidth
+              label={FORM_LABELS.PASSWORD}
+              type={showPassword ? 'text' : 'password'}
+              margin="normal"
+              required
+              disabled={isSubmitting}
+              error={!!errors.password}
+              helperText={errors.password?.message}
+              autoComplete={AUTOCOMPLETE_VALUES.CURRENT_PASSWORD}
+              aria-label={ARIA_LABELS.PASSWORD_INPUT}
+              aria-required="true"
+              aria-invalid={!!errors.password}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword(!showPassword)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        edge="end"
+                        disabled={isSubmitting}
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }
+              }}
+              onChange={(e) => {
+                field.onChange(e);
+                if (error) setError(null);
+              }}
+            />
+          )}
         />
 
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
@@ -211,12 +169,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onForgotPassword,
             type="button"
             variant="body2"
             onClick={onForgotPassword}
-            disabled={loading}
+            disabled={isSubmitting}
             sx={{ 
               textDecoration: 'none',
               '&:hover': { textDecoration: 'underline' },
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.5 : 1
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              opacity: isSubmitting ? 0.5 : 1
             }}
           >
             {FORM_LABELS.FORGOT_PASSWORD}
@@ -228,10 +186,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onForgotPassword,
           fullWidth
           variant="contained"
           sx={{ mt: 2, mb: FORM_SETTINGS.MARGIN_BOTTOM }}
-          disabled={loading}
-          aria-label={loading ? ARIA_LABELS.LOGIN_BUTTON_LOADING : ARIA_LABELS.LOGIN_BUTTON}
+          disabled={isSubmitting}
+          aria-label={isSubmitting ? ARIA_LABELS.LOGIN_BUTTON_LOADING : ARIA_LABELS.LOGIN_BUTTON}
         >
-          {loading ? (
+          {isSubmitting ? (
             <>
               <CircularProgress size={FORM_SETTINGS.LOADING_SPINNER_SIZE} sx={{ mr: 1 }} color="inherit" />
               {FORM_LABELS.LOGGING_IN}
@@ -261,7 +219,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onForgotPassword,
             type="button"
             variant="body2"
             onClick={onRegister}
-            disabled={loading}
+            disabled={isSubmitting}
             sx={{ cursor: 'pointer' }}
           >
             Register here

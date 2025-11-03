@@ -13,13 +13,15 @@ interface WatchlistGridProps {
   loading?: boolean;
   onUpdate?: (item: WatchlistItem) => void;
   onDelete?: (itemId: number) => void;
+  onEdit?: (item: WatchlistItem) => void;
 }
 
 const WatchlistGrid: React.FC<WatchlistGridProps> = ({
   items,
   loading = false,
   onUpdate,
-  onDelete
+  onDelete,
+  onEdit
 }) => {
   if (loading) {
     return (
@@ -50,6 +52,7 @@ const WatchlistGrid: React.FC<WatchlistGridProps> = ({
             item={item}
             onUpdate={onUpdate}
             onDelete={onDelete}
+            onEdit={onEdit}
           />
         </Grid2>
       ))}

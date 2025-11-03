@@ -97,6 +97,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
+
+        // Read JWT from httpOnly cookies when Authorization header is not present
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                if (string.IsNullOrEmpty(context.Token))
+                {
+                    var tokenFromCookie = context.Request.Cookies["accessToken"];
+                    if (!string.IsNullOrEmpty(tokenFromCookie))
+                    {
+                        context.Token = tokenFromCookie;
+                    }
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -121,6 +138,9 @@ builder.Services.AddScoped<IDomainEventHandler<MovieWatchedEvent>, LogActivityHa
 builder.Services.AddScoped<IDomainEventHandler<MovieRatedEvent>, LogActivityHandler>();
 builder.Services.AddScoped<IDomainEventHandler<MovieFavoritedEvent>, LogActivityHandler>();
 builder.Services.AddScoped<IDomainEventHandler<MovieWatchedEvent>, UpdateStatisticsHandler>();
+builder.Services.AddScoped<IDomainEventHandler<MovieRatedEvent>, UpdateStatisticsHandler>();
+builder.Services.AddScoped<IDomainEventHandler<MovieFavoritedEvent>, UpdateStatisticsHandler>();
+builder.Services.AddScoped<IDomainEventHandler<StatisticsInvalidatedEvent>, UpdateStatisticsHandler>();
 
 // Register Authentication Domain Event Handlers
 builder.Services.AddScoped<IDomainEventHandler<UserRegisteredEvent>, UserRegisteredEventHandler>();

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, CircularProgress, Box } from '@mui/material';
 import AppRoutes from './routes/AppRoutes';
-import { WatchlistProvider } from './contexts/WatchlistContext';
 import { useAuth } from './contexts/AuthContext';
+import { useError } from './contexts/ErrorContext';
 import { appTheme } from './theme';
+import SkipLink from './components/common/SkipLink';
+import { setNavigateHandler, setGlobalErrorHandler } from './services/api';
 
 /**
  * App Content Component
@@ -12,7 +14,14 @@ import { appTheme } from './theme';
  */
 function AppContent() {
   const { isLoading } = useAuth();
+  const { showError } = useError();
+  const navigate = useNavigate();
   const [resetToken, setResetToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNavigateHandler(navigate);
+    setGlobalErrorHandler(showError);
+  }, [navigate, showError]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -31,19 +40,22 @@ function AppContent() {
   // Show loading spinner while restoring session
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-        <CircularProgress />
+      <Box 
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}
+        role="status"
+        aria-live="polite"
+        aria-label="Loading application"
+      >
+        <CircularProgress aria-hidden="true" />
       </Box>
     );
   }
 
   return (
-    <WatchlistProvider>
-      <AppRoutes
-        resetToken={resetToken}
-        onResetPasswordSuccess={handleResetPasswordSuccess}
-      />
-    </WatchlistProvider>
+    <AppRoutes
+      resetToken={resetToken}
+      onResetPasswordSuccess={handleResetPasswordSuccess}
+    />
   );
 }
 
@@ -58,6 +70,7 @@ function App() {
     <ThemeProvider theme={appTheme}>
       <CssBaseline />
       <BrowserRouter>
+        <SkipLink />
         <AppContent />
       </BrowserRouter>
     </ThemeProvider>

@@ -1,74 +1,144 @@
 /**
  * Tests for MovieDetailsPage component
+ * 
+ * NOTE: Updated to use RTK Query hooks instead of service layer
  */
 
 import React from 'react';
 import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { renderWithMocks } from '../utils/test-utils';
 import MovieDetailsPage from './MovieDetailsPage';
-import movieService from '../services/movieService';
+import * as moviesApi from '../store/api/moviesApi';
+import * as watchlistApi from '../store/api/watchlistApi';
+import * as movieService from '../services/movieService';
 import { mockMovieDetails, mockMovieCredits, mockMovieVideo } from '../__tests__/fixtures/movieFixtures';
+import { mockWatchlistItems } from '../__tests__/fixtures/watchlistFixtures';
+import { mockUser } from '../__tests__/fixtures/authFixtures';
 import { useParams } from 'react-router-dom';
+import { TestConstants } from '../__tests__/TestConstants';
+import { WatchlistStatus } from '../types/watchlist.types';
 
-// Mock dependencies
-jest.mock('../services/movieService');
+jest.mock('../store/api/moviesApi', () => {
+  const actual = jest.requireActual('../store/api/moviesApi');
+  return {
+    ...actual,
+    useGetMovieDetailsQuery: jest.fn(),
+  };
+});
+
+jest.mock('../store/api/watchlistApi', () => {
+  const actual = jest.requireActual('../store/api/watchlistApi');
+  return {
+    ...actual,
+    useGetWatchlistQuery: jest.fn(),
+    useAddToWatchlistMutation: jest.fn(),
+    useRemoveFromWatchlistMutation: jest.fn(),
+  };
+});
+jest.mock('../hooks/useWatchlistPresence', () => ({
+  useWatchlistPresence: jest.fn(),
+}));
+jest.mock('../services/movieService', () => ({
+  ...jest.requireActual('../services/movieService'),
+  findMainTrailer: jest.fn(),
+}));
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn(),
   useNavigate: () => jest.fn(),
 }));
 
-const mockedMovieService = movieService as jest.Mocked<typeof movieService>;
 const mockedUseParams = useParams as jest.MockedFunction<typeof useParams>;
+const { useWatchlistPresence } = require('../hooks/useWatchlistPresence');
+const mockedUseWatchlistPresence = useWatchlistPresence as jest.MockedFunction<typeof useWatchlistPresence>;
 
 describe('MovieDetailsPage', () => {
-  const mockTmdbId = '550';
+  const mockTmdbId = String(TestConstants.Movies.DefaultTmdbId);
 
-  // Mock watchlist context for all tests
-  const mockWatchlistContext = {
-    addToWatchlist: jest.fn(),
-    removeFromWatchlist: jest.fn(),
-    isInWatchlist: jest.fn(() => false),
-    watchlistMovieIds: [],
-    selectedMovie: null,
-    addDialogOpen: false,
-    loginRequiredDialogOpen: false,
-    status: 0,
-    notes: '',
-    successMessage: null,
-    error: null,
-    setStatus: jest.fn(),
-    setNotes: jest.fn(),
-    handleCloseDialog: jest.fn(),
-    handleCloseLoginDialog: jest.fn(),
-    handleConfirmAdd: jest.fn(),
-    refreshWatchlistIds: jest.fn(),
-    removeFromWatchlistIds: jest.fn(),
+  const mockAuthContext = {
+    user: mockUser,
+  };
+
+  const mockMovieData = {
+    movie: mockMovieDetails,
+    credits: mockMovieCredits,
+    videos: [mockMovieVideo],
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseParams.mockReturnValue({ tmdbId: mockTmdbId });
-    mockedMovieService.getMovieDetailsByTmdbId.mockResolvedValue({
-      movie: mockMovieDetails,
-      credits: mockMovieCredits,
-      videos: [mockMovieVideo],
+    
+    // Reset and set up the mocks
+    (moviesApi.useGetMovieDetailsQuery as jest.Mock).mockClear();
+    (watchlistApi.useGetWatchlistQuery as jest.Mock).mockClear();
+    (watchlistApi.useAddToWatchlistMutation as jest.Mock).mockClear();
+    (watchlistApi.useRemoveFromWatchlistMutation as jest.Mock).mockClear();
+    mockedUseWatchlistPresence.mockClear();
+
+    (moviesApi.useGetMovieDetailsQuery as jest.Mock).mockReturnValue({
+      data: mockMovieData,
+      isLoading: false,
+      isError: false,
+      error: undefined,
+      status: 'fulfilled',
+      refetch: jest.fn(),
     });
-    mockedMovieService.findMainTrailer.mockReturnValue(mockMovieVideo);
-    mockedMovieService.getPosterUrl.mockReturnValue('https://image.tmdb.org/poster.jpg');
-    mockedMovieService.getBackdropUrl.mockReturnValue('https://image.tmdb.org/backdrop.jpg');
+
+    // Mock useGetWatchlistQuery for MovieDetailsPage direct usage
+    (watchlistApi.useGetWatchlistQuery as jest.Mock).mockReturnValue({
+      data: mockWatchlistItems,
+          isLoading: false,
+          isError: false,
+      isFetching: false,
+      isSuccess: true,
+      isUninitialized: false,
+          error: undefined,
+      status: 'fulfilled',
+      refetch: jest.fn(),
+      currentData: mockWatchlistItems,
+    });
+
+    // Mock useWatchlistPresence - simpler than mocking RTK Query internals
+    mockedUseWatchlistPresence.mockImplementation((tmdbId: number) => {
+      const isInWatchlist = mockWatchlistItems.some(item => item.movie?.tmdbId === tmdbId);
+      return {
+        isInWatchlist,
+        isLoading: false,
+      };
+    });
+
+    (watchlistApi.useAddToWatchlistMutation as jest.Mock).mockImplementation(() => [
+      jest.fn().mockResolvedValue({ data: {} }),
+      { isLoading: false, isError: false, error: undefined, status: 'idle' },
+    ]);
+
+    (watchlistApi.useRemoveFromWatchlistMutation as jest.Mock).mockImplementation(() => [
+      jest.fn().mockResolvedValue({ data: {} }),
+      { isLoading: false, isError: false, error: undefined, status: 'idle' },
+    ]);
+
+    (movieService.findMainTrailer as jest.Mock).mockReturnValue(mockMovieVideo);
   });
 
-  it('should load movie details on mount', async () => {
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext });
+  it('should load movie details on mount using RTK Query', async () => {
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
-      expect(mockedMovieService.getMovieDetailsByTmdbId).toHaveBeenCalledWith(parseInt(mockTmdbId));
+      expect(moviesApi.useGetMovieDetailsQuery).toHaveBeenCalled();
     });
+    
+    expect(moviesApi.useGetMovieDetailsQuery).toHaveBeenCalledWith(
+      { tmdbId: parseInt(mockTmdbId) },
+      expect.objectContaining({
+        skip: false
+      })
+    );
   });
 
   it('should display movie title and overview', async () => {
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -76,7 +146,7 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should display genres', async () => {
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       mockMovieDetails.genres.forEach(genre => {
@@ -86,7 +156,7 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should display top cast', async () => {
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText('Top Cast')).toBeInTheDocument();
@@ -95,29 +165,46 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should show loading spinner while loading', () => {
-    mockedMovieService.getMovieDetailsByTmdbId.mockImplementation(
-      () => new Promise(() => {}) // Never resolves
-    );
+    (moviesApi.useGetMovieDetailsQuery as jest.Mock).mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      error: undefined,
+      status: 'pending',
+      refetch: jest.fn(),
+    });
 
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
 
   it('should display error message on load failure', async () => {
-    mockedMovieService.getMovieDetailsByTmdbId.mockRejectedValue(
-      new Error('Failed to load movie')
-    );
+    const errorObj = { status: 500, data: { message: 'Failed to load movie' } };
+    // Make String() conversion return the message
+    Object.defineProperty(errorObj, 'toString', {
+      value: () => 'Failed to load movie',
+      enumerable: false,
+    });
+    
+    (moviesApi.useGetMovieDetailsQuery as jest.Mock).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: errorObj,
+      status: 'rejected',
+      refetch: jest.fn(),
+    });
 
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to load movie')).toBeInTheDocument();
+      expect(screen.getByText(/Failed to load movie/i)).toBeInTheDocument();
     });
   });
 
   it('should show/hide trailer on button click', async () => {
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -137,14 +224,12 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should open add to watchlist dialog on button click', async () => {
-    const mockAddToWatchlist = jest.fn();
-    
-    const customMockWatchlistContext = {
-      ...mockWatchlistContext,
-      addToWatchlist: mockAddToWatchlist,
-    };
+    mockedUseWatchlistPresence.mockImplementation((tmdbId: number) => ({
+      isInWatchlist: false,
+      isLoading: false,
+    }));
 
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext: customMockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -153,31 +238,69 @@ describe('MovieDetailsPage', () => {
     const addButton = screen.getByRole('button', { name: /add to watchlist/i });
     fireEvent.click(addButton);
 
-    // Dialog should open (handled by context)
-    expect(mockAddToWatchlist).toHaveBeenCalled();
+    await waitFor(() => {
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toBeInTheDocument();
+      expect(dialog).toHaveTextContent('Add to Watchlist');
+    });
   });
 
   it('should handle missing trailer gracefully', async () => {
-    mockedMovieService.findMainTrailer.mockReturnValue(null);
+    (movieService.findMainTrailer as jest.Mock).mockReturnValue(null);
 
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext });
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
     });
 
-    // Play trailer button should not be visible
     expect(screen.queryByRole('button', { name: /play trailer/i })).not.toBeInTheDocument();
   });
 
   it('should show "In Watchlist" button when movie is already in watchlist', async () => {
-    const customMockWatchlistContext = {
-      ...mockWatchlistContext,
-      isInWatchlist: jest.fn(() => true),
-      watchlistMovieIds: [mockMovieDetails.tmdbId],
-    };
+    // Mock useGetWatchlistQuery to return watchlist with the movie
+    const watchlistWithMovie = [
+      ...mockWatchlistItems,
+      {
+        id: 999,
+        userId: mockUser.id,
+        movieId: 999,
+        movie: {
+          id: 999,
+          tmdbId: parseInt(mockTmdbId),
+          title: mockMovieDetails.title,
+          overview: mockMovieDetails.overview,
+          releaseDate: mockMovieDetails.releaseDate,
+          posterPath: mockMovieDetails.posterPath,
+          voteAverage: mockMovieDetails.voteAverage,
+          voteCount: mockMovieDetails.voteCount,
+          genreIds: mockMovieDetails.genreIds,
+        },
+        status: WatchlistStatus.Planned,
+        isFavorite: false,
+        addedDate: new Date().toISOString(),
+      },
+    ];
+    
+    (watchlistApi.useGetWatchlistQuery as jest.Mock).mockReturnValue({
+      data: watchlistWithMovie,
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      isSuccess: true,
+      isUninitialized: false,
+      error: undefined,
+      status: 'fulfilled',
+      refetch: jest.fn(),
+      currentData: watchlistWithMovie,
+    });
 
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext: customMockWatchlistContext });
+    mockedUseWatchlistPresence.mockImplementation((tmdbId: number) => ({
+      isInWatchlist: tmdbId === parseInt(mockTmdbId),
+      isLoading: false,
+    }));
+
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -185,17 +308,30 @@ describe('MovieDetailsPage', () => {
 
     const watchlistButton = screen.getByRole('button', { name: /in watchlist/i });
     expect(watchlistButton).toBeInTheDocument();
-    expect(watchlistButton).not.toBeDisabled(); // Button should be clickable to remove from watchlist
+    expect(watchlistButton).not.toBeDisabled();
   });
 
   it('should show "Add to Watchlist" button enabled when movie is not in watchlist', async () => {
-    const customMockWatchlistContext = {
-      ...mockWatchlistContext,
-      isInWatchlist: jest.fn(() => false),
-      watchlistMovieIds: [],
-    };
+    // Mock useGetWatchlistQuery to return watchlist without this movie
+    (watchlistApi.useGetWatchlistQuery as jest.Mock).mockReturnValue({
+      data: mockWatchlistItems, // Doesn't contain the movie being viewed
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      isSuccess: true,
+      isUninitialized: false,
+      error: undefined,
+      status: 'fulfilled',
+      refetch: jest.fn(),
+      currentData: mockWatchlistItems,
+    });
 
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext: customMockWatchlistContext });
+    mockedUseWatchlistPresence.mockImplementation((tmdbId: number) => ({
+      isInWatchlist: false,
+      isLoading: false,
+    }));
+
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -207,15 +343,55 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should call removeFromWatchlist when clicking "In Watchlist" button', async () => {
-    const mockRemoveFromWatchlist = jest.fn();
-    const customMockWatchlistContext = {
-      ...mockWatchlistContext,
-      removeFromWatchlist: mockRemoveFromWatchlist,
-      isInWatchlist: jest.fn(() => true),
-      watchlistMovieIds: [mockMovieDetails.tmdbId],
-    };
+    const mockRemoveMutation = jest.fn().mockResolvedValue({ data: {} });
+    (watchlistApi.useRemoveFromWatchlistMutation as jest.Mock).mockReturnValue([
+      mockRemoveMutation,
+      { isLoading: false, isError: false, error: undefined, status: 'idle' },
+    ]);
 
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext: customMockWatchlistContext });
+    // Mock useGetWatchlistQuery to return watchlist with the movie
+    const watchlistWithMovie = [
+      ...mockWatchlistItems,
+      {
+        id: 999,
+        userId: mockUser.id,
+        movieId: 999,
+        movie: {
+          id: 999,
+          tmdbId: parseInt(mockTmdbId),
+          title: mockMovieDetails.title,
+          overview: mockMovieDetails.overview,
+          releaseDate: mockMovieDetails.releaseDate,
+          posterPath: mockMovieDetails.posterPath,
+          voteAverage: mockMovieDetails.voteAverage,
+          voteCount: mockMovieDetails.voteCount,
+          genreIds: mockMovieDetails.genreIds,
+        },
+        status: WatchlistStatus.Planned,
+        isFavorite: false,
+        addedDate: new Date().toISOString(),
+      },
+    ];
+    
+    (watchlistApi.useGetWatchlistQuery as jest.Mock).mockReturnValue({
+      data: watchlistWithMovie,
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      isSuccess: true,
+      isUninitialized: false,
+      error: undefined,
+      status: 'fulfilled',
+      refetch: jest.fn(),
+      currentData: watchlistWithMovie,
+    });
+
+    mockedUseWatchlistPresence.mockImplementation((tmdbId: number) => ({
+      isInWatchlist: tmdbId === parseInt(mockTmdbId),
+      isLoading: false,
+    }));
+
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -224,17 +400,55 @@ describe('MovieDetailsPage', () => {
     const watchlistButton = screen.getByRole('button', { name: /in watchlist/i });
     fireEvent.click(watchlistButton);
 
-    expect(mockRemoveFromWatchlist).toHaveBeenCalledWith(mockMovieDetails.tmdbId);
+    await waitFor(() => {
+      expect(mockRemoveMutation).toHaveBeenCalled();
+    });
   });
 
   it('should show "Remove from Watchlist" text when hovering over "In Watchlist" button', async () => {
-    const customMockWatchlistContext = {
-      ...mockWatchlistContext,
-      isInWatchlist: jest.fn(() => true),
-      watchlistMovieIds: [mockMovieDetails.tmdbId],
-    };
+    // Mock useGetWatchlistQuery to return watchlist with the movie
+    const watchlistWithMovie = [
+      ...mockWatchlistItems,
+      {
+        id: 999,
+        userId: mockUser.id,
+        movieId: 999,
+        movie: {
+          id: 999,
+          tmdbId: parseInt(mockTmdbId),
+          title: mockMovieDetails.title,
+          overview: mockMovieDetails.overview,
+          releaseDate: mockMovieDetails.releaseDate,
+          posterPath: mockMovieDetails.posterPath,
+          voteAverage: mockMovieDetails.voteAverage,
+          voteCount: mockMovieDetails.voteCount,
+          genreIds: mockMovieDetails.genreIds,
+        },
+        status: WatchlistStatus.Planned,
+        isFavorite: false,
+        addedDate: new Date().toISOString(),
+      },
+    ];
+    
+    (watchlistApi.useGetWatchlistQuery as jest.Mock).mockReturnValue({
+      data: watchlistWithMovie,
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      isSuccess: true,
+      isUninitialized: false,
+      error: undefined,
+      status: 'fulfilled',
+      refetch: jest.fn(),
+      currentData: watchlistWithMovie,
+    });
 
-    renderWithMocks(<MovieDetailsPage />, { mockWatchlistContext: customMockWatchlistContext });
+    mockedUseWatchlistPresence.mockImplementation((tmdbId: number) => ({
+      isInWatchlist: tmdbId === parseInt(mockTmdbId),
+      isLoading: false,
+    }));
+
+    renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
       expect(screen.getByText(mockMovieDetails.title)).toBeInTheDocument();
@@ -243,18 +457,14 @@ describe('MovieDetailsPage', () => {
     const watchlistButton = screen.getByRole('button', { name: /in watchlist/i });
     expect(watchlistButton).toBeInTheDocument();
 
-    // Hover over the button
     fireEvent.mouseEnter(watchlistButton);
 
-    // Should now show "Remove from Watchlist"
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /remove from watchlist/i })).toBeInTheDocument();
     });
 
-    // Mouse leave
     fireEvent.mouseLeave(watchlistButton);
 
-    // Should go back to "In Watchlist"
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /in watchlist/i })).toBeInTheDocument();
     });

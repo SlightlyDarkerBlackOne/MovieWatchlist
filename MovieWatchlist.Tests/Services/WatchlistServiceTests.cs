@@ -473,6 +473,20 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.UpdateAsync(It.IsAny<WatchlistItem>()))
             .Returns(Task.CompletedTask);
 
+        var testUser = User.Create(
+            Username.Create("testuser").Value!,
+            Email.Create("test@example.com").Value!,
+            "hashedpassword"
+        );
+        
+        _mockUserRepository
+            .Setup(x => x.GetByIdAsync(1))
+            .ReturnsAsync(testUser);
+        
+        _mockUserRepository
+            .Setup(x => x.UpdateAsync(It.IsAny<User>()))
+            .Returns(Task.CompletedTask);
+
         // Act
         var result = await _service.UpdateWatchlistItemAsync(command);
 
@@ -486,6 +500,8 @@ public class WatchlistServiceTests : UnitTestBase
         Assert.True(result.Value.WatchedDate != default);
 
         _mockWatchlistRepository.Verify(x => x.UpdateAsync(It.IsAny<WatchlistItem>()), Times.Once);
+        _mockUserRepository.Verify(x => x.GetByIdAsync(1), Times.Once);
+        _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Once);
     }
 
     [Fact]
@@ -533,6 +549,20 @@ public class WatchlistServiceTests : UnitTestBase
 
         _mockWatchlistRepository
             .Setup(x => x.UpdateAsync(It.IsAny<WatchlistItem>()))
+            .Returns(Task.CompletedTask);
+
+        var testUser = User.Create(
+            Username.Create("testuser").Value!,
+            Email.Create("test@example.com").Value!,
+            "hashedpassword"
+        );
+        
+        _mockUserRepository
+            .Setup(x => x.GetByIdAsync(TestConstants.Users.DefaultUserId))
+            .ReturnsAsync(testUser);
+        
+        _mockUserRepository
+            .Setup(x => x.UpdateAsync(It.IsAny<User>()))
             .Returns(Task.CompletedTask);
 
         // Act

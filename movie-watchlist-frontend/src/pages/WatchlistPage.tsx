@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Box,
@@ -6,20 +6,22 @@ import {
   Alert,
   Tabs,
   Tab,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  SelectChangeEvent,
   Button,
-  Snackbar
+  Snackbar,
+  SelectChangeEvent
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { WatchlistGrid } from '../components/watchlist';
-import watchlistService from '../services/watchlistService';
-import { WatchlistItem, WatchlistStatus } from '../types/watchlist.types';
+import { WatchlistFilters, WatchlistStats } from '../components/pages';
+import { EditWatchlistItemDialog } from '../components/dialogs';
+import { WatchlistItem, UpdateWatchlistRequest } from '../types/watchlist.types';
 import { useAuth } from '../contexts/AuthContext';
-import { useWatchlist } from '../contexts/WatchlistContext';
+import { 
+  useGetWatchlistQuery, 
+  useUpdateWatchlistItemMutation, 
+  useRemoveFromWatchlistMutation,
+} from '../hooks/useWatchlistOperations';
+import { useWatchlistFilters } from '../hooks/useWatchlistFilters';
 import { ROUTES } from '../constants/routeConstants';
 
 interface TabPanelProps {
@@ -45,116 +47,80 @@ function TabPanel(props: TabPanelProps) {
 
 const WatchlistPage: React.FC = () => {
   const { user } = useAuth();
-  const { removeFromWatchlistIds } = useWatchlist();
   const navigate = useNavigate();
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
-  const [filteredItems, setFilteredItems] = useState<WatchlistItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  
+  const { data: watchlist = [], isLoading: loading, error } = useGetWatchlistQuery(user?.id ?? 0, { skip: !user });
+  const [updateItem] = useUpdateWatchlistItemMutation();
+  const [removeItem] = useRemoveFromWatchlistMutation();
+  
   const [activeTab, setActiveTab] = useState(0);
   const [statusFilter, setStatusFilter] = useState<number | 'all'>('all');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
 
-  const loadWatchlist = useCallback(async () => {
-    if (!user?.id) return;
-    
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await watchlistService.getUserWatchlist(user.id);
-      setWatchlist(data);
-    } catch (err) {
-      const error = err as Error;
-      setError(error.message || 'Failed to load watchlist');
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
+  const { filteredItems, allCount, favoritesCount, watchedCount } = useWatchlistFilters({
+    watchlist,
+    activeTab,
+    statusFilter,
+  });
 
-  const filterWatchlist = useCallback(() => {
-    let filtered = [...watchlist];
+  const handleEditItem = (item: WatchlistItem) => {
+    setSelectedItem(item);
+    setEditDialogOpen(true);
+  };
 
-    // Filter by tab
-    if (activeTab === 1) {
-      // Favorites
-      filtered = filtered.filter(item => item.isFavorite);
-    } else if (activeTab === 2) {
-      // Watched
-      filtered = filtered.filter(item => item.status === WatchlistStatus.Watched);
-    }
-
-    // Filter by status dropdown
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(item => item.status === statusFilter);
-    }
-
-    setFilteredItems(filtered);
-  }, [watchlist, activeTab, statusFilter]);
-
-  useEffect(() => {
-    if (user?.id) {
-      loadWatchlist();
-    }
-  }, [user?.id, loadWatchlist]);
-
-  // Refresh watchlist when component mounts or becomes visible
-  useEffect(() => {
-    const handleFocus = () => {
-      if (user?.id) {
-        loadWatchlist();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [user?.id, loadWatchlist]);
-
-  useEffect(() => {
-    filterWatchlist();
-  }, [filterWatchlist]);
-
-  const handleUpdateItem = async (updatedItem: WatchlistItem) => {
+  const handleQuickUpdate = async (item: WatchlistItem) => {
     if (!user?.id) return;
 
     try {
-      await watchlistService.updateWatchlistItem(user.id, updatedItem.id, {
-        isFavorite: updatedItem.isFavorite,
-        status: updatedItem.status,
-        userRating: updatedItem.userRating,
-        notes: updatedItem.notes
-      });
+      const updatePayload: UpdateWatchlistRequest = {
+        isFavorite: item.isFavorite,
+      };
       
-      // Update local state
-      setWatchlist(prev => 
-        prev.map(item => item.id === updatedItem.id ? updatedItem : item)
-      );
+      await updateItem({ userId: user.id, itemId: item.id, request: updatePayload }).unwrap();
     } catch (err) {
       const error = err as Error;
-      setError(error.message || 'Failed to update item');
+      setErrorMessage(error.message || 'Failed to update item');
+    }
+  };
+
+  const handleUpdateItem = async (updatedFields: Partial<WatchlistItem>) => {
+    if (!user?.id || !selectedItem) return;
+
+    try {
+      const updatePayload: UpdateWatchlistRequest = {};
+      
+      if (updatedFields.isFavorite !== undefined) {
+        updatePayload.isFavorite = updatedFields.isFavorite;
+      }
+      if (updatedFields.status !== undefined) {
+        updatePayload.status = updatedFields.status;
+      }
+      if (updatedFields.userRating !== undefined && updatedFields.userRating !== null) {
+        updatePayload.userRating = updatedFields.userRating;
+      }
+      if (updatedFields.notes !== undefined && updatedFields.notes !== null && updatedFields.notes !== '') {
+        updatePayload.notes = updatedFields.notes;
+      }
+      
+      await updateItem({ userId: user.id, itemId: selectedItem.id, request: updatePayload }).unwrap();
+      setEditDialogOpen(false);
+      setSelectedItem(null);
+    } catch (err) {
+      const error = err as Error;
+      setErrorMessage(error.message || 'Failed to update item');
     }
   };
 
   const handleDeleteItem = async (itemId: number) => {
     if (!user?.id) return;
 
-    if (!window.confirm('Are you sure you want to remove this from your watchlist?')) {
-      return;
-    }
-
     try {
-      // Find the movie's TMDB ID before removing
-      const itemToDelete = watchlist.find(item => item.id === itemId);
-      const tmdbId = itemToDelete?.movie?.tmdbId;
-      
-      await watchlistService.removeFromWatchlist(user.id, itemId);
-      setWatchlist(prev => prev.filter(item => item.id !== itemId));
-      
-      // Update context IDs to keep MovieCard indicators in sync
-      if (tmdbId) {
-        removeFromWatchlistIds(tmdbId);
-      }
+      await removeItem({ userId: user.id, itemId }).unwrap();
     } catch (err) {
       const error = err as Error;
-      setError(error.message || 'Failed to remove item');
+      setErrorMessage(error.message || 'Failed to remove item');
     }
   };
 
@@ -187,13 +153,13 @@ const WatchlistPage: React.FC = () => {
     <>
       {/* Error Toast */}
       <Snackbar
-        open={!!error}
+        open={!!error || !!errorMessage}
         autoHideDuration={5000}
-        onClose={() => setError(null)}
+        onClose={() => setErrorMessage(null)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert severity="error" variant="filled" sx={{ width: '100%' }} onClose={() => setError(null)}>
-          {error}
+        <Alert severity="error" variant="filled" sx={{ width: '100%' }} onClose={() => setErrorMessage(null)}>
+          {errorMessage || (error ? String(error) : 'An error occurred')}
         </Alert>
       </Snackbar>
 
@@ -207,39 +173,24 @@ const WatchlistPage: React.FC = () => {
           </Typography>
         </Box>
 
-        {/* Filters */}
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel id="status-filter-label">Filter by Status</InputLabel>
-          <Select
-            labelId="status-filter-label"
-            value={statusFilter}
-            label="Filter by Status"
-            onChange={handleStatusFilterChange}
-          >
-            <MenuItem value="all">All</MenuItem>
-            <MenuItem value={WatchlistStatus.Planned}>Planned</MenuItem>
-            <MenuItem value={WatchlistStatus.Watching}>Watching</MenuItem>
-            <MenuItem value={WatchlistStatus.Watched}>Watched</MenuItem>
-            <MenuItem value={WatchlistStatus.Dropped}>Dropped</MenuItem>
-          </Select>
-        </FormControl>
+        <WatchlistStats userId={user?.id} />
 
-        <Typography variant="body2" color="text.secondary">
-          {filteredItems.length} {filteredItems.length === 1 ? 'movie' : 'movies'}
-        </Typography>
-      </Box>
+        <WatchlistFilters
+          statusFilter={statusFilter}
+          onStatusFilterChange={handleStatusFilterChange}
+          itemCount={filteredItems.length}
+        />
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Tabs value={activeTab} onChange={handleTabChange} aria-label="watchlist tabs">
-          <Tab label={`All (${watchlist.length})`} id="watchlist-tab-0" />
+          <Tab label={`All (${allCount})`} id="watchlist-tab-0" />
           <Tab 
-            label={`Favorites (${watchlist.filter(i => i.isFavorite).length})`} 
+            label={`Favorites (${favoritesCount})`} 
             id="watchlist-tab-1" 
           />
           <Tab 
-            label={`Watched (${watchlist.filter(i => i.status === WatchlistStatus.Watched).length})`} 
+            label={`Watched (${watchedCount})`} 
             id="watchlist-tab-2" 
           />
         </Tabs>
@@ -250,8 +201,9 @@ const WatchlistPage: React.FC = () => {
         <WatchlistGrid
           items={filteredItems}
           loading={loading}
-          onUpdate={handleUpdateItem}
+          onUpdate={handleQuickUpdate}
           onDelete={handleDeleteItem}
+          onEdit={handleEditItem}
         />
       </TabPanel>
 
@@ -260,8 +212,9 @@ const WatchlistPage: React.FC = () => {
         <WatchlistGrid
           items={filteredItems}
           loading={loading}
-          onUpdate={handleUpdateItem}
+          onUpdate={handleQuickUpdate}
           onDelete={handleDeleteItem}
+          onEdit={handleEditItem}
         />
       </TabPanel>
 
@@ -270,14 +223,26 @@ const WatchlistPage: React.FC = () => {
         <WatchlistGrid
           items={filteredItems}
           loading={loading}
-          onUpdate={handleUpdateItem}
+          onUpdate={handleQuickUpdate}
           onDelete={handleDeleteItem}
+          onEdit={handleEditItem}
         />
       </TabPanel>
+
+      {/* Edit Dialog */}
+      <EditWatchlistItemDialog
+        open={editDialogOpen}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setSelectedItem(null);
+        }}
+        onSave={handleUpdateItem}
+        item={selectedItem}
+      />
+
     </Container>
     </>
   );
 };
 
 export default WatchlistPage;
-

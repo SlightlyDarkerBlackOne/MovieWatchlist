@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, IconButton, Typography, Chip } from '@mui/material';
+import { Box, IconButton, Typography, Tooltip } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddIcon from '@mui/icons-material/Add';
+import CheckIcon from '@mui/icons-material/Check';
 import StarIcon from '@mui/icons-material/Star';
 import { Movie } from '../../types/movie.types';
-import movieService from '../../services/movieService';
+import * as movieService from '../../services/movieService';
 import { colors } from '../../theme';
+import { useWatchlistPresence } from '../../hooks/useWatchlistPresence';
 
 interface FeaturedMoviesCarouselProps {
   movies: Movie[];
@@ -28,6 +29,7 @@ const FeaturedMoviesCarousel: React.FC<FeaturedMoviesCarouselProps> = ({
   const [isHovered, setIsHovered] = useState(false);
 
   const currentMovie = movies[currentIndex];
+  const { isInWatchlist: isCurrentMovieInWatchlist } = useWatchlistPresence(currentMovie?.tmdbId ?? 0);
 
   const handleBackgroundClick = () => {
     if (currentMovie) {
@@ -219,26 +221,35 @@ const FeaturedMoviesCarousel: React.FC<FeaturedMoviesCarouselProps> = ({
 
           {/* Action Buttons */}
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <IconButton
-              onClick={() => onAddToWatchlist(currentMovie)}
-              sx={{
-                bgcolor: 'rgba(255,255,255,0.9)',
-                color: 'black',
-                px: 3,
-                py: 1,
-                borderRadius: 1,
-                '&:hover': {
-                  bgcolor: 'white',
-                },
-                display: 'flex',
-                gap: 1,
-              }}
-            >
-              <AddIcon />
-              <Typography variant="button" sx={{ fontWeight: 600 }}>
-                Add to Watchlist
-              </Typography>
-            </IconButton>
+            <Tooltip title={isCurrentMovieInWatchlist ? 'Movie already in watchlist' : 'Add to watchlist'}>
+              <span>
+                <IconButton
+                  onClick={() => onAddToWatchlist(currentMovie)}
+                  disabled={isCurrentMovieInWatchlist}
+                  sx={{
+                    bgcolor: isCurrentMovieInWatchlist ? 'rgba(76, 175, 80, 0.9)' : 'rgba(255,255,255,0.9)',
+                    color: isCurrentMovieInWatchlist ? 'white' : 'black',
+                    px: 3,
+                    py: 1,
+                    borderRadius: 1,
+                    '&:hover': {
+                      bgcolor: isCurrentMovieInWatchlist ? 'rgba(76, 175, 80, 1)' : 'white',
+                    },
+                    '&.Mui-disabled': {
+                      bgcolor: 'rgba(76, 175, 80, 0.9)',
+                      color: 'white',
+                    },
+                    display: 'flex',
+                    gap: 1,
+                  }}
+                >
+                  {isCurrentMovieInWatchlist ? <CheckIcon /> : <AddIcon />}
+                  <Typography variant="button" sx={{ fontWeight: 600 }}>
+                    {isCurrentMovieInWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
+                  </Typography>
+                </IconButton>
+              </span>
+            </Tooltip>
           </Box>
 
           {/* Carousel Indicators */}

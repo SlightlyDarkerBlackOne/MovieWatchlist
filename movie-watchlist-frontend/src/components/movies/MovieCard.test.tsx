@@ -8,24 +8,22 @@ import { ThemeProvider } from '@mui/material/styles';
 import { BrowserRouter } from 'react-router-dom';
 import MovieCard from './MovieCard';
 import { mockMovie, mockMovieWithoutPoster } from '../../__tests__/fixtures/movieFixtures';
-import { useWatchlist } from '../../contexts/WatchlistContext';
+import { useWatchlistPresence } from '../../hooks/useWatchlistPresence';
 import { useNavigate } from 'react-router-dom';
 import { appTheme } from '../../theme';
 
-// Mock contexts and navigation
-jest.mock('../../contexts/WatchlistContext');
+// Mock hooks and navigation
+jest.mock('../../hooks/useWatchlistPresence');
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: jest.fn(),
 }));
 
-const mockedUseWatchlist = useWatchlist as jest.MockedFunction<typeof useWatchlist>;
+const mockedUseWatchlistPresence = useWatchlistPresence as jest.MockedFunction<typeof useWatchlistPresence>;
 const mockedUseNavigate = useNavigate as jest.MockedFunction<typeof useNavigate>;
 
 describe('MovieCard', () => {
   const mockNavigate = jest.fn();
-  const mockAddToWatchlist = jest.fn();
-  const mockIsInWatchlist = jest.fn();
 
   const renderWithProviders = (ui: React.ReactElement) => {
     return render(
@@ -40,27 +38,10 @@ describe('MovieCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseNavigate.mockReturnValue(mockNavigate);
-    mockedUseWatchlist.mockReturnValue({
-      addToWatchlist: mockAddToWatchlist,
-      removeFromWatchlist: jest.fn(),
-      isInWatchlist: mockIsInWatchlist,
-      watchlistMovieIds: [],
-      selectedMovie: null,
-      addDialogOpen: false,
-      loginRequiredDialogOpen: false,
-      status: 0,
-      notes: '',
-      successMessage: null,
-      error: null,
-      setStatus: jest.fn(),
-      setNotes: jest.fn(),
-      handleCloseDialog: jest.fn(),
-      handleCloseLoginDialog: jest.fn(),
-      handleConfirmAdd: jest.fn(),
-      refreshWatchlistIds: jest.fn(),
-      removeFromWatchlistIds: jest.fn(),
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: false,
+      isLoading: false,
     });
-    mockIsInWatchlist.mockReturnValue(false);
   });
 
   it('should render movie information correctly', () => {
@@ -84,28 +65,34 @@ describe('MovieCard', () => {
     expect(screen.getByText('1999')).toBeInTheDocument();
   });
 
-  it('should show "Add to Watchlist" button when not in watchlist', () => {
-    mockIsInWatchlist.mockReturnValue(false);
+  it('should show disabled add button when movie is in watchlist', () => {
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: true,
+      isLoading: false,
+    });
     
     renderWithProviders(<MovieCard movie={mockMovie} />);
 
-    const addButton = screen.getByRole('button', { name: /add to watchlist/i });
-    expect(addButton).toBeInTheDocument();
+    const addButton = screen.getByLabelText('Movie in watchlist');
+    expect(addButton).toBeDisabled();
   });
 
-  it('should show "In Watchlist" chip when movie is in watchlist', () => {
-    mockIsInWatchlist.mockReturnValue(true);
+  it('should show enabled add button when movie is not in watchlist', () => {
+    mockedUseWatchlistPresence.mockReturnValue({
+      isInWatchlist: false,
+      isLoading: false,
+    });
     
     renderWithProviders(<MovieCard movie={mockMovie} />);
 
-    expect(screen.getByText('In Watchlist')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /add to watchlist/i })).not.toBeInTheDocument();
+    const addButtons = screen.getAllByLabelText('Add to watchlist');
+    const addButton = addButtons[0];
+    expect(addButton).not.toBeDisabled();
   });
 
   it('should navigate to movie details when card is clicked', () => {
     renderWithProviders(<MovieCard movie={mockMovie} />);
 
-    // Click the card (the img element's parent Card component)
     const image = screen.getByRole('img', { name: mockMovie.title });
     const card = image.closest('.MuiCard-root');
     if (card) {
@@ -113,18 +100,6 @@ describe('MovieCard', () => {
     }
 
     expect(mockNavigate).toHaveBeenCalledWith(`/movies/${mockMovie.tmdbId}`);
-  });
-
-  it('should call addToWatchlist when add button is clicked', () => {
-    mockIsInWatchlist.mockReturnValue(false);
-    
-    renderWithProviders(<MovieCard movie={mockMovie} />);
-
-    const addButton = screen.getByRole('button', { name: /add to watchlist/i });
-    fireEvent.click(addButton);
-
-    expect(mockAddToWatchlist).toHaveBeenCalledWith(mockMovie);
-    expect(mockNavigate).not.toHaveBeenCalled(); // Should not navigate
   });
 
   it('should display placeholder when poster is missing', () => {

@@ -7,10 +7,10 @@ import {
   Box,
   Chip,
   IconButton,
-  Rating,
   Menu,
   MenuItem,
-  Tooltip
+  Tooltip,
+  Button
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -19,10 +19,10 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import StarIcon from '@mui/icons-material/Star';
-import { WatchlistItem, WatchlistStatus } from '../../types/watchlist.types';
+import { WatchlistItem } from '../../types/watchlist.types';
 import { ROUTES } from '../../constants/routeConstants';
-import movieService from '../../services/movieService';
-import watchlistService from '../../services/watchlistService';
+import * as movieService from '../../services/movieService';
+import * as watchlistService from '../../services/watchlistService';
 import { colors } from '../../theme/colors';
 import { formatVoteCount } from '../../utils/formatters';
 
@@ -30,12 +30,14 @@ interface WatchlistItemCardProps {
   item: WatchlistItem;
   onUpdate?: (item: WatchlistItem) => void;
   onDelete?: (itemId: number) => void;
+  onEdit?: (item: WatchlistItem) => void;
 }
 
 const WatchlistItemCard: React.FC<WatchlistItemCardProps> = ({ 
   item, 
   onUpdate, 
-  onDelete 
+  onDelete,
+  onEdit
 }) => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -56,19 +58,26 @@ const WatchlistItemCard: React.FC<WatchlistItemCardProps> = ({
     setAnchorEl(null);
   };
 
-  const handleToggleFavorite = (event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent card click
+  const handleToggleFavorite = async (event: React.MouseEvent) => {
+    event.stopPropagation();
     if (onUpdate) {
-      onUpdate({ ...item, isFavorite: !item.isFavorite });
+      const updatedItem = { ...item, isFavorite: !item.isFavorite };
+      await onUpdate(updatedItem);
+    }
+  };
+
+  const handleEdit = (event?: React.MouseEvent) => {
+    event?.stopPropagation();
+    handleMenuClose();
+    if (onEdit) {
+      onEdit(item);
     }
   };
 
   const handleDelete = () => {
     handleMenuClose();
-    if (window.confirm(`Are you sure you want to remove "${item.movie?.title}" from your watchlist?`)) {
-      if (onDelete) {
-        onDelete(item.id);
-      }
+    if (onDelete) {
+      onDelete(item.id);
     }
   };
 
@@ -76,6 +85,16 @@ const WatchlistItemCard: React.FC<WatchlistItemCardProps> = ({
   const releaseYear = item.movie?.releaseDate 
     ? new Date(item.movie.releaseDate).getFullYear() 
     : 'N/A';
+  
+  const getUserRating = (): number | undefined => {
+    if (!item.userRating) return undefined;
+    if (typeof item.userRating === 'object' && item.userRating !== null && 'value' in item.userRating) {
+      return (item.userRating as { value: number }).value;
+    }
+    return item.userRating as number;
+  };
+  
+  const userRatingValue = getUserRating();
 
   return (
     <Card 
@@ -86,21 +105,32 @@ const WatchlistItemCard: React.FC<WatchlistItemCardProps> = ({
         flexDirection: 'column',
         position: 'relative',
         cursor: 'pointer',
-        transition: 'transform 0.2s, box-shadow 0.2s',
+        transition: 'box-shadow 0.3s ease-in-out',
         '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: 6
+          boxShadow: 6,
+          '& img': {
+            transform: 'scale(1.1)'
+          }
         }
       }}
     >
       {/* Movie Poster */}
-      <CardMedia
-        component="img"
-        height="300"
-        image={posterUrl || '/placeholder-movie.png'}
-        alt={item.movie?.title || 'Movie'}
-        sx={{ objectFit: 'cover' }}
-      />
+      <Box sx={{ 
+        overflow: 'hidden',
+        position: 'relative',
+        height: 300
+      }}>
+        <CardMedia
+          component="img"
+          height="300"
+          image={posterUrl || '/placeholder-movie.png'}
+          alt={item.movie?.title || 'Movie'}
+          sx={{ 
+            objectFit: 'cover',
+            transition: 'transform 0.3s ease-in-out'
+          }}
+        />
+      </Box>
 
       {/* Status Chip */}
       <Box sx={{ position: 'absolute', top: 8, left: 8 }}>
@@ -140,7 +170,7 @@ const WatchlistItemCard: React.FC<WatchlistItemCardProps> = ({
             }
           }}
         >
-          <MenuItem onClick={handleMenuClose}>
+          <MenuItem onClick={handleEdit}>
             <EditIcon sx={{ mr: 1 }} fontSize="small" />
             Edit
           </MenuItem>
@@ -195,6 +225,36 @@ const WatchlistItemCard: React.FC<WatchlistItemCardProps> = ({
               {item.isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
             </IconButton>
           </Tooltip>
+        </Box>
+        
+        <Box sx={{ mb: 1 }}>
+          {userRatingValue ? (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={(e) => handleEdit(e)}
+              sx={{
+                textTransform: 'none',
+                borderColor: 'primary.main',
+                color: 'primary.main'
+              }}
+            >
+              Your Rating: {userRatingValue}/10
+            </Button>
+          ) : (
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={(e) => handleEdit(e)}
+              sx={{
+                textTransform: 'none',
+                borderColor: 'text.secondary',
+                color: 'text.secondary'
+              }}
+            >
+              Rate Now
+            </Button>
+          )}
         </Box>
 
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>

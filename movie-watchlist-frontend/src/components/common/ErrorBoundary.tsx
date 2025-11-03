@@ -36,9 +36,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // Log error to console (in production, you'd log to error reporting service)
-    console.error('Error caught by boundary:', error, errorInfo);
-    
     this.setState({
       error,
       errorInfo,
@@ -68,19 +65,33 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
           alignItems="center"
           minHeight="100vh"
           p={3}
+          role="alert"
+          aria-live="assertive"
+          aria-atomic="true"
         >
           <Paper elevation={3} sx={{ p: 4, maxWidth: 600 }}>
-            <Typography variant="h4" component="h1" gutterBottom color="error">
+            <Typography 
+              variant="h4" 
+              component="h1" 
+              gutterBottom 
+              color="error"
+              id="error-title"
+            >
               Oops! Something went wrong
             </Typography>
             
-            <Typography variant="body1" paragraph>
+            <Typography variant="body1" paragraph id="error-description">
               We're sorry for the inconvenience. An unexpected error has occurred.
             </Typography>
 
             {process.env.NODE_ENV === 'development' && this.state.error && (
               <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-                <Typography variant="body2" component="pre" sx={{ overflow: 'auto' }}>
+                <Typography 
+                  variant="body2" 
+                  component="pre" 
+                  sx={{ overflow: 'auto' }}
+                  aria-label="Error details for developers"
+                >
                   {this.state.error.toString()}
                   {this.state.errorInfo?.componentStack}
                 </Typography>
@@ -92,6 +103,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                 variant="contained"
                 color="primary"
                 onClick={this.handleReset}
+                aria-describedby="error-description"
               >
                 Try Again
               </Button>
@@ -99,6 +111,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
               <Button
                 variant="outlined"
                 onClick={() => window.location.href = '/'}
+                aria-label="Navigate to home page"
               >
                 Go to Home
               </Button>

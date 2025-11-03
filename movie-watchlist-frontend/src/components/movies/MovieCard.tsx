@@ -6,95 +6,123 @@ import {
   CardMedia,
   Typography,
   Box,
-  Chip,
   IconButton,
   Tooltip
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import StarIcon from '@mui/icons-material/Star';
+import AddIcon from '@mui/icons-material/Add';
+import CheckIcon from '@mui/icons-material/Check';
 import { Movie } from '../../types/movie.types';
-import movieService from '../../services/movieService';
+import { getPosterUrl } from '../../services/movieService';
 import { ROUTES } from '../../constants/routeConstants';
 import { colors } from '../../theme';
 import { formatVoteCount, getReleaseYear } from '../../utils/formatters';
-import { useWatchlist } from '../../contexts/WatchlistContext';
+import { useWatchlistPresence } from '../../hooks/useWatchlistPresence';
+import { getMovieCardAriaLabel, handleEnterKey } from '../../utils/accessibility';
 
 interface MovieCardProps {
   movie: Movie;
+  onAddToWatchlist?: (movie: Movie) => void;
 }
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
+const MovieCard: React.FC<MovieCardProps> = ({ movie, onAddToWatchlist }) => {
   const navigate = useNavigate();
-  const { addToWatchlist, isInWatchlist: checkIsInWatchlist } = useWatchlist();
-  const isInWatchlist = checkIsInWatchlist(movie.tmdbId);
-  const posterUrl = movieService.getPosterUrl(movie.posterPath, 'medium');
+  const { isInWatchlist } = useWatchlistPresence(movie.tmdbId);
+  const posterUrl = getPosterUrl(movie.posterPath, 'medium');
   const releaseYear = getReleaseYear(movie.releaseDate);
 
   const handleCardClick = () => {
     navigate(ROUTES.MOVIE_DETAILS(movie.tmdbId));
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    handleEnterKey(event, handleCardClick);
+  };
+
   const handleAddClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card navigation
-    addToWatchlist(movie);
+    if (onAddToWatchlist) {
+      onAddToWatchlist(movie);
+    }
   };
 
   return (
     <Card 
       onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={getMovieCardAriaLabel({ 
+        title: movie.title, 
+        voteAverage: movie.voteAverage, 
+        releaseDate: movie.releaseDate 
+      })}
       sx={{ 
         height: '100%', 
         display: 'flex', 
         flexDirection: 'column',
         position: 'relative',
         cursor: 'pointer',
-        transition: 'transform 0.2s, box-shadow 0.2s',
+        transition: 'box-shadow 0.3s ease-in-out',
         '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: 6
+          boxShadow: 6,
+          '& img': {
+            transform: 'scale(1.1)'
+          }
+        },
+        '&:focus': {
+          outline: '2px solid',
+          outlineColor: 'primary.main',
+          outlineOffset: '2px'
         }
       }}
     >
       {/* Movie Poster */}
-      <CardMedia
-        component="img"
-        height="300"
-        image={posterUrl || '/placeholder-movie.png'}
-        alt={movie.title}
-        sx={{ objectFit: 'cover' }}
-      />
+      <Box sx={{ 
+        overflow: 'hidden',
+        position: 'relative',
+        height: 300
+      }}>
+        <CardMedia
+          component="img"
+          height="300"
+          image={posterUrl || '/placeholder-movie.png'}
+          alt={movie.title}
+          sx={{ 
+            objectFit: 'cover',
+            transition: 'transform 0.3s ease-in-out'
+          }}
+        />
+      </Box>
+
 
       {/* Add to Watchlist Button */}
-      {!isInWatchlist && (
-        <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
-          <Tooltip title="Add to Watchlist">
+      <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}>
+        <Tooltip title={isInWatchlist ? 'Movie already in watchlist' : 'Add to watchlist'}>
+          <span>
             <IconButton
               onClick={handleAddClick}
+              disabled={isInWatchlist}
+              aria-label={isInWatchlist ? 'Movie in watchlist' : 'Add to watchlist'}
               sx={{
-                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                bgcolor: isInWatchlist ? 'success.main' : 'rgba(0, 0, 0, 0.6)',
                 color: 'white',
                 '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                }
+                  bgcolor: isInWatchlist ? 'success.main' : 'rgba(0, 0, 0, 0.8)',
+                },
+                '&.Mui-disabled': {
+                  bgcolor: 'success.main',
+                  color: 'white',
+                  opacity: 0.8
+                },
+                transition: 'background-color 0.2s',
               }}
             >
-              <AddIcon />
+              {isInWatchlist ? <CheckIcon /> : <AddIcon />}
             </IconButton>
-          </Tooltip>
-        </Box>
-      )}
-
-      {/* Already in Watchlist Indicator */}
-      {isInWatchlist && (
-        <Box sx={{ position: 'absolute', top: 8, right: 8 }}>
-          <Chip 
-            label="In Watchlist" 
-            color="success" 
-            size="small"
-            sx={{ fontWeight: 'bold' }}
-          />
-        </Box>
-      )}
+          </span>
+        </Tooltip>
+      </Box>
 
       {/* Movie Info */}
       <CardContent sx={{ flexGrow: 1, p: 2 }}>

@@ -3,32 +3,16 @@
  */
 
 import React from 'react';
-import { render } from '@testing-library/react';
+import { render as rtlRender, waitFor } from '@testing-library/react';
+import { ThemeProvider } from '@mui/material/styles';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
 import App from './App';
-
-// Mock AuthContext
-jest.mock('./contexts/AuthContext', () => ({
-  AuthProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  useAuth: () => ({
-    user: null,
-    isAuthenticated: jest.fn(() => false),
-    login: jest.fn(),
-    register: jest.fn(),
-    logout: jest.fn(),
-    validateToken: jest.fn().mockResolvedValue(false),
-  }),
-}));
-
-// Mock WatchlistContext
-jest.mock('./contexts/WatchlistContext', () => ({
-  WatchlistProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  useWatchlist: () => ({
-    watchlistMovieIds: [],
-    addToWatchlist: jest.fn(),
-    removeFromWatchlistIds: jest.fn(),
-    isInWatchlist: jest.fn(),
-  }),
-}));
+import { AuthProvider } from './contexts/AuthContext';
+import { ErrorProvider } from './contexts/ErrorContext';
+import { appTheme } from './theme';
+import { moviesApi } from './store/api/moviesApi';
+import { watchlistApi } from './store/api/watchlistApi';
 
 // Mock child components to avoid deep rendering
 jest.mock('./routes/AppRoutes', () => {
@@ -43,19 +27,51 @@ jest.mock('./components/common/LoadingSpinner', () => {
   };
 });
 
+jest.mock('./services/api', () => ({
+  setNavigateHandler: jest.fn(),
+  setGlobalErrorHandler: jest.fn(),
+}));
+
+const createTestStore = () => {
+  return configureStore({
+    reducer: {
+      [moviesApi.reducerPath]: moviesApi.reducer,
+      [watchlistApi.reducerPath]: watchlistApi.reducer,
+    },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware().concat(moviesApi.middleware, watchlistApi.middleware),
+  });
+};
+
+// Custom render without Router since App already includes BrowserRouter
+const render = (ui: React.ReactElement) => {
+  const store = createTestStore();
+  return rtlRender(
+    <Provider store={store}>
+      <ThemeProvider theme={appTheme}>
+        <ErrorProvider>
+          <AuthProvider>
+            {ui}
+          </AuthProvider>
+        </ErrorProvider>
+      </ThemeProvider>
+    </Provider>
+  );
+};
+
 describe('App', () => {
   it('should render without crashing', () => {
     const { container } = render(<App />);
     expect(container).toBeInTheDocument();
   });
 
-  it('should wrap app with ThemeProvider and BrowserRouter', () => {
+  it('should wrap app with ThemeProvider and BrowserRouter', async () => {
     const { getByTestId } = render(<App />);
     
     // Should eventually render routes (after auth check)
-    setTimeout(() => {
+    await waitFor(() => {
       expect(getByTestId('app-routes')).toBeInTheDocument();
-    }, 100);
+    });
   });
 });
 

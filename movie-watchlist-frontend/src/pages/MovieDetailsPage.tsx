@@ -1,95 +1,125 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
   Box,
   CircularProgress,
   Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  TextField,
   Button,
-  Typography,
   Snackbar,
 } from '@mui/material';
-import movieService from '../services/movieService';
-import { MovieDetails, MovieVideo, MovieCredits } from '../types/movie.types';
-import { WatchlistStatus } from '../types/watchlist.types';
-import { useWatchlist } from '../contexts/WatchlistContext';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useGetMovieDetailsQuery } from '../store/api/moviesApi';
+import { WatchlistStatus, AddToWatchlistRequest } from '../types/watchlist.types';
+import { useWatchlistPresence } from '../hooks/useWatchlistPresence';
+import { useAddToWatchlistMutation, useRemoveFromWatchlistMutation, useGetWatchlistQuery } from '../hooks/useWatchlistOperations';
+import { useAddToWatchlistDialog } from '../hooks/useAddToWatchlistDialog';
+import { useAuth } from '../contexts/AuthContext';
 import MovieMainDetails from '../components/movies/MovieMainDetails';
 import MovieGenres from '../components/movies/MovieGenres';
 import TopCastCrew from '../components/movies/TopCastCrew';
+import TrailerSection from '../components/pages/TrailerSection';
+import { findMainTrailer } from '../services/movieService';
+import { AddToWatchlistDialog } from '../components/dialogs';
 import LoginRequiredDialog from '../components/common/LoginRequiredDialog';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const MovieDetailsPage: React.FC = () => {
   const { tmdbId } = useParams<{ tmdbId: string }>();
   const navigate = useNavigate();
-  const {
-    addToWatchlist,
-    removeFromWatchlist,
-    successMessage: watchlistSuccessMessage,
-    error: watchlistError,
-    addDialogOpen,
-    loginRequiredDialogOpen,
-    status,
-    notes,
-    setStatus,
-    setNotes,
-    handleCloseDialog,
-    handleCloseLoginDialog,
-    handleConfirmAdd,
-    isInWatchlist
-  } = useWatchlist();
+  const { user } = useAuth();
+  const [addToWatchlist] = useAddToWatchlistMutation();
+  const [removeFromWatchlist] = useRemoveFromWatchlistMutation();
+  const { data: watchlistItems } = useGetWatchlistQuery(user?.id ?? 0, { skip: !user });
   
-  const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
-  const [videos, setVideos] = useState<MovieVideo[]>([]);
-  const [credits, setCredits] = useState<MovieCredits | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null); // Error loading movie data
-  const [actionError, setActionError] = useState<string | null>(null); // Error from user actions
+  const {
+    data: movieData,
+    isLoading: loading,
+    error: loadError
+  } = useGetMovieDetailsQuery(
+    { tmdbId: parseInt(tmdbId || '0') },
+    { skip: !tmdbId }
+  );
+
+  const movieDetails = movieData?.movie;
+  const { isInWatchlist: isMovieInWatchlist } = useWatchlistPresence(movieDetails?.tmdbId ?? 0);
+  const videos = movieData?.videos || [];
+  const credits = movieData?.credits || null;
+  
+  const [actionError, setActionError] = useState<string | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
-
-  useEffect(() => {
-    if (tmdbId) {
-      loadMovieData(parseInt(tmdbId));
-    }
-  }, [tmdbId]);
-
-  const loadMovieData = async (id: number) => {
-    setLoading(true);
-    setLoadError(null);
-    
-    try {
-      const { movie, credits, videos } = await movieService.getMovieDetailsByTmdbId(id);
-      console.log('Movie data received:', movie);
-      console.log('Movie genres:', movie.genres);
-      setMovieDetails(movie);
-      setVideos(videos);
-      setCredits(credits);
-    } catch (err) {
-      const error = err as Error;
-      setLoadError(error.message || 'Failed to load movie details');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  const [loginRequiredDialogOpen, setLoginRequiredDialogOpen] = useState(false);
+  const dialog = useAddToWatchlistDialog();
 
   const handleAddToWatchlist = () => {
-    if (!movieDetails) return;
-    addToWatchlist(movieDetails);
+    if (!user) {
+      setLoginRequiredDialogOpen(true);
+      return;
+    }
+    if (movieDetails) {
+      dialog.openDialog(movieDetails);
+    }
   };
 
-  const handleRemoveFromWatchlist = async () => {
-    if (!movieDetails) return;
-    await removeFromWatchlist(movieDetails.tmdbId);
+  const handleConfirmAdd = async () => {
+    if (!dialog.selectedMovie || !user) return;
+    
+    try {
+      const request: AddToWatchlistRequest = {
+        movieId: dialog.selectedMovie.tmdbId,
+        status: dialog.status,
+        notes: dialog.notes || undefined
+      };
+      
+      await addToWatchlist({ userId: user.id, request }).unwrap();
+      
+      setSuccessMessage(`Added "${dialog.selectedMovie.title}" to your watchlist!`);
+      dialog.closeDialog();
+    } catch (err) {
+      const error = err as Error;
+      setActionError(error.message || 'Failed to add to watchlist');
+    }
   };
+
+  const handleFormChange = useCallback((form: { status: WatchlistStatus; notes: string }) => {
+    dialog.setStatus(form.status);
+    dialog.setNotes(form.notes);
+  }, [dialog]);
+
+  const handleRemoveFromWatchlist = async () => {
+    if (!movieDetails || !user || !watchlistItems) return;
+    
+    const watchlistItem = watchlistItems.find(item => item.movie?.tmdbId === movieDetails.tmdbId);
+    
+    if (!watchlistItem) {
+      setActionError('Movie not found in watchlist');
+      return;
+    }
+    
+    try {
+      await removeFromWatchlist({ userId: user.id, itemId: watchlistItem.id }).unwrap();
+      setSuccessMessage(`Removed "${movieDetails.title}" from your watchlist!`);
+    } catch (err) {
+      const error = err as Error;
+      setActionError(error.message || 'Failed to remove from watchlist');
+    }
+  };
+
+  const handleToggleTrailer = () => {
+    setShowTrailer(!showTrailer);
+  };
+
+  const handleCloseLoginDialog = () => {
+    setLoginRequiredDialogOpen(false);
+  };
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   if (loading) {
     return (
@@ -102,7 +132,7 @@ const MovieDetailsPage: React.FC = () => {
   if (loadError || !movieDetails) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">{loadError || 'Movie not found'}</Alert>
+        <Alert severity="error">{loadError ? String(loadError) : 'Movie not found'}</Alert>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate(-1)}
@@ -114,20 +144,18 @@ const MovieDetailsPage: React.FC = () => {
     );
   }
 
-  const mainTrailer = movieService.findMainTrailer(videos);
-  const topCast = credits?.cast.slice(0, 10) || [];
 
   return (
     <>
       {/* Success Toast */}
       <Snackbar
-        open={!!watchlistSuccessMessage}
+        open={!!successMessage}
         autoHideDuration={3000}
-        onClose={() => {}}
+        onClose={() => setSuccessMessage(null)}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert severity="success" variant="filled" sx={{ width: '100%' }}>
-          {watchlistSuccessMessage}
+          {successMessage}
         </Alert>
       </Snackbar>
 
@@ -143,102 +171,33 @@ const MovieDetailsPage: React.FC = () => {
         </Alert>
       </Snackbar>
 
-      <Snackbar
-        open={!!watchlistError}
-        autoHideDuration={5000}
-        onClose={() => {}}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert severity="error" variant="filled" sx={{ width: '100%' }}>
-          {watchlistError}
-        </Alert>
-      </Snackbar>
-
       {/* Main Movie Details */}
       <MovieMainDetails
         movieDetails={movieDetails}
         videos={videos}
         credits={credits}
         showTrailer={showTrailer}
-        onToggleTrailer={() => setShowTrailer(!showTrailer)}
+        onToggleTrailer={handleToggleTrailer}
         onAddToWatchlist={handleAddToWatchlist}
         onRemoveFromWatchlist={handleRemoveFromWatchlist}
-        isInWatchlist={isInWatchlist(movieDetails.tmdbId)}
+        isInWatchlist={isMovieInWatchlist}
       />
 
-      {/* Genres Section */}
       <MovieGenres genres={movieDetails.genres} />
 
-      {/* Trailer Section */}
-      {showTrailer && mainTrailer && (
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-          <Box sx={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden' }}>
-            <iframe
-              src={movieService.getYouTubeEmbedUrl(mainTrailer.key)}
-              title={mainTrailer.name}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                border: 'none',
-              }}
-            />
-          </Box>
-        </Container>
-      )}
+      <TrailerSection trailer={findMainTrailer(videos)} show={showTrailer} />
 
-      {/* Top Cast Section */}
-      <TopCastCrew topCast={topCast} />
+      <TopCastCrew topCast={credits?.cast.slice(0, 10) || []} />
 
       {/* Add to Watchlist Dialog */}
-      <Dialog open={addDialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          Add to Watchlist
-          {movieDetails && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              {movieDetails.title}
-            </Typography>
-          )}
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel id="status-label">Status</InputLabel>
-              <Select
-                labelId="status-label"
-                value={status}
-                label="Status"
-                onChange={(e) => setStatus(e.target.value as WatchlistStatus)}
-              >
-                <MenuItem value={WatchlistStatus.Planned}>Planned</MenuItem>
-                <MenuItem value={WatchlistStatus.Watching}>Watching</MenuItem>
-                <MenuItem value={WatchlistStatus.Watched}>Watched</MenuItem>
-                <MenuItem value={WatchlistStatus.Dropped}>Dropped</MenuItem>
-              </Select>
-            </FormControl>
-
-            <TextField
-              label="Notes (optional)"
-              multiline
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add your thoughts about this movie..."
-              fullWidth
-            />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleConfirmAdd} variant="contained" color="primary">
-            Add to Watchlist
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <AddToWatchlistDialog
+        open={dialog.isOpen}
+        onClose={dialog.closeDialog}
+        onConfirm={handleConfirmAdd}
+        form={{ status: dialog.status, notes: dialog.notes }}
+        onChange={handleFormChange}
+        movieTitle={dialog.selectedMovie?.title}
+      />
 
       {/* Login Required Dialog */}
       <LoginRequiredDialog 

@@ -15,7 +15,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import StarIcon from '@mui/icons-material/Star';
 import { useNavigate } from 'react-router-dom';
 import { debounce } from '@mui/material/utils';
-import movieService from '../../services/movieService';
+import { useLazySearchMoviesQuery } from '../../store/api/moviesApi';
+import { getPosterUrl } from '../../services/movieService';
 import { Movie } from '../../types/movie.types';
 import { ROUTES } from '../../constants/routeConstants';
 import { formatVoteCount } from '../../utils/formatters';
@@ -52,36 +53,28 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ onFullSearch }) => {
   const navigate = useNavigate();
   const [inputValue, setInputValue] = useState('');
   const [options, setOptions] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [searchMovies, { isLoading }] = useLazySearchMoviesQuery();
 
-  // Debounced search function
   const debouncedSearch = useMemo(
     () =>
       debounce(async (searchQuery: string) => {
         if (searchQuery.length < 2) {
           setOptions([]);
-          setLoading(false);
           return;
         }
 
-        setLoading(true);
         try {
-          const result = await movieService.searchMovies(searchQuery, 1);
-          // Show only top 8 results in dropdown
+          const result = await searchMovies({ query: searchQuery, page: 1 }).unwrap();
           setOptions(result.movies.slice(0, 8));
         } catch (error) {
-          console.error('Search error:', error);
           setOptions([]);
-        } finally {
-          setLoading(false);
         }
-      }, 500), // 500ms debounce delay
-    []
+      }, 500),
+    [searchMovies]
   );
 
   useEffect(() => {
     if (inputValue) {
-      setLoading(true);
       debouncedSearch(inputValue);
     } else {
       setOptions([]);
@@ -109,7 +102,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ onFullSearch }) => {
     <StyledAutocomplete
       freeSolo
       options={options}
-      loading={loading}
+      loading={isLoading}
       inputValue={inputValue}
       onInputChange={(event, newInputValue) => {
         setInputValue(newInputValue);
@@ -141,7 +134,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ onFullSearch }) => {
             ),
             endAdornment: (
               <>
-                {loading ? <CircularProgress color="inherit" size={20} /> : null}
+                {isLoading ? <CircularProgress color="inherit" size={20} /> : null}
                 {params.InputProps.endAdornment}
               </>
             ),
@@ -156,7 +149,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ onFullSearch }) => {
 
         const movie = option;
         const { key, ...otherProps } = props as any;
-        const posterUrl = movieService.getPosterUrl(movie.posterPath, 'small');
+        const posterUrl = getPosterUrl(movie.posterPath, 'small');
         const year = movie.releaseDate 
           ? new Date(movie.releaseDate).getFullYear() 
           : 'N/A';
