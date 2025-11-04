@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using MovieWatchlist.Core.Events;
 using MovieWatchlist.Core.Interfaces;
 
-namespace MovieWatchlist.Application.Events.Handlers;
+namespace MovieWatchlist.Infrastructure.Events;
 
 public class UserPasswordChangedEventHandler : IDomainEventHandler<UserPasswordChangedEvent>
 {
@@ -18,10 +18,7 @@ public class UserPasswordChangedEventHandler : IDomainEventHandler<UserPasswordC
         _logger.LogInformation("Password changed for user: {UserId}, Username: {Username}, Email: {Email}, ChangedAt: {ChangedAt}", 
             domainEvent.UserId, domainEvent.Username, domainEvent.Email, domainEvent.ChangedAt);
 
-        // TODO: Send password change notification email
-        // TODO: Log security event for auditing
-        // TODO: Revoke all existing refresh tokens for security
-        
         await Task.CompletedTask;
     }
 }
+

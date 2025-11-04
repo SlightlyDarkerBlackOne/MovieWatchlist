@@ -51,12 +51,9 @@ const MoviesPage: React.FC = () => {
     
     try {
       await addToWatchlist({
-        userId: user.id,
-        request: {
-          movieId: dialog.selectedMovie.tmdbId,
-          status: dialog.status,
-          notes: dialog.notes || undefined
-        }
+        movieId: dialog.selectedMovie.tmdbId,
+        status: dialog.status,
+        notes: dialog.notes || undefined
       }).unwrap();
       
       successToast.showMessage(`Added "${dialog.selectedMovie.title}" to your watchlist!`);

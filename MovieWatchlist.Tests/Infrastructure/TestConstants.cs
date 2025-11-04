@@ -117,14 +117,14 @@ public static class TestConstants
         public const string MoviesDetails = "/api/Movies/{id}";
         public const string MoviesGenre = "/api/Movies/genre/{genre}";
         
-        public const string WatchlistUser = "/api/Watchlist/user/{userId}";
-        public const string WatchlistAdd = "/api/Watchlist/user/{userId}/add";
-        public const string WatchlistItem = "/api/Watchlist/user/{userId}/item/{watchlistItemId}";
-        public const string WatchlistStatistics = "/api/Watchlist/user/{userId}/statistics";
-        public const string WatchlistFavorites = "/api/Watchlist/user/{userId}/favorites";
-        public const string WatchlistRecommendations = "/api/Watchlist/user/{userId}/recommendations";
-        public const string WatchlistGenre = "/api/Watchlist/user/{userId}/genre/{genre}";
-        public const string WatchlistYearRange = "/api/Watchlist/user/{userId}/year-range";
+        public const string WatchlistMe = "/api/Watchlist/me/watchlist";
+        public const string WatchlistMeAdd = "/api/Watchlist/me/watchlist/add";
+        public const string WatchlistMeItem = "/api/Watchlist/me/watchlist/item/{watchlistItemId}";
+        public const string WatchlistMeStatistics = "/api/Watchlist/me/watchlist/statistics";
+        public const string WatchlistMeFavorites = "/api/Watchlist/me/watchlist/favorites";
+        public const string WatchlistMeRecommendations = "/api/Watchlist/me/watchlist/recommendations";
+        public const string WatchlistMeGenre = "/api/Watchlist/me/watchlist/genre/{genre}";
+        public const string WatchlistMeYearRange = "/api/Watchlist/me/watchlist/year-range";
     }
 
     // Test HTTP Status Codes

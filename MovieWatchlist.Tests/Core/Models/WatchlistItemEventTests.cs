@@ -14,6 +14,7 @@ public class WatchlistItemEventTests : UnitTestBase
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
         var item = WatchlistItem.Create(1, movie);
+        item.ClearDomainEvents();
         
         // Act
         item.MarkAsWatched();
@@ -79,6 +80,7 @@ public class WatchlistItemEventTests : UnitTestBase
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
         var item = WatchlistItem.Create(1, movie);
+        item.ClearDomainEvents();
         
         // Act
         item.SetRating(Rating.Create(7).Value!);
@@ -100,6 +102,7 @@ public class WatchlistItemEventTests : UnitTestBase
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
         var item = WatchlistItem.Create(1, movie);
+        item.ClearDomainEvents();
         Assert.False(item.IsFavorite);
         
         // Act
@@ -168,7 +171,7 @@ public class WatchlistItemEventTests : UnitTestBase
         item.SetRating(Rating.Create(8).Value!);
         item.SetFavorite(true);
         
-        Assert.Equal(6, item.DomainEvents.Count);
+        Assert.Equal(7, item.DomainEvents.Count);
         
         // Act
         item.ClearDomainEvents();
@@ -191,13 +194,14 @@ public class WatchlistItemEventTests : UnitTestBase
         
         // Assert
         var events = item.DomainEvents.ToList();
-        Assert.Equal(6, events.Count);
-        Assert.IsType<StatisticsInvalidatedEvent>(events[0]);
-        Assert.IsType<MovieWatchedEvent>(events[1]);
-        Assert.IsType<MovieRatedEvent>(events[2]);
-        Assert.IsType<StatisticsInvalidatedEvent>(events[3]);
-        Assert.IsType<MovieFavoritedEvent>(events[4]);
-        Assert.IsType<StatisticsInvalidatedEvent>(events[5]);
+        Assert.Equal(7, events.Count);
+        Assert.IsType<MovieAddedToWatchlistEvent>(events[0]);
+        Assert.IsType<StatisticsInvalidatedEvent>(events[1]);
+        Assert.IsType<MovieWatchedEvent>(events[2]);
+        Assert.IsType<MovieRatedEvent>(events[3]);
+        Assert.IsType<StatisticsInvalidatedEvent>(events[4]);
+        Assert.IsType<MovieFavoritedEvent>(events[5]);
+        Assert.IsType<StatisticsInvalidatedEvent>(events[6]);
     }
     
     [Fact]
@@ -206,13 +210,14 @@ public class WatchlistItemEventTests : UnitTestBase
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
         var item = WatchlistItem.Create(1, movie);
+        item.ClearDomainEvents();
         var beforeEvent = DateTime.UtcNow;
         
         // Act
         item.MarkAsWatched();
         
         // Assert
-        var watchedEvent = (MovieWatchedEvent)item.DomainEvents.Skip(1).First();
+        var watchedEvent = item.DomainEvents.OfType<MovieWatchedEvent>().First();
         Assert.True(watchedEvent.OccurredAt >= beforeEvent);
         Assert.True(watchedEvent.OccurredAt <= DateTime.UtcNow);
     }
@@ -223,6 +228,7 @@ public class WatchlistItemEventTests : UnitTestBase
         // Arrange
         var movie = CreateTestMovie(id: 1, title: "Test Movie");
         var item = WatchlistItem.Create(1, movie);
+        item.ClearDomainEvents();
         
         // Act
         item.MarkAsWatched();

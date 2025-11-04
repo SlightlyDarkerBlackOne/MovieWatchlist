@@ -37,13 +37,21 @@ public class WatchlistItem : Entity
         if (movie == null)
             throw new ArgumentNullException(nameof(movie));
 
-        return new WatchlistItem
+        var item = new WatchlistItem
         {
             UserId = userId,
             Movie = movie,
             Status = WatchlistStatus.Planned,
             AddedDate = DateTime.UtcNow
         };
+        
+        item.RaiseDomainEvent(new MovieAddedToWatchlistEvent(
+            userId,
+            movie.TmdbId,
+            WatchlistStatus.Planned
+        ));
+        
+        return item;
     }
 
     // Domain methods for state changes
@@ -136,6 +144,19 @@ public class WatchlistItem : Entity
             
             RaiseDomainEvent(new StatisticsInvalidatedEvent(UserId));
         }
+    }
+
+    /// <summary>
+    /// Marks the watchlist item for removal.
+    /// Raises the MovieRemovedFromWatchlistEvent before deletion.
+    /// </summary>
+    public void MarkForRemoval()
+    {
+        RaiseDomainEvent(new MovieRemovedFromWatchlistEvent(
+            UserId,
+            Movie.TmdbId,
+            Status
+        ));
     }
 
 }

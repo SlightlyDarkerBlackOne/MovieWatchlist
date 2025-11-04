@@ -8,12 +8,13 @@ using MovieWatchlist.Infrastructure.Configuration;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Api.Middleware;
 using MovieWatchlist.Application.Services;
-using MovieWatchlist.Application.Events;
 using MovieWatchlist.Application.Events.Handlers;
+using MovieWatchlist.Infrastructure.Events;
 using MovieWatchlist.Core.Events;
 using MovieWatchlist.Infrastructure.Data;
 using MovieWatchlist.Infrastructure.Repositories;
 using MovieWatchlist.Infrastructure.Services;
+using MovieWatchlist.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -134,15 +135,21 @@ builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepo
 builder.Services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
 
 // Register Domain Event Handlers
+// Logging handlers (Infrastructure)
+builder.Services.AddScoped<IDomainEventHandler<MovieAddedToWatchlistEvent>, LogActivityHandler>();
+builder.Services.AddScoped<IDomainEventHandler<MovieRemovedFromWatchlistEvent>, LogActivityHandler>();
 builder.Services.AddScoped<IDomainEventHandler<MovieWatchedEvent>, LogActivityHandler>();
 builder.Services.AddScoped<IDomainEventHandler<MovieRatedEvent>, LogActivityHandler>();
 builder.Services.AddScoped<IDomainEventHandler<MovieFavoritedEvent>, LogActivityHandler>();
+builder.Services.AddScoped<IDomainEventHandler<StatisticsInvalidatedEvent>, LogActivityHandler>();
+
+// Business logic handlers (Application)
 builder.Services.AddScoped<IDomainEventHandler<MovieWatchedEvent>, UpdateStatisticsHandler>();
 builder.Services.AddScoped<IDomainEventHandler<MovieRatedEvent>, UpdateStatisticsHandler>();
 builder.Services.AddScoped<IDomainEventHandler<MovieFavoritedEvent>, UpdateStatisticsHandler>();
 builder.Services.AddScoped<IDomainEventHandler<StatisticsInvalidatedEvent>, UpdateStatisticsHandler>();
 
-// Register Authentication Domain Event Handlers
+// Authentication event handlers (Infrastructure - logging only)
 builder.Services.AddScoped<IDomainEventHandler<UserRegisteredEvent>, UserRegisteredEventHandler>();
 builder.Services.AddScoped<IDomainEventHandler<UserLoggedInEvent>, UserLoggedInEventHandler>();
 builder.Services.AddScoped<IDomainEventHandler<RefreshTokenCreatedEvent>, RefreshTokenCreatedEventHandler>();
@@ -153,14 +160,20 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssembly(typeof(MovieWatchlist.Application.Handlers.Auth.RegisterCommandHandler).Assembly);
-    cfg.AddOpenBehavior(typeof(MovieWatchlist.Application.Behaviors.LoggingBehavior<,>));
+    cfg.AddOpenBehavior(typeof(MovieWatchlist.Infrastructure.Behaviors.LoggingBehavior<,>));
     cfg.AddOpenBehavior(typeof(MovieWatchlist.Application.Behaviors.TransactionBehavior<,>));
 });
 
 // Register Application services
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IWatchlistService, WatchlistService>();
+
+// Register Infrastructure services
 builder.Services.AddScoped<IRetryPolicyService, RetryPolicyService>();
+
+// HttpContext + Current User
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // Register Infrastructure services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();

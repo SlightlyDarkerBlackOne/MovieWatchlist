@@ -18,7 +18,6 @@ afterAll(() => server.close());
 
 describe('Watchlist RTK Query API', () => {
   let store: any;
-  const userId = TestConstants.Users.DefaultUserId;
 
   beforeEach(() => {
     store = configureStore({
@@ -33,13 +32,13 @@ describe('Watchlist RTK Query API', () => {
   describe('getWatchlist', () => {
     it('should fetch user watchlist successfully', async () => {
       server.use(
-        http.get(TestConstants.ApiEndpoints.WatchlistUser, () => {
+        http.get(TestConstants.ApiEndpoints.WatchlistMe, () => {
           return HttpResponse.json(mockWatchlistItems);
         })
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.getWatchlist.initiate(userId)
+        watchlistApi.endpoints.getWatchlist.initiate(undefined)
       );
 
       expect(result.data).toBeDefined();
@@ -48,13 +47,13 @@ describe('Watchlist RTK Query API', () => {
 
     it('should handle empty watchlist', async () => {
       server.use(
-        http.get('*/Watchlist/user/:userId', () => {
+        http.get(TestConstants.ApiEndpoints.WatchlistMe, () => {
           return HttpResponse.json([]);
         })
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.getWatchlist.initiate(userId)
+        watchlistApi.endpoints.getWatchlist.initiate(undefined)
       );
 
       expect(result.data).toEqual([]);
@@ -62,13 +61,13 @@ describe('Watchlist RTK Query API', () => {
 
     it('should handle fetch errors', async () => {
       server.use(
-        http.get(TestConstants.ApiEndpoints.WatchlistUser, () => {
+        http.get(TestConstants.ApiEndpoints.WatchlistMe, () => {
           return HttpResponse.json({ message: TestConstants.ErrorMessages.ServerError }, { status: TestConstants.HttpStatusCodes.InternalServerError });
         })
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.getWatchlist.initiate(userId)
+        watchlistApi.endpoints.getWatchlist.initiate(undefined)
       );
 
       expect(result.error).toBeDefined();
@@ -90,7 +89,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.addToWatchlist.initiate({ userId, request })
+        watchlistApi.endpoints.addToWatchlist.initiate(request)
       );
 
       expect(result.data).toEqual(mockWatchlistItem);
@@ -109,7 +108,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.addToWatchlist.initiate({ userId, request })
+        watchlistApi.endpoints.addToWatchlist.initiate(request)
       );
 
       expect(result.error).toBeDefined();
@@ -132,7 +131,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.addToWatchlist.initiate({ userId, request })
+        watchlistApi.endpoints.addToWatchlist.initiate(request)
       );
 
       expect(result.error).toBeDefined();
@@ -142,7 +141,7 @@ describe('Watchlist RTK Query API', () => {
       const request = { movieId: TestConstants.Watchlist.DefaultMovieId };
 
       server.use(
-        http.get('*/Watchlist/user/:userId', () => {
+        http.get(TestConstants.ApiEndpoints.WatchlistMe, () => {
           return HttpResponse.json(mockWatchlistItems);
         }),
         http.post(TestConstants.ApiEndpoints.WatchlistAdd, () => {
@@ -150,10 +149,10 @@ describe('Watchlist RTK Query API', () => {
         })
       );
 
-      await store.dispatch(watchlistApi.endpoints.getWatchlist.initiate(userId));
+      await store.dispatch(watchlistApi.endpoints.getWatchlist.initiate(undefined));
       
       await store.dispatch(
-        watchlistApi.endpoints.addToWatchlist.initiate({ userId, request })
+        watchlistApi.endpoints.addToWatchlist.initiate(request)
       );
 
       expect(true).toBe(true);
@@ -173,7 +172,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.updateWatchlistItem.initiate({ userId, itemId, request })
+        watchlistApi.endpoints.updateWatchlistItem.initiate({ itemId, request })
       );
 
       expect(result.data).toEqual(updatedItem);
@@ -190,7 +189,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.updateWatchlistItem.initiate({ userId, itemId, request })
+        watchlistApi.endpoints.updateWatchlistItem.initiate({ itemId, request })
       );
 
       expect(result.error).toBeDefined();
@@ -207,7 +206,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       await store.dispatch(
-        watchlistApi.endpoints.updateWatchlistItem.initiate({ userId, itemId, request })
+        watchlistApi.endpoints.updateWatchlistItem.initiate({ itemId, request })
       );
 
       expect(true).toBe(true);
@@ -225,7 +224,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.removeFromWatchlist.initiate({ userId, itemId })
+        watchlistApi.endpoints.removeFromWatchlist.initiate(itemId)
       );
 
       expect(result.data).toBeNull();
@@ -242,7 +241,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.removeFromWatchlist.initiate({ userId, itemId })
+        watchlistApi.endpoints.removeFromWatchlist.initiate(itemId)
       );
 
       expect(result.error).toBeDefined();
@@ -258,7 +257,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       await store.dispatch(
-        watchlistApi.endpoints.removeFromWatchlist.initiate({ userId, itemId })
+        watchlistApi.endpoints.removeFromWatchlist.initiate(itemId)
       );
 
       expect(true).toBe(true);
@@ -287,7 +286,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.getWatchlistStatistics.initiate(userId)
+        watchlistApi.endpoints.getWatchlistStatistics.initiate(undefined)
       );
 
       expect(result.data).toEqual(mockStats);
@@ -301,7 +300,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.getWatchlistStatistics.initiate(userId)
+        watchlistApi.endpoints.getWatchlistStatistics.initiate(undefined)
       );
 
       expect(result.error).toBeDefined();
@@ -311,17 +310,17 @@ describe('Watchlist RTK Query API', () => {
   describe('Cache Behavior', () => {
     it('should cache and reuse watchlist data', async () => {
       server.use(
-        http.get(TestConstants.ApiEndpoints.WatchlistUser, () => {
+        http.get(TestConstants.ApiEndpoints.WatchlistMe, () => {
           return HttpResponse.json(mockWatchlistItems);
         })
       );
 
       const result1 = await store.dispatch(
-        watchlistApi.endpoints.getWatchlist.initiate(userId)
+        watchlistApi.endpoints.getWatchlist.initiate(undefined)
       );
       
       const result2 = await store.dispatch(
-        watchlistApi.endpoints.getWatchlist.initiate(userId)
+        watchlistApi.endpoints.getWatchlist.initiate(undefined)
       );
 
       expect(result1.data).toEqual(mockWatchlistItems);

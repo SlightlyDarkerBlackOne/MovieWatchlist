@@ -31,10 +31,10 @@ export const TestConstants = {
   },
 
   ApiEndpoints: {
-    WatchlistUser: '*/Watchlist/user/:userId',
-    WatchlistAdd: '*/Watchlist/user/:userId/add',
-    WatchlistItem: '*/Watchlist/user/:userId/item/:itemId',
-    WatchlistStatistics: '*/Watchlist/user/:userId/statistics',
+    WatchlistMe: '*/Watchlist/me/watchlist',
+    WatchlistAdd: '*/Watchlist/me/watchlist/add',
+    WatchlistItem: '*/Watchlist/me/watchlist/item/:itemId',
+    WatchlistStatistics: '*/Watchlist/me/watchlist/statistics',
   },
 
   HttpStatusCodes: {

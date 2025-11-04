@@ -17,6 +17,7 @@ public class WatchlistServiceTests : UnitTestBase
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<ITmdbService> _mockTmdbService;
     private readonly Mock<IRetryPolicyService> _mockRetryPolicyService;
+    private readonly Mock<ICurrentUserService> _mockCurrentUserService;
     private readonly WatchlistService _service;
 
     public WatchlistServiceTests()
@@ -26,18 +27,25 @@ public class WatchlistServiceTests : UnitTestBase
         _mockUserRepository = new Mock<IUserRepository>();
         _mockTmdbService = new Mock<ITmdbService>();
         _mockRetryPolicyService = new Mock<IRetryPolicyService>();
+        _mockCurrentUserService = new Mock<ICurrentUserService>();
         
         // Setup default retry policy behavior
         _mockRetryPolicyService
             .Setup(x => x.ExecuteWithRetryAsync(It.IsAny<Func<Task<Movie?>>>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>()))
             .Returns<Func<Task<Movie?>>, int, int, string>((func, maxRetries, baseDelayMs, operationName) => func());
         
+        // Setup default current user service to return user ID 1
+        _mockCurrentUserService
+            .Setup(x => x.UserId)
+            .Returns(1);
+        
         _service = new WatchlistService(
             _mockWatchlistRepository.Object, 
             _mockMovieRepository.Object,
             _mockUserRepository.Object,
             _mockTmdbService.Object,
-            _mockRetryPolicyService.Object);
+            _mockRetryPolicyService.Object,
+            _mockCurrentUserService.Object);
     }
 
     [Fact]
@@ -60,7 +68,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(testWatchlist);
 
         // Act
-        var result = await _service.GetUserStatisticsAsync(new GetUserStatisticsQuery(UserId: 1));
+        var result = await _service.GetUserStatisticsAsync(new GetMyStatisticsQuery());
 
         // Assert
         Assert.Equal(4, result.TotalMovies);
@@ -92,7 +100,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(allMovies);
 
         // Act
-        var result = await _service.GetRecommendedMoviesAsync(new GetRecommendedMoviesQuery(UserId: 1, Limit: 5));
+        var result = await _service.GetRecommendedMoviesAsync(new GetMyRecommendedMoviesQuery(Limit: 5));
 
         // Assert
         var recommendations = result.ToList();
@@ -121,7 +129,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(testWatchlist);
 
         // Act
-        var result = await _service.GetWatchlistByGenreAsync(new GetWatchlistByGenreQuery(UserId: 1, Genre: GenreConstants.Action));
+        var result = await _service.GetWatchlistByGenreAsync(new GetMyWatchlistByGenreQuery(Genre: GenreConstants.Action));
 
         // Assert
         var actionMovies = result.ToList();
@@ -140,7 +148,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(testWatchlist);
 
         // Act
-        var result = await _service.GetWatchlistByYearRangeAsync(new GetWatchlistByYearRangeQuery(UserId: 1, StartYear: 2020, EndYear: 2022));
+        var result = await _service.GetWatchlistByYearRangeAsync(new GetMyWatchlistByYearRangeQuery(StartYear: 2020, EndYear: 2022));
 
         // Assert
         var moviesInRange = result.ToList();
@@ -158,8 +166,13 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.GetFavoritesByUserIdAsync(TestConstants.Users.DefaultUserId, It.IsAny<int>()))
             .ReturnsAsync(testWatchlist);
 
+        // Setup current user service for this test
+        _mockCurrentUserService
+            .Setup(x => x.UserId)
+            .Returns(TestConstants.Users.DefaultUserId);
+
         // Act
-        var result = await _service.GetFavoriteMoviesAsync(new GetFavoriteMoviesQuery(UserId: TestConstants.Users.DefaultUserId));
+        var result = await _service.GetFavoriteMoviesAsync(new GetMyFavoriteMoviesQuery());
 
         // Assert
         var favorites = result.ToList();
@@ -277,7 +290,6 @@ public class WatchlistServiceTests : UnitTestBase
         // Arrange
         var movie = CreateTestMovie(id: 1, title: GenreConstants.ActionTitle);
         var command = new AddToWatchlistCommand(
-            UserId: 1,
             MovieId: 1,
             Status: WatchlistStatus.Planned,
             Notes: "Test note"
@@ -380,7 +392,6 @@ public class WatchlistServiceTests : UnitTestBase
 
         // Act
         var command = new AddToWatchlistCommand(
-            UserId: 1,
             MovieId: 1,
             Status: WatchlistStatus.Watched
         );
@@ -408,7 +419,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync((Movie?)null);
 
         // Act
-        var command = new AddToWatchlistCommand(UserId: 1, MovieId: 999);
+        var command = new AddToWatchlistCommand(MovieId: 999);
         var result = await _service.AddToWatchlistAsync(command);
         
         // Assert
@@ -437,7 +448,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(existingWatchlist.First());
 
         // Act
-        var command = new AddToWatchlistCommand(UserId: 1, MovieId: 1);
+        var command = new AddToWatchlistCommand(MovieId: 1);
         var result = await _service.AddToWatchlistAsync(command);
         
         // Assert
@@ -457,7 +468,6 @@ public class WatchlistServiceTests : UnitTestBase
         typeof(WatchlistItem).GetProperty("Id")!.SetValue(existingItem, 1);
 
         var command = new UpdateWatchlistItemCommand(
-            UserId: 1,
             WatchlistItemId: 1,
             Status: WatchlistStatus.Watched,
             IsFavorite: true,
@@ -508,8 +518,12 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task UpdateWatchlistItemAsync_WithNonExistentItem_ReturnsFailure()
     {
         // Arrange
+        // Setup current user service for this test
+        _mockCurrentUserService
+            .Setup(x => x.UserId)
+            .Returns(TestConstants.Users.DefaultUserId);
+
         var command = new UpdateWatchlistItemCommand(
-            UserId: TestConstants.Users.DefaultUserId,
             WatchlistItemId: TestConstants.WatchlistItems.NonExistentItemId,
             Status: WatchlistStatus.Watched
         );
@@ -537,8 +551,12 @@ public class WatchlistServiceTests : UnitTestBase
             movieId: TestConstants.WatchlistItems.FirstItemId, 
             status: WatchlistStatus.Planned);
 
+        // Setup current user service for this test
+        _mockCurrentUserService
+            .Setup(x => x.UserId)
+            .Returns(TestConstants.Users.DefaultUserId);
+
         var command = new UpdateWatchlistItemCommand(
-            UserId: TestConstants.Users.DefaultUserId,
             WatchlistItemId: TestConstants.WatchlistItems.FirstItemId,
             Status: WatchlistStatus.Watched
         );
@@ -579,7 +597,9 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task RemoveFromWatchlistAsync_WithValidItem_ReturnsTrue()
     {
         // Arrange
+        var movie = CreateTestMovie(id: 1, title: "Test Movie");
         var existingItem = CreateTestWatchlistItem(id: 1, userId: 1, movieId: 1);
+        existingItem.Movie = movie;
 
         _mockWatchlistRepository
             .Setup(x => x.GetByUserIdAndIdAsync(It.IsAny<int>(), It.IsAny<int>()))
@@ -604,7 +624,7 @@ public class WatchlistServiceTests : UnitTestBase
             .Returns(Task.CompletedTask);
 
         // Act
-        var command = new RemoveFromWatchlistCommand(UserId: 1, WatchlistItemId: 1);
+        var command = new RemoveFromWatchlistCommand(WatchlistItemId: 1);
         var result = await _service.RemoveFromWatchlistAsync(command);
 
         // Assert
@@ -622,7 +642,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync((WatchlistItem?)null);
 
         // Act
-        var command = new RemoveFromWatchlistCommand(UserId: 1, WatchlistItemId: 999);
+        var command = new RemoveFromWatchlistCommand(WatchlistItemId: 999);
         var result = await _service.RemoveFromWatchlistAsync(command);
 
         // Assert
@@ -644,11 +664,13 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.GetByUserIdAndIdAsync(TestConstants.Users.DefaultUserId, TestConstants.WatchlistItems.FirstItemId))
             .ReturnsAsync(existingItem);
 
+        // Setup current user service for this test
+        _mockCurrentUserService
+            .Setup(x => x.UserId)
+            .Returns(TestConstants.Users.DefaultUserId);
+
         // Act
-        var query = new GetWatchlistItemByIdQuery(
-            UserId: TestConstants.Users.DefaultUserId,
-            WatchlistItemId: TestConstants.WatchlistItems.FirstItemId
-        );
+        var query = new GetMyWatchlistItemByIdQuery(WatchlistItemId: TestConstants.WatchlistItems.FirstItemId);
         var result = await _service.GetWatchlistItemByIdAsync(query);
 
         // Assert
@@ -665,11 +687,13 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.GetByUserIdAndIdAsync(TestConstants.Users.DefaultUserId, TestConstants.WatchlistItems.NonExistentItemId))
             .ReturnsAsync((WatchlistItem?)null);
 
+        // Setup current user service for this test
+        _mockCurrentUserService
+            .Setup(x => x.UserId)
+            .Returns(TestConstants.Users.DefaultUserId);
+
         // Act
-        var query = new GetWatchlistItemByIdQuery(
-            UserId: TestConstants.Users.DefaultUserId,
-            WatchlistItemId: TestConstants.WatchlistItems.NonExistentItemId
-        );
+        var query = new GetMyWatchlistItemByIdQuery(WatchlistItemId: TestConstants.WatchlistItems.NonExistentItemId);
         var result = await _service.GetWatchlistItemByIdAsync(query);
 
         // Assert
@@ -689,8 +713,13 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.GetByUserIdAsync(TestConstants.Users.DefaultUserId))
             .ReturnsAsync(testWatchlist);
 
+        // Setup current user service for this test
+        _mockCurrentUserService
+            .Setup(x => x.UserId)
+            .Returns(TestConstants.Users.DefaultUserId);
+
         // Act
-        var query = new GetUserWatchlistQuery(UserId: TestConstants.Users.DefaultUserId);
+        var query = new GetMyWatchlistQuery();
         var result = await _service.GetUserWatchlistAsync(query);
 
         // Assert
@@ -716,8 +745,13 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.GetByUserIdAndStatusAsync(TestConstants.Users.DefaultUserId, WatchlistStatus.Watched))
             .ReturnsAsync(testWatchlist);
 
+        // Setup current user service for this test
+        _mockCurrentUserService
+            .Setup(x => x.UserId)
+            .Returns(TestConstants.Users.DefaultUserId);
+
         // Act
-        var query = new GetWatchlistByStatusQuery(UserId: TestConstants.Users.DefaultUserId, Status: WatchlistStatus.Watched);
+        var query = new GetMyWatchlistByStatusQuery(Status: WatchlistStatus.Watched);
         var result = await _service.GetWatchlistByStatusAsync(query);
 
         // Assert
@@ -736,9 +770,13 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.GetByUserIdAsync(TestConstants.Users.DefaultUserId))
             .ReturnsAsync(testWatchlist);
 
+        // Setup current user service for this test
+        _mockCurrentUserService
+            .Setup(x => x.UserId)
+            .Returns(TestConstants.Users.DefaultUserId);
+
         // Act
-        var query = new GetWatchlistByRatingRangeQuery(
-            UserId: TestConstants.Users.DefaultUserId,
+        var query = new GetMyWatchlistByRatingRangeQuery(
             MinRating: TestConstants.Ratings.DefaultTmdbRating,
             MaxRating: TestConstants.Ratings.HighRating
         );
@@ -776,7 +814,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(Enumerable.Empty<WatchlistItem>());
 
         // Act
-        var query = new GetUserStatisticsQuery(UserId: 1);
+        var query = new GetMyStatisticsQuery();
         var result = await _service.GetUserStatisticsAsync(query);
 
         // Assert
@@ -816,8 +854,13 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.GetByUserIdAsync(TestConstants.Users.DefaultUserId))
             .ReturnsAsync(watchlistWithNoRatings);
 
+        // Setup current user service for this test
+        _mockCurrentUserService
+            .Setup(x => x.UserId)
+            .Returns(TestConstants.Users.DefaultUserId);
+
         // Act
-        var query = new GetUserStatisticsQuery(UserId: TestConstants.Users.DefaultUserId);
+        var query = new GetMyStatisticsQuery();
         var result = await _service.GetUserStatisticsAsync(query);
 
         // Assert
@@ -841,7 +884,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(allMovies);
 
         // Act
-        var query = new GetRecommendedMoviesQuery(UserId: 1, Limit: 5);
+        var query = new GetMyRecommendedMoviesQuery(Limit: 5);
         var result = await _service.GetRecommendedMoviesAsync(query);
 
         // Assert
@@ -858,7 +901,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(testWatchlist);
 
         // Act
-        var query = new GetWatchlistByGenreQuery(UserId: 1, Genre: "NonExistentGenre");
+        var query = new GetMyWatchlistByGenreQuery(Genre: "NonExistentGenre");
         var result = await _service.GetWatchlistByGenreAsync(query);
 
         // Assert
@@ -875,7 +918,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(testWatchlist);
 
         // Act
-        var query = new GetWatchlistByYearRangeQuery(UserId: 1, StartYear: 2030, EndYear: 2040);
+        var query = new GetMyWatchlistByYearRangeQuery(StartYear: 2030, EndYear: 2040);
         var result = await _service.GetWatchlistByYearRangeAsync(query);
 
         // Assert
@@ -896,7 +939,7 @@ public class WatchlistServiceTests : UnitTestBase
             .ReturnsAsync(watchlistWithNoFavorites.Where(w => w.IsFavorite));
 
         // Act
-        var query = new GetFavoriteMoviesQuery(UserId: 1);
+        var query = new GetMyFavoriteMoviesQuery();
         var result = await _service.GetFavoriteMoviesAsync(query);
 
         // Assert

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Constants;
+using MovieWatchlist.Core.Events;
 using MovieWatchlist.Core.Exceptions;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
@@ -21,41 +22,60 @@ public class WatchlistService : IWatchlistService
     private readonly IUserRepository _userRepository;
     private readonly ITmdbService _tmdbService;
     private readonly IRetryPolicyService _retryPolicy;
+    private readonly ICurrentUserService _currentUserService;
 
     public WatchlistService(
         IWatchlistRepository watchlistRepository,
         IMovieRepository movieRepository,
         IUserRepository userRepository,
         ITmdbService tmdbService,
-        IRetryPolicyService retryPolicy)
+        IRetryPolicyService retryPolicy,
+        ICurrentUserService currentUserService)
     {
         _watchlistRepository = watchlistRepository;
         _movieRepository = movieRepository;
         _userRepository = userRepository;
         _tmdbService = tmdbService;
         _retryPolicy = retryPolicy;
+        _currentUserService = currentUserService;
     }
 
-    public async Task<IEnumerable<WatchlistItem>> GetUserWatchlistAsync(GetUserWatchlistQuery query)
+    private int GetCurrentUserId()
     {
-        return await _watchlistRepository.GetByUserIdAsync(query.UserId);
+        var userId = _currentUserService.UserId;
+        if (!userId.HasValue)
+        {
+            throw new UnauthorizedAccessException("User ID not found in authentication context");
+        }
+        return userId.Value;
     }
 
-    public async Task<IEnumerable<WatchlistItem>> GetWatchlistByStatusAsync(GetWatchlistByStatusQuery query)
+    public async Task<IEnumerable<WatchlistItem>> GetUserWatchlistAsync(GetMyWatchlistQuery query)
     {
-        return await _watchlistRepository.GetByUserIdAndStatusAsync(query.UserId, query.Status);
+        var userId = GetCurrentUserId();
+        return await _watchlistRepository.GetByUserIdAsync(userId);
     }
 
-    public async Task<IEnumerable<WatchlistItem>> GetFavoriteMoviesAsync(GetFavoriteMoviesQuery query)
+    public async Task<IEnumerable<WatchlistItem>> GetWatchlistByStatusAsync(GetMyWatchlistByStatusQuery query)
     {
-        return await _watchlistRepository.GetFavoritesByUserIdAsync(query.UserId);
+        var userId = GetCurrentUserId();
+        return await _watchlistRepository.GetByUserIdAndStatusAsync(userId, query.Status);
     }
 
-    public async Task<WatchlistStatistics> GetUserStatisticsAsync(GetUserStatisticsQuery query)
+    public async Task<IEnumerable<WatchlistItem>> GetFavoriteMoviesAsync(GetMyFavoriteMoviesQuery query)
     {
-        var user = await _userRepository.GetByIdAsync(query.UserId);
+        var userId = GetCurrentUserId();
+        return await _watchlistRepository.GetFavoritesByUserIdAsync(userId);
+    }
+
+    public async Task<WatchlistStatistics> GetUserStatisticsAsync(GetMyStatisticsQuery query)
+    {
+        var userId = GetCurrentUserId();
+        var user = await _userRepository.GetByIdAsync(userId);
         if (user == null)
-            throw new ApiException($"User with ID {query.UserId} not found");
+        {
+            throw new ApiException("User not found");
+        }
 
         // Return cached statistics if available
         var cachedStats = user.GetCachedStatistics();
@@ -63,7 +83,7 @@ public class WatchlistService : IWatchlistService
             return cachedStats;
 
         // Calculate and cache new statistics
-        var watchlist = await _watchlistRepository.GetByUserIdAsync(query.UserId);
+        var watchlist = await _watchlistRepository.GetByUserIdAsync(userId);
         var statistics = user.CalculateStatistics(watchlist);
         
         user.UpdateCachedStatistics(statistics);
@@ -72,9 +92,10 @@ public class WatchlistService : IWatchlistService
         return statistics;
     }
 
-    public async Task<IEnumerable<Movie>> GetRecommendedMoviesAsync(GetRecommendedMoviesQuery query)
+    public async Task<IEnumerable<Movie>> GetRecommendedMoviesAsync(GetMyRecommendedMoviesQuery query)
     {
-        var userWatchlist = await _watchlistRepository.GetByUserIdAsync(query.UserId);
+        var userId = GetCurrentUserId();
+        var userWatchlist = await _watchlistRepository.GetByUserIdAsync(userId);
         var userWatchlistList = userWatchlist.ToList();
 
         var watchedSpec = new WatchlistByStatusSpecification(WatchlistStatus.Watched);
@@ -109,27 +130,30 @@ public class WatchlistService : IWatchlistService
         return recommendedMovies;
     }
 
-    public async Task<IEnumerable<WatchlistItem>> GetWatchlistByGenreAsync(GetWatchlistByGenreQuery query)
+    public async Task<IEnumerable<WatchlistItem>> GetWatchlistByGenreAsync(GetMyWatchlistByGenreQuery query)
     {
-        var watchlist = await _watchlistRepository.GetByUserIdAsync(query.UserId);
+        var userId = GetCurrentUserId();
+        var watchlist = await _watchlistRepository.GetByUserIdAsync(userId);
         var spec = new WatchlistByGenreSpecification(query.Genre);
         return watchlist
             .Where(spec.IsSatisfiedBy)
             .OrderByDescending(w => w.AddedDate);
     }
 
-    public async Task<IEnumerable<WatchlistItem>> GetWatchlistByYearRangeAsync(GetWatchlistByYearRangeQuery query)
+    public async Task<IEnumerable<WatchlistItem>> GetWatchlistByYearRangeAsync(GetMyWatchlistByYearRangeQuery query)
     {
-        var watchlist = await _watchlistRepository.GetByUserIdAsync(query.UserId);
+        var userId = GetCurrentUserId();
+        var watchlist = await _watchlistRepository.GetByUserIdAsync(userId);
         var spec = new WatchlistByYearRangeSpecification(query.StartYear, query.EndYear);
         return watchlist
             .Where(spec.IsSatisfiedBy)
             .OrderByDescending(w => w.Movie.ReleaseDate);
     }
 
-    public async Task<IEnumerable<WatchlistItem>> GetWatchlistByRatingRangeAsync(GetWatchlistByRatingRangeQuery query)
+    public async Task<IEnumerable<WatchlistItem>> GetWatchlistByRatingRangeAsync(GetMyWatchlistByRatingRangeQuery query)
     {
-        var watchlist = await _watchlistRepository.GetByUserIdAsync(query.UserId);
+        var userId = GetCurrentUserId();
+        var watchlist = await _watchlistRepository.GetByUserIdAsync(userId);
         var spec = new WatchlistByTmdbRatingRangeSpecification(query.MinRating, query.MaxRating);
         return watchlist
             .Where(spec.IsSatisfiedBy)
@@ -144,6 +168,7 @@ public class WatchlistService : IWatchlistService
     /// </summary>
     public async Task<Result<WatchlistItem>> AddToWatchlistAsync(AddToWatchlistCommand command)
     {
+        var userId = GetCurrentUserId();
         var cachedMovie = await _movieRepository.GetByTmdbIdAsync(command.MovieId);
         
         Movie movie;
@@ -168,9 +193,11 @@ public class WatchlistService : IWatchlistService
         }
 
         // Check if movie is already in watchlist using TMDB ID
-        var existingItem = await _watchlistRepository.GetByUserIdAndTmdbIdAsync(command.UserId, command.MovieId);
+        var existingItem = await _watchlistRepository.GetByUserIdAndTmdbIdAsync(userId, command.MovieId);
         if (existingItem != null)
+        {
             return Result<WatchlistItem>.Failure(ErrorMessages.MovieAlreadyInWatchlist);
+        }
 
         // For new movies, add them to the repository
         if (cachedMovie == null)
@@ -180,7 +207,7 @@ public class WatchlistService : IWatchlistService
 
         // Create watchlist item using the movie navigation property
         // EF Core will automatically set MovieId when SaveChanges is called
-        var watchlistItem = WatchlistItem.Create(command.UserId, movie);
+        var watchlistItem = WatchlistItem.Create(userId, movie);
         
         if (command.Status != WatchlistStatus.Planned)
         {
@@ -194,17 +221,20 @@ public class WatchlistService : IWatchlistService
 
         await _watchlistRepository.AddAsync(watchlistItem);
         
-        await InvalidateUserStatisticsAsync(command.UserId);
+        await InvalidateUserStatisticsAsync(userId);
         
         return Result<WatchlistItem>.Success(watchlistItem);
     }
 
     public async Task<Result<WatchlistItem>> UpdateWatchlistItemAsync(UpdateWatchlistItemCommand command)
     {
-        var item = await _watchlistRepository.GetByUserIdAndIdAsync(command.UserId, command.WatchlistItemId);
+        var userId = GetCurrentUserId();
+        var item = await _watchlistRepository.GetByUserIdAndIdAsync(userId, command.WatchlistItemId);
         
         if (item == null)
+        {
             return Result<WatchlistItem>.Failure(ErrorMessages.WatchlistItemNotFound);
+        }
 
         if (command.Status.HasValue)
         {
@@ -235,28 +265,34 @@ public class WatchlistService : IWatchlistService
 
         await _watchlistRepository.UpdateAsync(item);
         
-        await InvalidateUserStatisticsAsync(command.UserId);
+        await InvalidateUserStatisticsAsync(userId);
         
         return Result<WatchlistItem>.Success(item);
     }
 
     public async Task<Result<bool>> RemoveFromWatchlistAsync(RemoveFromWatchlistCommand command)
     {
-        var item = await _watchlistRepository.GetByUserIdAndIdAsync(command.UserId, command.WatchlistItemId);
+        var userId = GetCurrentUserId();
+        var item = await _watchlistRepository.GetByUserIdAndIdAsync(userId, command.WatchlistItemId);
         
         if (item == null)
+        {
             return Result<bool>.Failure(ErrorMessages.WatchlistItemNotFound);
+        }
+
+        item.MarkForRemoval();
 
         await _watchlistRepository.DeleteAsync(item);
         
-        await InvalidateUserStatisticsAsync(command.UserId);
+        await InvalidateUserStatisticsAsync(userId);
         
         return Result<bool>.Success(true);
     }
 
-    public async Task<WatchlistItem?> GetWatchlistItemByIdAsync(GetWatchlistItemByIdQuery query)
+    public async Task<WatchlistItem?> GetWatchlistItemByIdAsync(GetMyWatchlistItemByIdQuery query)
     {
-        return await _watchlistRepository.GetByUserIdAndIdAsync(query.UserId, query.WatchlistItemId);
+        var userId = GetCurrentUserId();
+        return await _watchlistRepository.GetByUserIdAndIdAsync(userId, query.WatchlistItemId);
     }
 
     private async Task InvalidateUserStatisticsAsync(int userId)
