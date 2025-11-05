@@ -29,7 +29,7 @@ const MovieDetailsPage: React.FC = () => {
   const { user } = useAuth();
   const [addToWatchlist] = useAddToWatchlistMutation();
   const [removeFromWatchlist] = useRemoveFromWatchlistMutation();
-  const { data: watchlistItems } = useGetWatchlistQuery(user?.id ?? 0, { skip: !user });
+  const { data: watchlistItems } = useGetWatchlistQuery(undefined, { skip: !user });
   
   const {
     data: movieData,
@@ -72,7 +72,7 @@ const MovieDetailsPage: React.FC = () => {
         notes: dialog.notes || undefined
       };
       
-      await addToWatchlist({ userId: user.id, request }).unwrap();
+      await addToWatchlist(request).unwrap();
       
       setSuccessMessage(`Added "${dialog.selectedMovie.title}" to your watchlist!`);
       dialog.closeDialog();
@@ -98,7 +98,7 @@ const MovieDetailsPage: React.FC = () => {
     }
     
     try {
-      await removeFromWatchlist({ userId: user.id, itemId: watchlistItem.id }).unwrap();
+      await removeFromWatchlist(watchlistItem.id).unwrap();
       setSuccessMessage(`Removed "${movieDetails.title}" from your watchlist!`);
     } catch (err) {
       const error = err as Error;

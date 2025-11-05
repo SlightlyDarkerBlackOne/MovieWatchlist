@@ -3,23 +3,23 @@ using MediatR;
 
 namespace MovieWatchlist.Core.Queries;
 
-public record GetUserWatchlistQuery(int UserId) : IRequest<IEnumerable<WatchlistItem>>;
+public record GetMyWatchlistQuery() : IRequest<IEnumerable<WatchlistItem>>;
 
-public record GetWatchlistByStatusQuery(int UserId, WatchlistStatus Status) : IRequest<IEnumerable<WatchlistItem>>;
+public record GetMyWatchlistByStatusQuery(WatchlistStatus Status) : IRequest<IEnumerable<WatchlistItem>>;
 
-public record GetFavoriteMoviesQuery(int UserId) : IRequest<IEnumerable<WatchlistItem>>;
+public record GetMyFavoriteMoviesQuery() : IRequest<IEnumerable<WatchlistItem>>;
 
-public record GetUserStatisticsQuery(int UserId) : IRequest<WatchlistStatistics>;
+public record GetMyStatisticsQuery() : IRequest<WatchlistStatistics>;
 
-public record GetRecommendedMoviesQuery(int UserId, int Limit = 10) : IRequest<IEnumerable<Movie>>;
+public record GetMyRecommendedMoviesQuery(int Limit = 10) : IRequest<IEnumerable<Movie>>;
 
-public record GetWatchlistByGenreQuery(int UserId, string Genre) : IRequest<IEnumerable<WatchlistItem>>;
+public record GetMyWatchlistByGenreQuery(string Genre) : IRequest<IEnumerable<WatchlistItem>>;
 
-public record GetWatchlistByYearRangeQuery(int UserId, int StartYear, int EndYear) : IRequest<IEnumerable<WatchlistItem>>;
+public record GetMyWatchlistByYearRangeQuery(int StartYear, int EndYear) : IRequest<IEnumerable<WatchlistItem>>;
 
-public record GetWatchlistByRatingRangeQuery(int UserId, double MinRating, double MaxRating) : IRequest<IEnumerable<WatchlistItem>>;
+public record GetMyWatchlistByRatingRangeQuery(double MinRating, double MaxRating) : IRequest<IEnumerable<WatchlistItem>>;
 
-public record GetWatchlistItemByIdQuery(int UserId, int WatchlistItemId) : IRequest<WatchlistItem?>;
+public record GetMyWatchlistItemByIdQuery(int WatchlistItemId) : IRequest<WatchlistItem?>;
 
 public record WatchlistStatistics(
     int TotalMovies,

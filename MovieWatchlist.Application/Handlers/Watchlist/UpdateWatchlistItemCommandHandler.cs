@@ -1,5 +1,4 @@
 using MediatR;
-using Microsoft.Extensions.Logging;
 using MovieWatchlist.Core.Commands;
 using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Interfaces;
@@ -11,38 +10,25 @@ public class UpdateWatchlistItemCommandHandler : IRequestHandler<UpdateWatchlist
 {
     private readonly IWatchlistService _watchlistService;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<UpdateWatchlistItemCommandHandler> _logger;
 
     public UpdateWatchlistItemCommandHandler(
         IWatchlistService watchlistService,
-        IUnitOfWork unitOfWork,
-        ILogger<UpdateWatchlistItemCommandHandler> logger)
+        IUnitOfWork unitOfWork)
     {
         _watchlistService = watchlistService;
         _unitOfWork = unitOfWork;
-        _logger = logger;
     }
 
     public async Task<Result<WatchlistItem>> Handle(
         UpdateWatchlistItemCommand request,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Processing update watchlist item for user: {UserId}, watchlist item: {WatchlistItemId}", 
-            request.UserId, request.WatchlistItemId);
-
         var result = await _watchlistService.UpdateWatchlistItemAsync(request);
         
         if (result.IsFailure)
-        {
-            _logger.LogWarning("Failed to update watchlist item: {Error}", result.Error);
             return result;
-        }
 
-        // Save changes to persist the update
         await _unitOfWork.SaveChangesAsync();
-        
-        _logger.LogInformation("Successfully updated watchlist item {WatchlistItemId} for user {UserId}", 
-            request.WatchlistItemId, request.UserId);
         
         return result;
     }

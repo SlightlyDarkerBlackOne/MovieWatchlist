@@ -12,6 +12,8 @@ using MovieWatchlist.Core.ValueObjects;
 using FluentAssertions;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Net;
+using System.Linq;
 
 namespace MovieWatchlist.Tests.Infrastructure;
 
@@ -35,7 +37,10 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
             .WithAuthentication()
             .WithTmdbTestConfig();
 
-        Client = Factory.CreateClient();
+        Client = Factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
         
         Scope = Factory.Services.CreateScope();
         Context = Scope.ServiceProvider.GetRequiredService<MovieWatchlistDbContext>();
@@ -169,7 +174,8 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
     }
 
     /// <summary>
-    /// Creates an authenticated HTTP client with cookies
+    /// Creates an authenticated HTTP client by extracting JWT token from Set-Cookie header
+    /// and using it as Authorization header (JWT Bearer supports both cookies and headers)
     /// </summary>
     protected async Task<HttpClient> CreateAuthenticatedClientAsync(
         string username = TestConstants.Users.DefaultUsername,
@@ -181,45 +187,43 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
             Password = password
         };
 
-        var loginResponse = await Client.PostAsJsonAsync(TestConstants.ApiEndpoints.AuthLogin, loginRequest);
+        var loginClient = Factory.CreateClient();
+        loginClient.BaseAddress = Factory.Server.BaseAddress;
+        
+        var loginResponse = await loginClient.PostAsJsonAsync(TestConstants.ApiEndpoints.AuthLogin, loginRequest);
         loginResponse.IsSuccessStatusCode.Should().BeTrue();
 
-        var handler = new HttpClientHandler
+        string? accessToken = null;
+        if (loginResponse.Headers.Contains(TestConstants.HttpHeaders.SetCookie))
         {
-            UseCookies = true,
-            CookieContainer = new System.Net.CookieContainer()
-        };
-
-        var baseUri = Client.BaseAddress ?? new Uri("http://localhost");
-        var authenticatedClient = new HttpClient(handler)
-        {
-            BaseAddress = baseUri
-        };
-
-        var cookies = loginResponse.Headers.GetValues(TestConstants.HttpHeaders.SetCookie);
-        foreach (var cookieHeader in cookies)
-        {
-            var cookieParts = cookieHeader.Split(';');
-            if (cookieParts.Length > 0)
+            var cookieHeaders = loginResponse.Headers.GetValues(TestConstants.HttpHeaders.SetCookie);
+            foreach (var cookieHeader in cookieHeaders)
             {
-                var nameValue = cookieParts[0].Trim();
-                var nameValueParts = nameValue.Split('=', 2);
-                if (nameValueParts.Length == 2)
+                if (cookieHeader.Contains("accessToken="))
                 {
-                    var cookieName = nameValueParts[0].Trim();
-                    var cookieValue = nameValueParts[1].Trim();
-                    var cookie = new System.Net.Cookie(cookieName, cookieValue)
+                    var cookieParts = cookieHeader.Split(';');
+                    if (cookieParts.Length > 0)
                     {
-                        Domain = baseUri.Host,
-                        Path = "/",
-                        HttpOnly = cookieHeader.Contains("HttpOnly", StringComparison.OrdinalIgnoreCase),
-                        Secure = cookieHeader.Contains("Secure", StringComparison.OrdinalIgnoreCase)
-                    };
-                    handler.CookieContainer.Add(baseUri, cookie);
+                        var nameValue = cookieParts[0].Trim();
+                        if (nameValue.StartsWith("accessToken="))
+                        {
+                            accessToken = System.Net.WebUtility.UrlDecode(nameValue.Substring("accessToken=".Length));
+                            break;
+                        }
+                    }
                 }
             }
         }
+
+        var authenticatedClient = Factory.CreateClient();
+        authenticatedClient.BaseAddress = Factory.Server.BaseAddress;
         
+        if (!string.IsNullOrEmpty(accessToken))
+        {
+            authenticatedClient.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        }
+
         return authenticatedClient;
     }
 
@@ -230,27 +234,40 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
     /// <summary>
     /// Seeds the test database with basic test data
     /// </summary>
-    protected virtual async Task SeedBasicTestDataAsync()
+    protected virtual async Task SeedBasicTestDataAsync(int? userId = null)
     {
-        // Create test users
-        var testUser = User.Create(
-            Username.Create("testuser").Value!,
-            Email.Create("test@example.com").Value!,
-            "hashed_password"
-        );
-        typeof(User).GetProperty("Id")!.SetValue(testUser, 1);
+        int actualUserId = userId ?? 1;
+        
+        var existingUser = await Context.Users.FirstOrDefaultAsync(u => u.Id == actualUserId);
+        if (existingUser == null)
+        {
+            var testUser = User.Create(
+                Username.Create("testuser").Value!,
+                Email.Create("test@example.com").Value!,
+                "hashed_password"
+            );
+            typeof(User).GetProperty("Id")!.SetValue(testUser, actualUserId);
+            Context.Users.Add(testUser);
+        }
+        else
+        {
+            actualUserId = existingUser.Id;
+        }
 
         var testUser2 = User.Create(
             Username.Create("testuser2").Value!,
             Email.Create("test2@example.com").Value!,
             "hashed_password"
         );
-        typeof(User).GetProperty("Id")!.SetValue(testUser2, 2);
+        typeof(User).GetProperty("Id")!.SetValue(testUser2, actualUserId + 1);
 
-        Context.Users.AddRange(testUser, testUser2);
-        await Context.SaveChangesAsync(); // Save users first to get their IDs
+        if (!Context.Users.Any(u => u.Id == testUser2.Id))
+        {
+            Context.Users.Add(testUser2);
+        }
 
-        // Create test movies
+        await Context.SaveChangesAsync();
+
         var movie1 = TestDataBuilder.Movie()
             .WithTmdbId(12345)
             .WithTitle("Test Movie 1")
@@ -263,18 +280,41 @@ public abstract class EnhancedIntegrationTestBase : IClassFixture<WebApplication
             .WithGenres("Comedy", "Romance")
             .Build();
 
-        Context.Movies.AddRange(movie1, movie2);
-        await Context.SaveChangesAsync(); // Save movies to get their IDs
+        if (!Context.Movies.Any(m => m.TmdbId == movie1.TmdbId))
+        {
+            Context.Movies.Add(movie1);
+        }
+        else
+        {
+            movie1 = await Context.Movies.FirstAsync(m => m.TmdbId == movie1.TmdbId);
+        }
 
-        var watchlistItem1 = WatchlistItem.Create(testUser.Id, movie1);
-        watchlistItem1.UpdateStatus(WatchlistStatus.Planned);
+        if (!Context.Movies.Any(m => m.TmdbId == movie2.TmdbId))
+        {
+            Context.Movies.Add(movie2);
+        }
+        else
+        {
+            movie2 = await Context.Movies.FirstAsync(m => m.TmdbId == movie2.TmdbId);
+        }
 
-        var watchlistItem2 = WatchlistItem.Create(testUser.Id, movie2);
-        watchlistItem2.UpdateStatus(WatchlistStatus.Watched);
-        watchlistItem2.ToggleFavorite();
-        watchlistItem2.SetRating(Rating.Create(8).Value!);
-        
-        Context.WatchlistItems.AddRange(watchlistItem1, watchlistItem2);
+        await Context.SaveChangesAsync();
+
+        if (!Context.WatchlistItems.Any(w => w.UserId == actualUserId && w.MovieId == movie1.Id))
+        {
+            var watchlistItem1 = WatchlistItem.Create(actualUserId, movie1);
+            watchlistItem1.UpdateStatus(WatchlistStatus.Planned);
+            Context.WatchlistItems.Add(watchlistItem1);
+        }
+
+        if (!Context.WatchlistItems.Any(w => w.UserId == actualUserId && w.MovieId == movie2.Id))
+        {
+            var watchlistItem2 = WatchlistItem.Create(actualUserId, movie2);
+            watchlistItem2.UpdateStatus(WatchlistStatus.Watched);
+            watchlistItem2.ToggleFavorite();
+            watchlistItem2.SetRating(Rating.Create(8).Value!);
+            Context.WatchlistItems.Add(watchlistItem2);
+        }
 
         await Context.SaveChangesAsync();
     }
@@ -384,3 +424,5 @@ public class UserTestDto
     public string Email { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 }
+
+

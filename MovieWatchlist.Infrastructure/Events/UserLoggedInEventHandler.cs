@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using MovieWatchlist.Core.Events;
 using MovieWatchlist.Core.Interfaces;
 
-namespace MovieWatchlist.Application.Events.Handlers;
+namespace MovieWatchlist.Infrastructure.Events;
 
 public class UserLoggedInEventHandler : IDomainEventHandler<UserLoggedInEvent>
 {
@@ -18,10 +18,7 @@ public class UserLoggedInEventHandler : IDomainEventHandler<UserLoggedInEvent>
         _logger.LogInformation("User logged in: {UserId}, Username: {Username}, Email: {Email}, LoginTime: {LoginTime}", 
             domainEvent.UserId, domainEvent.Username, domainEvent.Email, domainEvent.LoginTime);
 
-        // TODO: Log login activity for analytics
-        // TODO: Update user session tracking
-        // TODO: Check for suspicious login patterns
-        
         await Task.CompletedTask;
     }
 }
+

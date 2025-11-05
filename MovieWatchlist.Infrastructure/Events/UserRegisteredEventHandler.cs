@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using MovieWatchlist.Core.Events;
 using MovieWatchlist.Core.Interfaces;
 
-namespace MovieWatchlist.Application.Events.Handlers;
+namespace MovieWatchlist.Infrastructure.Events;
 
 public class UserRegisteredEventHandler : IDomainEventHandler<UserRegisteredEvent>
 {
@@ -18,10 +18,7 @@ public class UserRegisteredEventHandler : IDomainEventHandler<UserRegisteredEven
         _logger.LogInformation("User registered: {UserId}, Username: {Username}, Email: {Email}", 
             domainEvent.UserId, domainEvent.Username, domainEvent.Email);
 
-        // TODO: Send welcome email
-        // TODO: Log registration analytics
-        // TODO: Initialize user preferences
-        
         await Task.CompletedTask;
     }
 }
+

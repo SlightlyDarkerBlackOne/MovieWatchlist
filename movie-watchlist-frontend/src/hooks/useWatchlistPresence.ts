@@ -5,7 +5,7 @@ import { useGetWatchlistQuery } from '../store/api/watchlistApi';
 export const useWatchlistPresence = (tmdbId: number) => {
   const { user } = useAuth();
   
-  const { data: watchlistItems, isLoading } = useGetWatchlistQuery(user?.id ?? 0, { 
+  const { data: watchlistItems, isLoading } = useGetWatchlistQuery(undefined, { 
     skip: !user 
   });
   

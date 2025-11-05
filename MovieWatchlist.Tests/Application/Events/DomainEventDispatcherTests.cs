@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using MovieWatchlist.Application.Events;
+using MovieWatchlist.Infrastructure.Events;
 using MovieWatchlist.Core.Events;
 using MovieWatchlist.Core.Interfaces;
 using Moq;

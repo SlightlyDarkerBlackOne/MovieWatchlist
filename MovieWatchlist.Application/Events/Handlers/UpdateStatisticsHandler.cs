@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using MovieWatchlist.Core.Events;
 using MovieWatchlist.Core.Interfaces;
 
@@ -11,14 +10,10 @@ public class UpdateStatisticsHandler :
     IDomainEventHandler<StatisticsInvalidatedEvent>
 {
     private readonly IUserRepository _userRepository;
-    private readonly ILogger<UpdateStatisticsHandler> _logger;
     
-    public UpdateStatisticsHandler(
-        IUserRepository userRepository,
-        ILogger<UpdateStatisticsHandler> logger)
+    public UpdateStatisticsHandler(IUserRepository userRepository)
     {
         _userRepository = userRepository;
-        _logger = logger;
     }
     
     public async Task HandleAsync(MovieWatchedEvent domainEvent, CancellationToken cancellationToken = default)
@@ -48,8 +43,6 @@ public class UpdateStatisticsHandler :
         {
             user.InvalidateStatistics();
             await _userRepository.UpdateAsync(user);
-            
-            _logger.LogDebug("Invalidated statistics cache for user {UserId}", userId);
         }
     }
 }

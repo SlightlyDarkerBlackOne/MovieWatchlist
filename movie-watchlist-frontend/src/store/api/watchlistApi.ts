@@ -9,35 +9,35 @@ export const watchlistApi = createApi({
   baseQuery: fetchBaseQuery({ baseUrl, credentials: 'include' }),
   tagTypes: ['Watchlist', 'WatchlistStats'],
   endpoints: (builder) => ({
-    getWatchlist: builder.query<WatchlistItem[], number>({
-      query: (userId) => `/Watchlist/user/${userId}`,
+    getWatchlist: builder.query<WatchlistItem[], void>({
+      query: () => `/Watchlist/me/watchlist`,
       providesTags: ['Watchlist'],
     }),
-    addToWatchlist: builder.mutation<WatchlistItem, { userId: number; request: AddToWatchlistRequest }>({
-      query: ({ userId, request }) => ({
-        url: `/Watchlist/user/${userId}/add`,
+    addToWatchlist: builder.mutation<WatchlistItem, AddToWatchlistRequest>({
+      query: (request) => ({
+        url: `/Watchlist/me/watchlist/add`,
         method: 'POST',
         body: request,
       }),
       invalidatesTags: ['Watchlist', 'WatchlistStats'],
     }),
-    updateWatchlistItem: builder.mutation<WatchlistItem, { userId: number; itemId: number; request: UpdateWatchlistRequest }>({
-      query: ({ userId, itemId, request }) => ({
-        url: `/Watchlist/user/${userId}/item/${itemId}`,
+    updateWatchlistItem: builder.mutation<WatchlistItem, { itemId: number; request: UpdateWatchlistRequest }>({
+      query: ({ itemId, request }) => ({
+        url: `/Watchlist/me/watchlist/item/${itemId}`,
         method: 'PUT',
         body: request,
       }),
       invalidatesTags: ['Watchlist', 'WatchlistStats'],
     }),
-    removeFromWatchlist: builder.mutation<void, { userId: number; itemId: number }>({
-      query: ({ userId, itemId }) => ({
-        url: `/Watchlist/user/${userId}/item/${itemId}`,
+    removeFromWatchlist: builder.mutation<void, number>({
+      query: (itemId) => ({
+        url: `/Watchlist/me/watchlist/item/${itemId}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Watchlist', 'WatchlistStats'],
     }),
-    getWatchlistStatistics: builder.query<WatchlistStatistics, number>({
-      query: (userId) => `/Watchlist/user/${userId}/statistics`,
+    getWatchlistStatistics: builder.query<WatchlistStatistics, void>({
+      query: () => `/Watchlist/me/watchlist/statistics`,
       providesTags: ['WatchlistStats'],
     }),
   }),

@@ -2,17 +2,17 @@ import { createSelector } from '@reduxjs/toolkit';
 import { RootState } from '../index';
 import { watchlistApi } from '../api/watchlistApi';
 
-export const selectWatchlistResult = (userId: number) =>
-  watchlistApi.endpoints.getWatchlist.select(userId);
+export const selectWatchlistResult = () =>
+  watchlistApi.endpoints.getWatchlist.select(undefined);
 
-export const selectWatchlistByUserId = (state: RootState, userId: number) => {
-  const result = selectWatchlistResult(userId)(state);
+export const selectWatchlistByUserId = (state: RootState) => {
+  const result = selectWatchlistResult()(state);
   return result?.data ?? null;
 };
 
 export const selectWatchlistMovieIds = createSelector(
   [
-    (state: RootState, userId: number) => selectWatchlistResult(userId)(state),
+    (state: RootState) => selectWatchlistResult()(state),
   ],
   (watchlistResult) => {
     if (!watchlistResult?.data) return new Set<number>();
@@ -24,9 +24,9 @@ export const selectWatchlistMovieIds = createSelector(
   }
 );
 
-export const createIsInWatchlistSelector = (userId: number, tmdbId: number) =>
+export const createIsInWatchlistSelector = (tmdbId: number) =>
   createSelector(
-    [(state: RootState) => selectWatchlistMovieIds(state, userId)],
+    [(state: RootState) => selectWatchlistMovieIds(state)],
     (movieIds) => movieIds.has(tmdbId)
   );
 

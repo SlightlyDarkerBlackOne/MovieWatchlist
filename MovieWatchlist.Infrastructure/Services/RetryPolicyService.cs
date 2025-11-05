@@ -1,15 +1,7 @@
 using Microsoft.Extensions.Logging;
+using MovieWatchlist.Core.Interfaces;
 
-namespace MovieWatchlist.Application.Services;
-
-public interface IRetryPolicyService
-{
-    Task<T> ExecuteWithRetryAsync<T>(
-        Func<Task<T>> operation,
-        int maxRetries = 3,
-        int baseDelayMs = 1000,
-        string? operationName = null);
-}
+namespace MovieWatchlist.Infrastructure.Services;
 
 public class RetryPolicyService : IRetryPolicyService
 {

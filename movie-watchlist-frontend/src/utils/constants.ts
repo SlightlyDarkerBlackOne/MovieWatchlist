@@ -21,15 +21,15 @@ export const API_ENDPOINTS = {
   
   // Watchlist endpoints
   WATCHLIST: {
-    USER: (userId: number) => `/Watchlist/user/${userId}`,
-    ADD: (userId: number) => `/Watchlist/user/${userId}/add`,
-    ITEM: (userId: number, itemId: number) => `/Watchlist/user/${userId}/item/${itemId}`,
-    STATISTICS: (userId: number) => `/Watchlist/user/${userId}/statistics`,
-    FAVORITES: (userId: number) => `/Watchlist/user/${userId}/favorites`,
-    RECOMMENDATIONS: (userId: number) => `/Watchlist/user/${userId}/recommendations`,
-    BY_GENRE: (userId: number, genre: string) => `/Watchlist/user/${userId}/genre/${genre}`,
-    BY_YEAR_RANGE: (userId: number) => `/Watchlist/user/${userId}/year-range`,
-    BY_STATUS: (userId: number, status: string) => `/Watchlist/user/${userId}/status/${status}`,
+    ME: '/Watchlist/me/watchlist',
+    ADD: '/Watchlist/me/watchlist/add',
+    ITEM: (itemId: number) => `/Watchlist/me/watchlist/item/${itemId}`,
+    STATISTICS: '/Watchlist/me/watchlist/statistics',
+    FAVORITES: '/Watchlist/me/watchlist/favorites',
+    RECOMMENDATIONS: '/Watchlist/me/watchlist/recommendations',
+    BY_GENRE: (genre: string) => `/Watchlist/me/watchlist/genre/${genre}`,
+    BY_YEAR_RANGE: '/Watchlist/me/watchlist/year-range',
+    BY_STATUS: (status: string) => `/Watchlist/me/watchlist/status/${status}`,
   },
 };
 

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,121 +18,129 @@ namespace MovieWatchlist.Api.Controllers;
 public class WatchlistController : ControllerBase
 {
     private readonly IMediator _mediator;
-
+    
     public WatchlistController(IMediator mediator)
     {
         _mediator = mediator;
     }
 
-    [HttpGet("user/{userId}")]
-    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetUserWatchlist(int userId)
+    [HttpGet("me/watchlist")]
+    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetMyWatchlist(CancellationToken cancellationToken)
     {
-        var query = new GetUserWatchlistQuery(UserId: userId);
-        var watchlist = await _mediator.Send(query);
+        var query = new GetMyWatchlistQuery();
+        var watchlist = await _mediator.Send(query, cancellationToken);
         return Ok(watchlist);
     }
 
-    [HttpGet("user/{userId}/status/{status}")]
-    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetWatchlistByStatus(int userId, WatchlistStatus status)
+    [HttpGet("me/watchlist/status/{status}")]
+    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetMyWatchlistByStatus(
+        WatchlistStatus status, 
+        CancellationToken cancellationToken)
     {
-        var query = new GetWatchlistByStatusQuery(UserId: userId, Status: status);
-        var watchlist = await _mediator.Send(query);
+        var query = new GetMyWatchlistByStatusQuery(Status: status);
+        var watchlist = await _mediator.Send(query, cancellationToken);
         return Ok(watchlist);
     }
 
-    [HttpGet("user/{userId}/favorites")]
-    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetFavoriteMovies(int userId)
+    [HttpGet("me/watchlist/favorites")]
+    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetMyFavoriteMovies(CancellationToken cancellationToken)
     {
-        var query = new GetFavoriteMoviesQuery(UserId: userId);
-        var favorites = await _mediator.Send(query);
+        var query = new GetMyFavoriteMoviesQuery();
+        var favorites = await _mediator.Send(query, cancellationToken);
         return Ok(favorites);
     }
 
-    [HttpGet("user/{userId}/statistics")]
-    public async Task<ActionResult<WatchlistStatistics>> GetUserStatistics(int userId)
+    [HttpGet("me/watchlist/statistics")]
+    public async Task<ActionResult<WatchlistStatistics>> GetMyStatistics(CancellationToken cancellationToken)
     {
-        var query = new GetUserStatisticsQuery(UserId: userId);
-        var statistics = await _mediator.Send(query);
+        var query = new GetMyStatisticsQuery();
+        var statistics = await _mediator.Send(query, cancellationToken);
         return Ok(statistics);
     }
 
-    [HttpGet("user/{userId}/recommendations")]
-    public async Task<ActionResult<IEnumerable<Movie>>> GetRecommendedMovies(int userId, [FromQuery] int limit = 10)
+    [HttpGet("me/watchlist/recommendations")]
+    public async Task<ActionResult<IEnumerable<Movie>>> GetMyRecommendedMovies(
+        [FromQuery] int limit = 10, 
+        CancellationToken cancellationToken = default)
     {
-        var query = new GetRecommendedMoviesQuery(UserId: userId, Limit: limit);
-        var recommendations = await _mediator.Send(query);
+        var query = new GetMyRecommendedMoviesQuery(Limit: limit);
+        var recommendations = await _mediator.Send(query, cancellationToken);
         return Ok(recommendations);
     }
 
-    [HttpGet("user/{userId}/genre/{genre}")]
-    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetWatchlistByGenre(int userId, string genre)
+    [HttpGet("me/watchlist/genre/{genre}")]
+    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetMyWatchlistByGenre(
+        string genre, 
+        CancellationToken cancellationToken)
     {
-        var query = new GetWatchlistByGenreQuery(UserId: userId, Genre: genre);
-        var watchlist = await _mediator.Send(query);
+        var query = new GetMyWatchlistByGenreQuery(Genre: genre);
+        var watchlist = await _mediator.Send(query, cancellationToken);
         return Ok(watchlist);
     }
 
-    [HttpGet("user/{userId}/year-range")]
-    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetWatchlistByYearRange(
-        int userId, 
+    [HttpGet("me/watchlist/year-range")]
+    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetMyWatchlistByYearRange(
         [FromQuery] int startYear, 
-        [FromQuery] int endYear)
+        [FromQuery] int endYear,
+        CancellationToken cancellationToken)
     {
-        var query = new GetWatchlistByYearRangeQuery(UserId: userId, StartYear: startYear, EndYear: endYear);
-        var watchlist = await _mediator.Send(query);
+        var query = new GetMyWatchlistByYearRangeQuery(StartYear: startYear, EndYear: endYear);
+        var watchlist = await _mediator.Send(query, cancellationToken);
         return Ok(watchlist);
     }
 
-    [HttpGet("user/{userId}/rating-range")]
-    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetWatchlistByRatingRange(
-        int userId, 
+    [HttpGet("me/watchlist/rating-range")]
+    public async Task<ActionResult<IEnumerable<WatchlistItem>>> GetMyWatchlistByRatingRange(
         [FromQuery] double minRating, 
-        [FromQuery] double maxRating)
+        [FromQuery] double maxRating,
+        CancellationToken cancellationToken)
     {
-        var query = new GetWatchlistByRatingRangeQuery(UserId: userId, MinRating: minRating, MaxRating: maxRating);
-        var watchlist = await _mediator.Send(query);
+        var query = new GetMyWatchlistByRatingRangeQuery(MinRating: minRating, MaxRating: maxRating);
+        var watchlist = await _mediator.Send(query, cancellationToken);
         return Ok(watchlist);
     }
 
-    // CRUD Operations
-    [HttpPost("user/{userId}/add")]
-    public async Task<ActionResult<WatchlistItem>> AddToWatchlist(int userId, [FromBody] AddToWatchlistDto dto)
+    [HttpPost("me/watchlist/add")]
+    public async Task<ActionResult<WatchlistItem>> AddToMyWatchlist(
+        [FromBody] AddToWatchlistDto dto, 
+        CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
         var command = new AddToWatchlistCommand(
-            UserId: userId,
             MovieId: dto.MovieId,
             Status: dto.Status,
             Notes: dto.Notes
         );
 
-        var result = await _mediator.Send(command);
+        var result = await _mediator.Send(command, cancellationToken);
         
         if (result.IsFailure)
             return BadRequest(result.Error);
 
-        return CreatedAtAction(nameof(GetWatchlistItemById), 
-            new { userId = userId, watchlistItemId = result.Value!.Id }, result.Value);
+        return CreatedAtAction(nameof(GetMyWatchlistItemById), 
+            new { watchlistItemId = result.Value!.Id }, result.Value);
     }
 
-    [HttpGet("user/{userId}/item/{watchlistItemId}")]
-    public async Task<ActionResult<WatchlistItem>> GetWatchlistItemById(int userId, int watchlistItemId)
+    [HttpGet("me/watchlist/item/{watchlistItemId}")]
+    public async Task<ActionResult<WatchlistItem>> GetMyWatchlistItemById(
+        int watchlistItemId, 
+        CancellationToken cancellationToken)
     {
-        var query = new GetWatchlistItemByIdQuery(UserId: userId, WatchlistItemId: watchlistItemId);
-        var watchlistItem = await _mediator.Send(query);
+        var query = new GetMyWatchlistItemByIdQuery(WatchlistItemId: watchlistItemId);
+        var watchlistItem = await _mediator.Send(query, cancellationToken);
         if (watchlistItem == null)
             return NotFound();
 
         return Ok(watchlistItem);
     }
 
-    [HttpPut("user/{userId}/item/{watchlistItemId}")]
-    public async Task<ActionResult<WatchlistItem>> UpdateWatchlistItem(
-        int userId, 
+    [HttpPut("me/watchlist/item/{watchlistItemId}")]
+    public async Task<ActionResult<WatchlistItem>> UpdateMyWatchlistItem(
         int watchlistItemId, 
-        [FromBody] UpdateWatchlistItemDto dto)
+        [FromBody] UpdateWatchlistItemDto dto,
+        CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
         {
@@ -139,7 +148,6 @@ public class WatchlistController : ControllerBase
         }
 
         var command = new UpdateWatchlistItemCommand(
-            UserId: userId,
             WatchlistItemId: watchlistItemId,
             Status: dto.Status,
             IsFavorite: dto.IsFavorite,
@@ -148,7 +156,7 @@ public class WatchlistController : ControllerBase
             WatchedDate: dto.WatchedDate
         );
 
-        var result = await _mediator.Send(command);
+        var result = await _mediator.Send(command, cancellationToken);
         
         if (result.IsFailure)
             return NotFound(result.Error);
@@ -156,11 +164,13 @@ public class WatchlistController : ControllerBase
         return Ok(result.Value);
     }
 
-    [HttpDelete("user/{userId}/item/{watchlistItemId}")]
-    public async Task<ActionResult> RemoveFromWatchlist(int userId, int watchlistItemId)
+    [HttpDelete("me/watchlist/item/{watchlistItemId}")]
+    public async Task<ActionResult> RemoveFromMyWatchlist(
+        int watchlistItemId, 
+        CancellationToken cancellationToken)
     {
-        var command = new RemoveFromWatchlistCommand(UserId: userId, WatchlistItemId: watchlistItemId);
-        var result = await _mediator.Send(command);
+        var command = new RemoveFromWatchlistCommand(WatchlistItemId: watchlistItemId);
+        var result = await _mediator.Send(command, cancellationToken);
         
         if (result.IsFailure)
             return NotFound(result.Error);

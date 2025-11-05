@@ -49,7 +49,7 @@ const WatchlistPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   
-  const { data: watchlist = [], isLoading: loading, error } = useGetWatchlistQuery(user?.id ?? 0, { skip: !user });
+  const { data: watchlist = [], isLoading: loading, error } = useGetWatchlistQuery(undefined, { skip: !user });
   const [updateItem] = useUpdateWatchlistItemMutation();
   const [removeItem] = useRemoveFromWatchlistMutation();
   
@@ -71,14 +71,14 @@ const WatchlistPage: React.FC = () => {
   };
 
   const handleQuickUpdate = async (item: WatchlistItem) => {
-    if (!user?.id) return;
+    if (!user) return;
 
     try {
       const updatePayload: UpdateWatchlistRequest = {
         isFavorite: item.isFavorite,
       };
       
-      await updateItem({ userId: user.id, itemId: item.id, request: updatePayload }).unwrap();
+      await updateItem({ itemId: item.id, request: updatePayload }).unwrap();
     } catch (err) {
       const error = err as Error;
       setErrorMessage(error.message || 'Failed to update item');
@@ -86,7 +86,7 @@ const WatchlistPage: React.FC = () => {
   };
 
   const handleUpdateItem = async (updatedFields: Partial<WatchlistItem>) => {
-    if (!user?.id || !selectedItem) return;
+    if (!user || !selectedItem) return;
 
     try {
       const updatePayload: UpdateWatchlistRequest = {};
@@ -104,7 +104,7 @@ const WatchlistPage: React.FC = () => {
         updatePayload.notes = updatedFields.notes;
       }
       
-      await updateItem({ userId: user.id, itemId: selectedItem.id, request: updatePayload }).unwrap();
+      await updateItem({ itemId: selectedItem.id, request: updatePayload }).unwrap();
       setEditDialogOpen(false);
       setSelectedItem(null);
     } catch (err) {
@@ -114,10 +114,10 @@ const WatchlistPage: React.FC = () => {
   };
 
   const handleDeleteItem = async (itemId: number) => {
-    if (!user?.id) return;
+    if (!user) return;
 
     try {
-      await removeItem({ userId: user.id, itemId }).unwrap();
+      await removeItem(itemId).unwrap();
     } catch (err) {
       const error = err as Error;
       setErrorMessage(error.message || 'Failed to remove item');
@@ -173,7 +173,7 @@ const WatchlistPage: React.FC = () => {
           </Typography>
         </Box>
 
-        <WatchlistStats userId={user?.id} />
+        <WatchlistStats />
 
         <WatchlistFilters
           statusFilter={statusFilter}
