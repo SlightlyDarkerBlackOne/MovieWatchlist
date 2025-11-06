@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Api.Constants;
 using MovieWatchlist.Core.Configuration;
 using MovieWatchlist.Infrastructure.Configuration;
+using MovieWatchlist.Application.Interfaces;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Api.Middleware;
 using MovieWatchlist.Application.Services;

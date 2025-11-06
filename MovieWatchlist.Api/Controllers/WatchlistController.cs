@@ -1,12 +1,8 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MovieWatchlist.Api.DTOs;
-using MovieWatchlist.Core.Commands;
-using MovieWatchlist.Core.Queries;
+using MovieWatchlist.Application.Commands;
+using MovieWatchlist.Application.Queries;
 using MovieWatchlist.Core.Models;
 using MediatR;
 

@@ -1,7 +1,7 @@
 using MediatR;
-using MovieWatchlist.Core.Commands;
+using MovieWatchlist.Application.Commands;
+using MovieWatchlist.Application.Interfaces;
 using MovieWatchlist.Core.Common;
-using MovieWatchlist.Core.Interfaces;
 
 namespace MovieWatchlist.Application.Handlers.Auth;
 

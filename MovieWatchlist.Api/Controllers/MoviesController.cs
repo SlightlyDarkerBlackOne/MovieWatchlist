@@ -1,10 +1,7 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
-using System.Linq;
 
 namespace MovieWatchlist.Api.Controllers;
 

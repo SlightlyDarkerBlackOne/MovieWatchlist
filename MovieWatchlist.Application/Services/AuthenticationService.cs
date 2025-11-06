@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Options;
-using MovieWatchlist.Core.Commands;
+using MovieWatchlist.Application.Commands;
+using MovieWatchlist.Application.Interfaces;
 using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Configuration;
 using MovieWatchlist.Core.Constants;

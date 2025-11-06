@@ -1,7 +1,7 @@
 using MediatR;
 using MovieWatchlist.Core.Common;
 
-namespace MovieWatchlist.Core.Commands;
+namespace MovieWatchlist.Application.Commands;
 
 public record RegisterCommand(
     string Username,
@@ -64,5 +64,4 @@ public record RefreshTokenResult(
     string Token,
     DateTime ExpiresAt
 );
-
 

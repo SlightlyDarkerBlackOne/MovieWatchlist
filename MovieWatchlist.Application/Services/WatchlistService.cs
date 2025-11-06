@@ -2,14 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using MovieWatchlist.Core.Commands;
+using MovieWatchlist.Application.Commands;
+using MovieWatchlist.Application.Interfaces;
+using MovieWatchlist.Application.Queries;
 using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Events;
 using MovieWatchlist.Core.Exceptions;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
-using MovieWatchlist.Core.Queries;
 using MovieWatchlist.Core.Specifications;
 using MovieWatchlist.Core.ValueObjects;
 

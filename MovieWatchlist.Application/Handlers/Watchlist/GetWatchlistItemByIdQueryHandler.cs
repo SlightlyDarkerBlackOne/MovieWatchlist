@@ -1,6 +1,6 @@
 using MediatR;
-using MovieWatchlist.Core.Queries;
-using MovieWatchlist.Core.Interfaces;
+using MovieWatchlist.Application.Interfaces;
+using MovieWatchlist.Application.Queries;
 
 namespace MovieWatchlist.Application.Handlers.Watchlist;
 

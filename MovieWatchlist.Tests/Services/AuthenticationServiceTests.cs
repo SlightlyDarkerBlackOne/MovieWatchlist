@@ -2,7 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Moq;
 using MovieWatchlist.Core.Configuration;
-using MovieWatchlist.Core.Commands;
+using MovieWatchlist.Application.Commands;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.ValueObjects;

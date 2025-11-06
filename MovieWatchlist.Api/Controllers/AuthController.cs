@@ -1,17 +1,12 @@
-using System.Net;
 using MediatR;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using MovieWatchlist.Api.DTOs;
-using MovieWatchlist.Core.Commands;
+using MovieWatchlist.Application.Commands;
+using MovieWatchlist.Application.Queries;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Exceptions;
-using MovieWatchlist.Core.Interfaces;
-using System.Security.Claims;
-using CoreUserInfo = MovieWatchlist.Core.Commands.UserInfo;
 using ApiUserInfo = MovieWatchlist.Api.DTOs.UserInfo;
-using CorePasswordResetResponse = MovieWatchlist.Core.Commands.PasswordResetResponse;
 using ApiPasswordResetResponse = MovieWatchlist.Api.DTOs.PasswordResetResponse;
 
 namespace MovieWatchlist.Api.Controllers;
@@ -22,18 +17,15 @@ public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
-    private readonly IUserRepository _userRepository;
     private readonly IWebHostEnvironment _environment;
 
     public AuthController(
         IMediator mediator,
         ILogger<AuthController> logger,
-        IUserRepository userRepository,
         IWebHostEnvironment environment)
     {
         _mediator = mediator;
         _logger = logger;
-        _userRepository = userRepository;
         _environment = environment;
     }
 
@@ -321,19 +313,24 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<ActionResult<ApiUserInfo>> Me()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdClaim, out var userId))
-            return Unauthorized();
+        var query = new GetCurrentUserQuery();
+        var result = await _mediator.Send(query);
 
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
-            return NotFound();
+        if (result.IsFailure)
+        {
+            if (result.Error == "User not authenticated")
+                return Unauthorized();
+            if (result.Error == "User not found")
+                return NotFound();
+            return BadRequest(new { error = result.Error });
+        }
 
+        var userInfo = result.Value!;
         return Ok(new ApiUserInfo(
-            user.Id,
-            user.Username.Value,
-            user.Email.Value,
-            user.CreatedAt
+            userInfo.Id,
+            userInfo.Username,
+            userInfo.Email,
+            userInfo.CreatedAt
         ));
     }
 }

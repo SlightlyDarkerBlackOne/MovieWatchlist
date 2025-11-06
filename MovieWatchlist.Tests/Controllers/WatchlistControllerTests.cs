@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Api;
 using MovieWatchlist.Api.DTOs;
 using MovieWatchlist.Core.Models;
-using MovieWatchlist.Core.Queries;
 using MovieWatchlist.Tests.Infrastructure;
 using System.Net;
 using System.Net.Http.Json;

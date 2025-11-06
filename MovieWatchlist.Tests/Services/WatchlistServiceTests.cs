@@ -1,7 +1,7 @@
 using Moq;
 using MovieWatchlist.Core.Constants;
-using MovieWatchlist.Core.Commands;
-using MovieWatchlist.Core.Queries;
+using MovieWatchlist.Application.Commands;
+using MovieWatchlist.Application.Queries;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.ValueObjects;

@@ -1,8 +1,8 @@
-using MovieWatchlist.Core.Commands;
+using MovieWatchlist.Application.Commands;
 using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Models;
 
-namespace MovieWatchlist.Core.Interfaces;
+namespace MovieWatchlist.Application.Interfaces;
 
 public interface IAuthenticationService
 {
@@ -17,3 +17,4 @@ public interface IAuthenticationService
     Task<PasswordResetResponse> ForgotPasswordAsync(ForgotPasswordCommand command);
     Task<PasswordResetResponse> ResetPasswordAsync(ResetPasswordCommand command);
 }
+

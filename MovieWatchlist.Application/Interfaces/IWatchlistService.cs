@@ -1,9 +1,9 @@
-using MovieWatchlist.Core.Commands;
-using MovieWatchlist.Core.Queries;
+using MovieWatchlist.Application.Commands;
+using MovieWatchlist.Application.Queries;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.Common;
 
-namespace MovieWatchlist.Core.Interfaces;
+namespace MovieWatchlist.Application.Interfaces;
 
 public interface IWatchlistService
 {
@@ -20,4 +20,5 @@ public interface IWatchlistService
     Task<Result<WatchlistItem>> AddToWatchlistAsync(AddToWatchlistCommand command);
     Task<Result<WatchlistItem>> UpdateWatchlistItemAsync(UpdateWatchlistItemCommand command);
     Task<Result<bool>> RemoveFromWatchlistAsync(RemoveFromWatchlistCommand command);
-} 
+}
+

@@ -2,7 +2,7 @@ using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.Common;
 using MediatR;
 
-namespace MovieWatchlist.Core.Commands;
+namespace MovieWatchlist.Application.Commands;
 
 public record AddToWatchlistCommand(
     int MovieId,
@@ -22,5 +22,4 @@ public record UpdateWatchlistItemCommand(
 public record RemoveFromWatchlistCommand(
     int WatchlistItemId
 ) : IRequest<Result<bool>>;
-
 
