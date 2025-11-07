@@ -90,6 +90,7 @@ public static class TestConstants
     {
         public const string HttpOnly = "HttpOnly";
         public const string SameSiteStrict = "SameSite=Strict";
+        public const string SameSiteLax = "SameSite=Lax";
         public const string Expires = "expires=";
     }
 

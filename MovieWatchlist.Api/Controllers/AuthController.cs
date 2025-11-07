@@ -1,11 +1,13 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Mapster;
 using MovieWatchlist.Api.DTOs;
+using MovieWatchlist.Api.Helpers;
+using MovieWatchlist.Api.Constants;
 using MovieWatchlist.Application.Commands;
 using MovieWatchlist.Application.Queries;
 using MovieWatchlist.Core.Constants;
-using MovieWatchlist.Core.Exceptions;
 using ApiUserInfo = MovieWatchlist.Api.DTOs.UserInfo;
 using ApiPasswordResetResponse = MovieWatchlist.Api.DTOs.PasswordResetResponse;
 
@@ -13,26 +15,26 @@ namespace MovieWatchlist.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController : ControllerBase
+public class AuthController : BaseApiController
 {
     private readonly IMediator _mediator;
     private readonly ILogger<AuthController> _logger;
-    private readonly IWebHostEnvironment _environment;
+    private readonly IAuthCookieManager _authCookieManager;
 
     public AuthController(
         IMediator mediator,
         ILogger<AuthController> logger,
-        IWebHostEnvironment environment)
+        IAuthCookieManager authCookieManager)
     {
         _mediator = mediator;
         _logger = logger;
-        _environment = environment;
+        _authCookieManager = authCookieManager;
     }
 
     [HttpPost("register")]
     public async Task<ActionResult<RegisterResponse>> Register([FromBody] RegisterDto dto)
     {
-        var command = new RegisterCommand(dto.Username, dto.Email, dto.Password);
+        var command = dto.Adapt<RegisterCommand>();
         var result = await _mediator.Send(command);
 
         if (result.IsFailure)
@@ -40,39 +42,10 @@ public class AuthController : ControllerBase
 
         _logger.LogInformation("User registered successfully: {Username}", dto.Username);
 
-        var auth = result.Value;
-        if (auth.User == null || !auth.ExpiresAt.HasValue)
+        if (result.Value == null)
             return BadRequest(new { error = "Invalid authentication result" });
 
-        var expiresAt = auth.ExpiresAt.Value;
-        var cookieOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = !_environment.IsDevelopment() && !_environment.IsEnvironment("Testing"),
-            SameSite = SameSiteMode.Strict,
-            Expires = expiresAt
-        };
-
-        if (!string.IsNullOrEmpty(auth.Token))
-        {
-            Response.Cookies.Append("accessToken", auth.Token, cookieOptions);
-        }
-        if (!string.IsNullOrEmpty(auth.RefreshToken))
-        {
-            Response.Cookies.Append("refreshToken", auth.RefreshToken, cookieOptions);
-        }
-
-        var response = new RegisterResponse(
-            new ApiUserInfo(
-                auth.User.Id,
-                auth.User.Username,
-                auth.User.Email,
-                auth.User.CreatedAt
-            ),
-            expiresAt
-        );
-
-        return Ok(response);
+        return BuildAuthResponse<RegisterResponse>(result.Value);
     }
 
     [HttpPost("create-refresh-token")]
@@ -93,55 +66,22 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var command = new LoginCommand(
-            UsernameOrEmail: dto.UsernameOrEmail,
-            Password: dto.Password
-        );
-
+        var command = dto.Adapt<LoginCommand>();
         var result = await _mediator.Send(command);
 
         if (result.IsFailure)
             return Unauthorized(new { error = result.Error });
 
-        var auth = result.Value;
-        if (auth.User == null || !auth.ExpiresAt.HasValue)
+        if (result.Value == null)
             return BadRequest(new { error = "Invalid authentication result" });
 
-        var expiresAt = auth.ExpiresAt.Value;
-        var cookieOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = !_environment.IsDevelopment() && !_environment.IsEnvironment("Testing"),
-            SameSite = SameSiteMode.Strict,
-            Expires = expiresAt
-        };
-
-        if (!string.IsNullOrEmpty(auth.Token))
-        {
-            Response.Cookies.Append("accessToken", auth.Token, cookieOptions);
-        }
-        if (!string.IsNullOrEmpty(auth.RefreshToken))
-        {
-            Response.Cookies.Append("refreshToken", auth.RefreshToken, cookieOptions);
-        }
-
-        var response = new LoginResponse(
-            new ApiUserInfo(
-                auth.User.Id,
-                auth.User.Username,
-                auth.User.Email,
-                auth.User.CreatedAt
-            ),
-            expiresAt
-        );
-
-        return Ok(response);
+        return BuildAuthResponse<LoginResponse>(result.Value);
     }
 
     [HttpPost("refresh")]
     public async Task<ActionResult<RefreshTokenResponse>> RefreshToken()
     {
-        var refreshToken = Request.Cookies["refreshToken"];
+        var refreshToken = GetTokenFromCookie(CookieNames.RefreshToken);
         if (string.IsNullOrEmpty(refreshToken))
             return Unauthorized(new { message = "Refresh token not provided" });
 
@@ -151,45 +91,16 @@ public class AuthController : ControllerBase
         if (result.IsFailure)
             return Unauthorized(new { message = result.Error });
 
-        var auth = result.Value;
-        if (auth.User == null || !auth.ExpiresAt.HasValue)
+        if (result.Value == null)
             return BadRequest(new { error = "Invalid authentication result" });
 
-        var expiresAt = auth.ExpiresAt.Value;
-        var cookieOptions = new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = !_environment.IsDevelopment() && !_environment.IsEnvironment("Testing"),
-            SameSite = SameSiteMode.Strict,
-            Expires = expiresAt
-        };
-
-        if (!string.IsNullOrEmpty(auth.Token))
-        {
-            Response.Cookies.Append("accessToken", auth.Token, cookieOptions);
-        }
-        if (!string.IsNullOrEmpty(auth.RefreshToken))
-        {
-            Response.Cookies.Append("refreshToken", auth.RefreshToken, cookieOptions);
-        }
-
-        var response = new RefreshTokenResponse(
-            new ApiUserInfo(
-                auth.User.Id,
-                auth.User.Username,
-                auth.User.Email,
-                auth.User.CreatedAt
-            ),
-            expiresAt
-        );
-
-        return Ok(response);
+        return BuildAuthResponse<RefreshTokenResponse>(result.Value);
     }
 
     [HttpPost("logout")]
     public async Task<ActionResult<LogoutResponse>> Logout()
     {
-        var token = Request.Cookies["accessToken"];
+        var token = GetTokenFromCookie(CookieNames.AccessToken);
         if (!string.IsNullOrEmpty(token))
         {
             var command = new LogoutCommand(token);
@@ -200,8 +111,7 @@ public class AuthController : ControllerBase
                 return BadRequest(new { message = ErrorMessages.LogoutFailed });
         }
 
-        Response.Cookies.Delete("accessToken");
-        Response.Cookies.Delete("refreshToken");
+        _authCookieManager.ClearAuthCookies(Response);
         return Ok(new LogoutResponse(ErrorMessages.LogoutSuccess));
     }
 
@@ -224,89 +134,40 @@ public class AuthController : ControllerBase
     [HttpPost("forgot-password")]
     public async Task<ActionResult<ApiPasswordResetResponse>> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
-        try
-        {
-            if (!ModelState.IsValid)
-                throw new ValidationException(ErrorMessages.InvalidModelState, ModelState);
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
 
-            _logger.LogInformation("Password reset requested for email: {Email}", dto.Email);
+        _logger.LogInformation("Password reset requested for email: {Email}", dto.Email);
 
-            var command = new ForgotPasswordCommand(Email: dto.Email);
+        var command = dto.Adapt<ForgotPasswordCommand>();
+        var result = await _mediator.Send(command);
 
-            var result = await _mediator.Send(command);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
 
-            if (result.IsFailure)
-                return BadRequest(new { error = result.Error });
-
-            var coreResponse = result.Value!;
-            var response = new ApiPasswordResetResponse(
-                coreResponse.Success,
-                coreResponse.Message
-            );
-
-            return Ok(response);
-        }
-        catch (ValidationException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing forgot password request");
-            return StatusCode(500, new { message = ErrorMessages.PasswordResetRequestError });
-        }
+        var response = result.Value.Adapt<ApiPasswordResetResponse>();
+        return Ok(response);
     }
 
     [HttpPost("reset-password")]
     public async Task<ActionResult<ApiPasswordResetResponse>> ResetPassword([FromBody] ResetPasswordDto dto)
     {
-        try
-        {
-            if (!ModelState.IsValid)
-                throw new ValidationException(ErrorMessages.InvalidModelState, ModelState);
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
 
-            if (string.IsNullOrWhiteSpace(dto.Token))
-                return BadRequest(new { Message = ErrorMessages.ResetTokenRequired });
+        if (string.IsNullOrWhiteSpace(dto.Token))
+            return BadRequest(new { Message = ErrorMessages.ResetTokenRequired });
 
-            _logger.LogInformation("Password reset attempt with token: {Token}", dto.Token.Substring(0, Math.Min(8, dto.Token.Length)) + "...");
+        _logger.LogInformation("Password reset attempt with token: {Token}", dto.Token.Substring(0, Math.Min(8, dto.Token.Length)) + "...");
 
-            var command = new ResetPasswordCommand(
-                Token: dto.Token,
-                NewPassword: dto.NewPassword
-            );
+        var command = dto.Adapt<ResetPasswordCommand>();
+        var result = await _mediator.Send(command);
 
-            var result = await _mediator.Send(command);
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
 
-            if (result.IsFailure)
-                return BadRequest(new { error = result.Error });
-
-            var coreResponse = result.Value!;
-            var response = new ApiPasswordResetResponse(
-                coreResponse.Success,
-                coreResponse.Message
-            );
-
-            return Ok(response);
-        }
-        catch (ValidationException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing password reset request");
-            return StatusCode(500, new { message = ErrorMessages.PasswordResetFailed });
-        }
-    }
-
-    private string? GetTokenFromHeader()
-    {
-        var authHeader = Request.Headers.Authorization.FirstOrDefault();
-        if (authHeader?.StartsWith("Bearer ") == true)
-        {
-            return authHeader.Substring("Bearer ".Length).Trim();
-        }
-        return null;
+        var response = result.Value.Adapt<ApiPasswordResetResponse>();
+        return Ok(response);
     }
 
     [HttpGet("me")]
@@ -325,13 +186,22 @@ public class AuthController : ControllerBase
             return BadRequest(new { error = result.Error });
         }
 
-        var userInfo = result.Value!;
-        return Ok(new ApiUserInfo(
-            userInfo.Id,
-            userInfo.Username,
-            userInfo.Email,
-            userInfo.CreatedAt
-        ));
+        if (result.Value == null)
+            return BadRequest(new { error = "User information not available" });
+
+        var userInfo = result.Value.Adapt<ApiUserInfo>();
+        return Ok(userInfo);
+    }
+
+    private ActionResult<TResponse> BuildAuthResponse<TResponse>(AuthenticationResult auth) where TResponse : class
+    {
+        if (auth?.User == null || !auth.ExpiresAt.HasValue)
+            return BadRequest(new { error = "Invalid authentication result" });
+
+        _authCookieManager.SetAuthCookies(Response, auth);
+        var response = auth.Adapt<TResponse>();
+
+        return Ok(response);
     }
 }
 
