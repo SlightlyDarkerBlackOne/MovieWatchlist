@@ -41,12 +41,21 @@ interface TmdbVideoRaw {
 }
 
 interface MovieDetailsApiResponse {
-  movie: MovieDetails;
-  credits: {
+  tmdbId: number;
+  title: string;
+  overview: string;
+  posterPath: string;
+  backdropPath?: string | null;
+  releaseDate: string;
+  voteAverage: number;
+  voteCount: number;
+  popularity: number;
+  genres: string[];
+  creditsJson: {
     cast: TmdbCastMemberRaw[];
     crew: TmdbCrewMemberRaw[];
   };
-  videos: TmdbVideoRaw[];
+  videosJson: TmdbVideoRaw[];
 }
 
 const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5250/api';
@@ -142,14 +151,17 @@ export const moviesApi = createApi({
       videos: MovieVideo[];
     }, { tmdbId: number }>({
       query: ({ tmdbId }) => `/Movies/tmdb/${tmdbId}`,
-      transformResponse: (response: MovieDetailsApiResponse) => ({
-        movie: response.movie,
-        credits: {
-          cast: (response.credits?.cast || []).map(transformCastMember),
-          crew: (response.credits?.crew || []).map(transformCrewMember),
-        },
-        videos: (response.videos || []).map(transformVideo),
-      }),
+      transformResponse: (response: MovieDetailsApiResponse) => {
+        const { creditsJson, videosJson, ...movieData } = response;
+        return {
+          movie: movieData as MovieDetails,
+          credits: {
+            cast: (creditsJson?.cast || []).map(transformCastMember),
+            crew: (creditsJson?.crew || []).map(transformCrewMember),
+          },
+          videos: (videosJson || []).map(transformVideo),
+        };
+      },
       providesTags: (_result, _error, { tmdbId }) => [{ type: 'MovieDetails', id: tmdbId }],
     }),
   }),

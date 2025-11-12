@@ -1,6 +1,9 @@
+using Mapster;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using MovieWatchlist.Api.DTOs;
+using MovieWatchlist.Application.Queries;
 using MovieWatchlist.Core.Constants;
-using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
 
 namespace MovieWatchlist.Api.Controllers;
@@ -9,104 +12,76 @@ namespace MovieWatchlist.Api.Controllers;
 [Route("api/[controller]")]
 public class MoviesController : ControllerBase
 {
-    private readonly ITmdbService _tmdbService;
-    private readonly IMovieRepository _movieRepository;
+    private readonly IMediator _mediator;
 
-    public MoviesController(ITmdbService tmdbService, IMovieRepository movieRepository)
+    public MoviesController(IMediator mediator)
     {
-        _tmdbService = tmdbService;
-        _movieRepository = movieRepository;
+        _mediator = mediator;
     }
 
     [HttpGet("search")]
     public async Task<ActionResult<IEnumerable<Movie>>> SearchMovies([FromQuery] string query, [FromQuery] int page = 1)
     {
-        if (string.IsNullOrWhiteSpace(query))
-            return BadRequest(ErrorMessages.SearchQueryRequired);
+        var result = await _mediator.Send(new SearchMoviesQuery(query, page));
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
 
-        var movies = await _tmdbService.SearchMoviesAsync(query, page);
-        return Ok(movies);
+        var response = result.Value.Adapt<IEnumerable<MovieDetailsDto>>();
+        return Ok(response);
     }
 
     [HttpGet("{tmdbId}")]
     public async Task<ActionResult<Movie>> GetMovieDetails(int tmdbId)
     {
-        var movie = await _tmdbService.GetMovieDetailsAsync(tmdbId);
-        if (movie == null)
-            return NotFound();
+        var result = await _mediator.Send(new GetMovieDetailsQuery(tmdbId));
+        if (result.IsFailure)
+            return NotFound(new { error = result.Error });
 
-        return Ok(movie);
+        var response = result.Value.Adapt<MovieDetailsDto>();
+        return Ok(response);
     }
 
     [HttpGet("popular")]
     public async Task<ActionResult<IEnumerable<Movie>>> GetPopularMovies([FromQuery] int page = 1)
     {
-        var movies = await _tmdbService.GetPopularMoviesAsync(page);
-        return Ok(movies);
+        var result = await _mediator.Send(new GetPopularMoviesQuery(page));
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+            
+        var response = result.Value.Adapt<IEnumerable<MovieDetailsDto>>();
+
+        return Ok(response);
     }
 
     [HttpGet("genre/{genre}")]
     public async Task<ActionResult<IEnumerable<Movie>>> GetMoviesByGenre(string genre, [FromQuery] int page = 1)
     {
-        try
-        {
-            var movies = await _tmdbService.GetMoviesByGenreAsync(genre, page);
-            return Ok(movies);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        var result = await _mediator.Send(new GetMoviesByGenreQuery(genre, page));
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+        var response = result.Value.Adapt<IEnumerable<MovieDetailsDto>>();
+        return Ok(response);
     }
 
     [HttpGet("tmdb/{tmdbId}")]
-    public async Task<ActionResult<object>> GetMovieDetailsByTmdbId(int tmdbId)
+    public async Task<ActionResult<MovieDetailsDto>> GetMovieDetailsByTmdbId(int tmdbId)
     {
-        try
+        var result = await _mediator.Send(new GetMovieDetailsByTmdbIdQuery(tmdbId));
+        if (result.IsFailure)
         {
-            // Check if we have cached data first
-            var cachedMovie = await _movieRepository.GetByTmdbIdAsync(tmdbId);
-            
-            if (cachedMovie != null && !string.IsNullOrEmpty(cachedMovie.CreditsJson) && !string.IsNullOrEmpty(cachedMovie.VideosJson))
-            {
-                // Return all data from cache in one response
-                var response = new
-                {
-                    movie = cachedMovie,
-                    credits = System.Text.Json.JsonSerializer.Deserialize<object>(cachedMovie.CreditsJson),
-                    videos = System.Text.Json.JsonSerializer.Deserialize<object>(cachedMovie.VideosJson)
-                };
-                return Ok(response);
-            }
-            
-            // Fallback: Fetch from TMDB and cache
-            var movie = await _tmdbService.GetMovieDetailsAsync(tmdbId);
-            if (movie == null)
-                return NotFound(string.Format(ErrorMessages.MovieWithTmdbIdNotFound, tmdbId));
-                
-            // Save to cache
-            await _movieRepository.AddAsync(movie);
-            
-            var fallbackResponse = new
-            {
-                movie = movie,
-                credits = !string.IsNullOrEmpty(movie.CreditsJson) 
-                    ? System.Text.Json.JsonSerializer.Deserialize<object>(movie.CreditsJson) 
-                    : new { cast = new object[0], crew = new object[0] },
-                videos = !string.IsNullOrEmpty(movie.VideosJson)
-                    ? System.Text.Json.JsonSerializer.Deserialize<object>(movie.VideosJson)
-                    : new object[0]
-            };
-            
-            return Ok(fallbackResponse);
+            if (result.Error.Equals(ErrorMessages.TmdbRateLimitExceeded, StringComparison.Ordinal))
+                return StatusCode(StatusCodes.Status429TooManyRequests, new { message = result.Error });
+
+            if (result.Error.StartsWith(ErrorMessages.FailedToFetchMovieData, StringComparison.Ordinal))
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = result.Error });
+
+            if (result.Error.StartsWith("Movie with TMDB ID", StringComparison.Ordinal))
+                return NotFound(new { message = result.Error });
+
+            return BadRequest(new { error = result.Error });
         }
-        catch (HttpRequestException ex) when (ex.Message.Contains("429"))
-        {
-            return StatusCode(StatusCodes.Status429TooManyRequests, new { message = ErrorMessages.TmdbRateLimitExceeded, details = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ErrorMessages.FailedToFetchMovieData, details = ex.Message });
-        }
+
+        var response = result.Value.Adapt<MovieDetailsDto>();
+        return Ok(response);
     }
 } 
