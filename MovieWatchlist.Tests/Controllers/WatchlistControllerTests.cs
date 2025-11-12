@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using MovieWatchlist.Api.DTOs;
+using MovieWatchlist.Application.Features.Watchlist.Commands.AddToWatchlist;
+using MovieWatchlist.Application.Features.Watchlist.Commands.UpdateWatchlistItem;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Tests.Infrastructure;
 using System.Net;

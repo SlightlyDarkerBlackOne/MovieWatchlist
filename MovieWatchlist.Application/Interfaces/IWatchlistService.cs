@@ -1,5 +1,15 @@
-using MovieWatchlist.Application.Commands;
-using MovieWatchlist.Application.Queries;
+using MovieWatchlist.Application.Features.Watchlist.Commands.AddToWatchlist;
+using MovieWatchlist.Application.Features.Watchlist.Commands.RemoveFromWatchlist;
+using MovieWatchlist.Application.Features.Watchlist.Commands.UpdateWatchlistItem;
+using MovieWatchlist.Application.Features.Watchlist.Queries.GetMyFavoriteMovies;
+using MovieWatchlist.Application.Features.Watchlist.Queries.GetMyRecommendedMovies;
+using MovieWatchlist.Application.Features.Watchlist.Queries.GetMyStatistics;
+using MovieWatchlist.Application.Features.Watchlist.Queries.GetMyWatchlist;
+using MovieWatchlist.Application.Features.Watchlist.Queries.GetMyWatchlistByGenre;
+using MovieWatchlist.Application.Features.Watchlist.Queries.GetMyWatchlistByRatingRange;
+using MovieWatchlist.Application.Features.Watchlist.Queries.GetMyWatchlistByStatus;
+using MovieWatchlist.Application.Features.Watchlist.Queries.GetMyWatchlistByYearRange;
+using MovieWatchlist.Application.Features.Watchlist.Queries.GetMyWatchlistItemById;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.Common;
 

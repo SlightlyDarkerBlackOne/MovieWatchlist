@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Mapster;
-using MovieWatchlist.Api.DTOs;
+using MovieWatchlist.Application.Features.Movies.Common;
 using MovieWatchlist.Core.Models;
 
 namespace MovieWatchlist.Api.Mapping;

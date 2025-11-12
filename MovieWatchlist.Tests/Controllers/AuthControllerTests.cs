@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using MovieWatchlist.Api;
-using MovieWatchlist.Api.DTOs;
+using MovieWatchlist.Application.Features.Auth.Commands.Login;
+using MovieWatchlist.Application.Features.Auth.Commands.Register;
+using MovieWatchlist.Application.Features.Auth.Common;
 using MovieWatchlist.Tests.Infrastructure;
 using System.Net;
 using System.Net.Http.Json;

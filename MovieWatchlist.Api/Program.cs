@@ -167,7 +167,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 builder.Services.AddMediatR(cfg =>
 {
-    cfg.RegisterServicesFromAssembly(typeof(MovieWatchlist.Application.Handlers.Auth.RegisterCommandHandler).Assembly);
+    cfg.RegisterServicesFromAssembly(typeof(MovieWatchlist.Application.Features.Auth.Commands.Register.RegisterCommandHandler).Assembly);
     cfg.AddOpenBehavior(typeof(MovieWatchlist.Infrastructure.Behaviors.LoggingBehavior<,>));
     cfg.AddOpenBehavior(typeof(MovieWatchlist.Application.Behaviors.TransactionBehavior<,>));
 });

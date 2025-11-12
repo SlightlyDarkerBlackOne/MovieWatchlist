@@ -2,14 +2,19 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Mapster;
-using MovieWatchlist.Api.DTOs;
 using MovieWatchlist.Api.Helpers;
 using MovieWatchlist.Api.Constants;
-using MovieWatchlist.Application.Commands;
-using MovieWatchlist.Application.Queries;
+using MovieWatchlist.Application.Features.Auth.Common;
+using MovieWatchlist.Application.Features.Auth.Commands.CreateRefreshToken;
+using MovieWatchlist.Application.Features.Auth.Commands.ForgotPassword;
+using MovieWatchlist.Application.Features.Auth.Commands.ResetPassword;
+using MovieWatchlist.Application.Features.Auth.Commands.Login;
+using MovieWatchlist.Application.Features.Auth.Commands.Logout;
+using MovieWatchlist.Application.Features.Auth.Commands.RefreshToken;
+using MovieWatchlist.Application.Features.Auth.Commands.Register;
+using MovieWatchlist.Application.Features.Auth.Commands.ValidateToken;
+using MovieWatchlist.Application.Features.Auth.Queries.GetCurrentUser;
 using MovieWatchlist.Core.Constants;
-using ApiUserInfo = MovieWatchlist.Api.DTOs.UserInfo;
-using ApiPasswordResetResponse = MovieWatchlist.Api.DTOs.PasswordResetResponse;
 
 namespace MovieWatchlist.Api.Controllers;
 
@@ -132,7 +137,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("forgot-password")]
-    public async Task<ActionResult<ApiPasswordResetResponse>> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    public async Task<ActionResult<PasswordResetResponse>> ForgotPassword([FromBody] ForgotPasswordDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -145,12 +150,11 @@ public class AuthController : BaseApiController
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 
-        var response = result.Value.Adapt<ApiPasswordResetResponse>();
-        return Ok(response);
+        return Ok(result.Value);
     }
 
     [HttpPost("reset-password")]
-    public async Task<ActionResult<ApiPasswordResetResponse>> ResetPassword([FromBody] ResetPasswordDto dto)
+    public async Task<ActionResult<PasswordResetResponse>> ResetPassword([FromBody] ResetPasswordDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -166,13 +170,12 @@ public class AuthController : BaseApiController
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 
-        var response = result.Value.Adapt<ApiPasswordResetResponse>();
-        return Ok(response);
+        return Ok(result.Value);
     }
 
     [HttpGet("me")]
     [Authorize]
-    public async Task<ActionResult<ApiUserInfo>> Me()
+    public async Task<ActionResult<UserInfo>> Me()
     {
         var query = new GetCurrentUserQuery();
         var result = await _mediator.Send(query);
@@ -189,8 +192,7 @@ public class AuthController : BaseApiController
         if (result.Value == null)
             return BadRequest(new { error = "User information not available" });
 
-        var userInfo = result.Value.Adapt<ApiUserInfo>();
-        return Ok(userInfo);
+        return Ok(result.Value);
     }
 
     private ActionResult<TResponse> BuildAuthResponse<TResponse>(AuthenticationResult auth) where TResponse : class

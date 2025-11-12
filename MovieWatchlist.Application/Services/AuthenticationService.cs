@@ -1,6 +1,11 @@
 using System.Security.Claims;
 using Microsoft.Extensions.Options;
-using MovieWatchlist.Application.Commands;
+using MovieWatchlist.Application.Features.Auth.Commands.CreateRefreshToken;
+using MovieWatchlist.Application.Features.Auth.Commands.ForgotPassword;
+using MovieWatchlist.Application.Features.Auth.Commands.Login;
+using MovieWatchlist.Application.Features.Auth.Commands.Register;
+using MovieWatchlist.Application.Features.Auth.Commands.ResetPassword;
+using MovieWatchlist.Application.Features.Auth.Common;
 using MovieWatchlist.Application.Interfaces;
 using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Configuration;
