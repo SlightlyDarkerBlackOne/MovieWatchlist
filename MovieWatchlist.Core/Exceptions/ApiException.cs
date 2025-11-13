@@ -63,4 +63,12 @@ public class RateLimitException : ApiException
     }
 }
 
+public class ExternalServiceException : ApiException
+{
+    public ExternalServiceException(string message, System.Net.HttpStatusCode httpStatusCode) 
+        : base(message, (int)httpStatusCode, "EXTERNAL_SERVICE_ERROR")
+    {
+    }
+}
+
 

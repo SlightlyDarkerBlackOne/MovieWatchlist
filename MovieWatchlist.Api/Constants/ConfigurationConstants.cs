@@ -11,6 +11,7 @@ public static class ConfigurationConstants
     public const string JWT_SETTINGS_AUDIENCE = "JwtSettings:Audience";
     public const string JWT_SETTINGS_EXPIRATION_MINUTES = "JwtSettings:ExpirationMinutes";
     public const string JWT_SETTINGS_REFRESH_TOKEN_EXPIRATION_DAYS = "JwtSettings:RefreshTokenExpirationDays";
+    public const string AUTH_COOKIE_SETTINGS = "AuthCookieSettings";
     public const string DEFAULT_CONNECTION_STRING = "DefaultConnection";
     
     // Default Values

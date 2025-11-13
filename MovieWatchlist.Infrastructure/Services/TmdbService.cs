@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
@@ -10,6 +11,8 @@ using MovieWatchlist.Infrastructure.Configuration;
 using MovieWatchlist.Infrastructure.DTOs;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
+using MovieWatchlist.Core.Exceptions;
+using MovieWatchlist.Core.Constants;
 
 namespace MovieWatchlist.Infrastructure.Services;
 
@@ -87,7 +90,7 @@ public class TmdbService : ITmdbService
                 return movie;
             }
             
-            if (httpResponse.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
             {
                 if (attempt < maxRetries - 1)
                 {
@@ -96,10 +99,11 @@ public class TmdbService : ITmdbService
                     await Task.Delay(delay);
                     continue;
                 }
+                throw new RateLimitException(ErrorMessages.TmdbRateLimitExceeded, retryDelayMs);
             }
             
             var content = await httpResponse.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"TMDB API request failed with status {httpResponse.StatusCode}: {content}");
+            throw new ExternalServiceException($"TMDB API request failed: {content}", httpResponse.StatusCode);
         }
         
         return null;
@@ -127,8 +131,13 @@ public class TmdbService : ITmdbService
         
         if (!response.IsSuccessStatusCode)
         {
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                throw new RateLimitException(ErrorMessages.TmdbRateLimitExceeded, 1000);
+            }
+            
             var content = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"TMDB API request failed with status {response.StatusCode}: {content}");
+            throw new ExternalServiceException($"TMDB API request failed: {content}", response.StatusCode);
         }
 
         var tmdbResponse = await response.Content.ReadFromJsonAsync<TmdbSearchResponse>();
@@ -151,8 +160,13 @@ public class TmdbService : ITmdbService
         
         if (!response.IsSuccessStatusCode)
         {
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                throw new RateLimitException(ErrorMessages.TmdbRateLimitExceeded, 1000);
+            }
+            
             var content = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"TMDB API request failed with status {response.StatusCode}: {content}");
+            throw new ExternalServiceException($"TMDB API request failed: {content}", response.StatusCode);
         }
 
         var tmdbResponse = await response.Content.ReadFromJsonAsync<TmdbSearchResponse>();
@@ -166,8 +180,13 @@ public class TmdbService : ITmdbService
 
         if (!response.IsSuccessStatusCode)
         {
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                throw new RateLimitException(ErrorMessages.TmdbRateLimitExceeded, 1000);
+            }
+            
             var content = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"TMDB API request failed with status {response.StatusCode}: {content}");
+            throw new ExternalServiceException($"TMDB API request failed: {content}", response.StatusCode);
         }
 
         var videosResponse = await response.Content.ReadFromJsonAsync<TmdbVideosResponse>();
@@ -181,8 +200,13 @@ public class TmdbService : ITmdbService
 
         if (!response.IsSuccessStatusCode)
         {
+            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                throw new RateLimitException(ErrorMessages.TmdbRateLimitExceeded, 1000);
+            }
+            
             var content = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"TMDB API request failed with status {response.StatusCode}: {content}");
+            throw new ExternalServiceException($"TMDB API request failed: {content}", response.StatusCode);
         }
 
         var credits = await response.Content.ReadFromJsonAsync<object>();

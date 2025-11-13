@@ -75,10 +75,11 @@ const WatchlistPage: React.FC = () => {
 
     try {
       const updatePayload: UpdateWatchlistRequest = {
+        watchlistItemId: item.id,
         isFavorite: item.isFavorite,
       };
       
-      await updateItem({ itemId: item.id, request: updatePayload }).unwrap();
+      await updateItem(updatePayload).unwrap();
     } catch (err) {
       const error = err as Error;
       setErrorMessage(error.message || 'Failed to update item');
@@ -89,7 +90,9 @@ const WatchlistPage: React.FC = () => {
     if (!user || !selectedItem) return;
 
     try {
-      const updatePayload: UpdateWatchlistRequest = {};
+      const updatePayload: UpdateWatchlistRequest = {
+        watchlistItemId: selectedItem.id,
+      };
       
       if (updatedFields.isFavorite !== undefined) {
         updatePayload.isFavorite = updatedFields.isFavorite;
@@ -104,7 +107,7 @@ const WatchlistPage: React.FC = () => {
         updatePayload.notes = updatedFields.notes;
       }
       
-      await updateItem({ itemId: selectedItem.id, request: updatePayload }).unwrap();
+      await updateItem(updatePayload).unwrap();
       setEditDialogOpen(false);
       setSelectedItem(null);
     } catch (err) {

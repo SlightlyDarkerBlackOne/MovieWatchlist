@@ -1,100 +1,191 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using MovieWatchlist.Api.Controllers;
-using MovieWatchlist.Core.Interfaces;
-using MovieWatchlist.Core.Models;
+using MovieWatchlist.Application.Features.Movies.Common;
+using MovieWatchlist.Application.Features.Movies.Queries.GetMovieDetails;
+using MovieWatchlist.Application.Features.Movies.Queries.GetMovieDetailsByTmdbId;
+using MovieWatchlist.Application.Features.Movies.Queries.GetMoviesByGenre;
+using MovieWatchlist.Application.Features.Movies.Queries.GetPopularMovies;
+using MovieWatchlist.Application.Features.Movies.Queries.SearchMovies;
+using MovieWatchlist.Core.Common;
+using MovieWatchlist.Core.Constants;
 using Xunit;
+using static MovieWatchlist.Tests.TestDataBuilders.TestDataBuilder;
 
 namespace MovieWatchlist.Tests.Controllers;
 
 public class MoviesControllerTests
 {
-    private readonly Mock<ITmdbService> _mockTmdbService;
-    private readonly Mock<IMovieRepository> _mockMovieRepository;
+    private readonly Mock<IMediator> _mockMediator;
     private readonly MoviesController _controller;
 
     public MoviesControllerTests()
     {
-        _mockTmdbService = new Mock<ITmdbService>();
-        _mockMovieRepository = new Mock<IMovieRepository>();
-        _controller = new MoviesController(_mockTmdbService.Object, _mockMovieRepository.Object);
+        _mockMediator = new Mock<IMediator>();
+        _controller = new MoviesController(_mockMediator.Object);
     }
 
     [Fact]
     public async Task SearchMovies_ValidQuery_ReturnsOkResult()
     {
-        // Arrange
-        var expectedMovies = new List<Movie>
+        var expectedMovies = new List<MovieDetailsDto>
         {
-            new()
-            {
-                TmdbId = 1,
-                Title = "Test Movie",
-                Overview = "Test Overview"
-            }
+            MovieDetailsDto().Build()
         };
 
-        _mockTmdbService
-            .Setup(x => x.SearchMoviesAsync("test", 1))
-            .ReturnsAsync(expectedMovies);
+        _mockMediator
+            .Setup(x => x.Send(It.IsAny<SearchMoviesQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<IEnumerable<MovieDetailsDto>>.Success(expectedMovies));
 
-        // Act
         var result = await _controller.SearchMovies("test");
 
-        // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsAssignableFrom<IEnumerable<Movie>>(okResult.Value);
+        var returnValue = Assert.IsAssignableFrom<IEnumerable<MovieDetailsDto>>(okResult.Value);
         Assert.Single(returnValue);
     }
 
     [Fact]
-    public async Task SearchMovies_EmptyQuery_ReturnsBadRequest()
+    public async Task SearchMovies_EmptyQuery_ReturnsOkWithFailureResult()
     {
-        // Act
+        _mockMediator
+            .Setup(x => x.Send(It.IsAny<SearchMoviesQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<IEnumerable<MovieDetailsDto>>.Failure(ErrorMessages.SearchQueryRequired));
+
         var result = await _controller.SearchMovies("");
 
-        // Assert
-        Assert.IsType<BadRequestObjectResult>(result.Result);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Null(okResult.Value);
     }
 
     [Fact]
     public async Task GetMovieDetails_ValidId_ReturnsOkResult()
     {
-        // Arrange
-        var expectedMovie = new Movie
-        {
-            TmdbId = 1,
-            Title = "Test Movie",
-            Overview = "Test Overview"
-        };
+        var expectedMovie = MovieDetailsDto().Build();
 
-        _mockTmdbService
-            .Setup(x => x.GetMovieDetailsAsync(1))
-            .ReturnsAsync(expectedMovie);
+        _mockMediator
+            .Setup(x => x.Send(It.IsAny<GetMovieDetailsQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MovieDetailsDto>.Success(expectedMovie));
 
-        // Act
         var result = await _controller.GetMovieDetails(1);
 
-        // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var returnValue = Assert.IsType<Movie>(okResult.Value);
+        var returnValue = Assert.IsType<MovieDetailsDto>(okResult.Value);
         Assert.Equal(1, returnValue.TmdbId);
     }
 
     [Fact]
-    public async Task GetMovieDetails_InvalidId_ReturnsNotFound()
+    public async Task GetMovieDetails_InvalidId_ReturnsOkWithFailureResult()
     {
-        // Arrange
-        _mockTmdbService
-            .Setup(x => x.GetMovieDetailsAsync(1))
-            .ReturnsAsync((Movie?)null);
+        _mockMediator
+            .Setup(x => x.Send(It.IsAny<GetMovieDetailsQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MovieDetailsDto>.Failure("Movie not found"));
 
-        // Act
         var result = await _controller.GetMovieDetails(1);
 
-        // Assert
-        Assert.IsType<NotFoundResult>(result.Result);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Null(okResult.Value);
+    }
+
+    [Fact]
+    public async Task GetPopularMovies_ReturnsOkResult()
+    {
+        var expectedMovies = new List<MovieDetailsDto>
+        {
+            MovieDetailsDto()
+                .WithTitle("Popular Movie")
+                .WithBackdropPath(null)
+                .Build()
+        };
+
+        _mockMediator
+            .Setup(x => x.Send(It.IsAny<GetPopularMoviesQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<IEnumerable<MovieDetailsDto>>.Success(expectedMovies));
+
+        var result = await _controller.GetPopularMovies();
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnValue = Assert.IsAssignableFrom<IEnumerable<MovieDetailsDto>>(okResult.Value);
+        Assert.Single(returnValue);
+    }
+
+    [Fact]
+    public async Task GetMoviesByGenre_ValidGenre_ReturnsOkResult()
+    {
+        var expectedMovies = new List<MovieDetailsDto>
+        {
+            MovieDetailsDto()
+                .WithTitle("Action Movie")
+                .WithBackdropPath(null)
+                .WithGenres("Action")
+                .Build()
+        };
+
+        _mockMediator
+            .Setup(x => x.Send(It.IsAny<GetMoviesByGenreQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<IEnumerable<MovieDetailsDto>>.Success(expectedMovies));
+
+        var result = await _controller.GetMoviesByGenre("Action");
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnValue = Assert.IsAssignableFrom<IEnumerable<MovieDetailsDto>>(okResult.Value);
+        Assert.Single(returnValue);
+    }
+
+    [Fact]
+    public async Task GetMoviesByGenre_InvalidGenre_ReturnsOkWithFailureResult()
+    {
+        _mockMediator
+            .Setup(x => x.Send(It.IsAny<GetMoviesByGenreQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<IEnumerable<MovieDetailsDto>>.Failure("Invalid genre"));
+
+        var result = await _controller.GetMoviesByGenre("InvalidGenre");
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Null(okResult.Value);
+    }
+
+    [Fact]
+    public async Task GetMovieDetailsByTmdbId_ValidId_ReturnsOkResult()
+    {
+        var expectedMovie = MovieDetailsDto()
+            .WithBackdropPath(null)
+            .Build();
+
+        _mockMediator
+            .Setup(x => x.Send(It.IsAny<GetMovieDetailsByTmdbIdQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MovieDetailsDto>.Success(expectedMovie));
+
+        var result = await _controller.GetMovieDetailsByTmdbId(1);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnValue = Assert.IsType<MovieDetailsDto>(okResult.Value);
+        Assert.Equal(1, returnValue.TmdbId);
+    }
+
+    [Fact]
+    public async Task GetMovieDetailsByTmdbId_InvalidId_ReturnsOkWithFailureResult()
+    {
+        _mockMediator
+            .Setup(x => x.Send(It.IsAny<GetMovieDetailsByTmdbIdQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MovieDetailsDto>.Failure("Movie with TMDB ID 1 not found"));
+
+        var result = await _controller.GetMovieDetailsByTmdbId(1);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Null(okResult.Value);
+    }
+
+    [Fact]
+    public async Task GetMovieDetailsByTmdbId_RateLimit_ReturnsOkWithFailureResult()
+    {
+        _mockMediator
+            .Setup(x => x.Send(It.IsAny<GetMovieDetailsByTmdbIdQuery>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<MovieDetailsDto>.Failure(ErrorMessages.TmdbRateLimitExceeded));
+
+        var result = await _controller.GetMovieDetailsByTmdbId(1);
+
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Null(okResult.Value);
     }
 } 

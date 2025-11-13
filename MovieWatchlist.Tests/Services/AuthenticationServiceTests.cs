@@ -2,13 +2,18 @@ using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Moq;
 using MovieWatchlist.Core.Configuration;
-using MovieWatchlist.Core.Commands;
+using MovieWatchlist.Application.Features.Auth.Commands.Register;
+using MovieWatchlist.Application.Features.Auth.Commands.Login;
+using MovieWatchlist.Application.Features.Auth.Commands.ForgotPassword;
+using MovieWatchlist.Application.Features.Auth.Commands.ResetPassword;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.ValueObjects;
 using MovieWatchlist.Application.Services;
 using MovieWatchlist.Infrastructure.Services;
+using MovieWatchlist.Tests.TestDataBuilders;
 using MovieWatchlist.Tests.Infrastructure;
+using static MovieWatchlist.Tests.TestDataBuilders.TestDataBuilder;
 using System.Security.Claims;
 using Xunit;
 using MovieWatchlist.Core.Constants;
@@ -18,7 +23,7 @@ namespace MovieWatchlist.Tests.Services;
 /// <summary>
 /// Unit tests for AuthenticationService
 /// </summary>
-public class AuthenticationServiceTests : UnitTestBase
+public class AuthenticationServiceTests
 {
     private readonly Mock<IUserRepository> _mockUserRepository;
     private readonly Mock<IRefreshTokenRepository> _mockRefreshTokenRepository;
@@ -108,12 +113,12 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var command = new RegisterCommand(
-            Username: "testuser",
-            Email: "existing@example.com",
-            Password: "Password123!"
+            Username: TestConstants.Users.DefaultUsername,
+            Email: TestConstants.Users.ExistingEmail,
+            Password: TestConstants.Users.ValidPassword1
         );
 
-        var existingUser = CreateTestUser(email: "existing@example.com");
+        var existingUser = User().WithEmail(TestConstants.Users.ExistingEmail).Build();
         var email = Email.Create(command.Email).Value!;
         _mockUserRepository.Setup(x => x.GetByEmailAsync(email))
             .ReturnsAsync(existingUser); // Existing user with same email
@@ -123,7 +128,7 @@ public class AuthenticationServiceTests : UnitTestBase
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be("Email is already registered");
+        result.Error.Should().Be(ErrorMessages.EmailAlreadyRegistered);
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
     }
@@ -133,9 +138,9 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var command = new RegisterCommand(
-            Username: "existinguser",
-            Email: "test@example.com",
-            Password: "Password123!"
+            Username: TestConstants.Users.ExistingUsername,
+            Email: TestConstants.Users.DefaultEmail,
+            Password: TestConstants.Users.ValidPassword1
         );
 
         // First call returns null (email check), second call returns existing user (username check)
@@ -144,14 +149,14 @@ public class AuthenticationServiceTests : UnitTestBase
         _mockUserRepository.Setup(x => x.GetByEmailAsync(email))
             .ReturnsAsync((User?)null); // No existing email
         _mockUserRepository.Setup(x => x.GetByUsernameAsync(username))
-            .ReturnsAsync(CreateTestUser(username: "existinguser"));
+            .ReturnsAsync(User().WithUsername(TestConstants.Users.ExistingUsername).Build());
 
         // Act
         var result = await _authenticationService.RegisterUserAsync(command);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be("Username is already taken");
+        result.Error.Should().Be(ErrorMessages.UsernameAlreadyTaken);
 
         _mockUserRepository.Verify(x => x.AddAsync(It.IsAny<User>()), Times.Never);
     }
@@ -182,7 +187,7 @@ public class AuthenticationServiceTests : UnitTestBase
         // Arrange
         var command = new RegisterCommand(
             Username: TestConstants.Users.DefaultUsername,
-            Email: "invalid-email",
+            Email: TestConstants.Users.InvalidEmail,
             Password: TestConstants.Users.DefaultPassword
         );
 
@@ -201,7 +206,7 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var command = new RegisterCommand(
-            Username: "user@name", // Invalid format (contains @)
+            Username: TestConstants.Users.InvalidUsername,
             Email: TestConstants.Users.DefaultEmail,
             Password: TestConstants.Users.DefaultPassword
         );
@@ -229,11 +234,7 @@ public class AuthenticationServiceTests : UnitTestBase
             Password: TestConstants.Users.DefaultPassword
         );
 
-        var user = User.Create(
-            Username.Create(TestConstants.Users.DefaultUsername).Value!,
-            Email.Create(TestConstants.Users.DefaultEmail).Value!,
-            new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword)
-        );
+        var user = User().WithPasswordHash(new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword)).Build();
         typeof(User).GetProperty("Id")!.SetValue(user, 1);
 
         _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
@@ -262,8 +263,8 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var command = new LoginCommand(
-            UsernameOrEmail: "nonexistent",
-            Password: "Password123!"
+            UsernameOrEmail: TestConstants.Users.NonexistentUsername,
+            Password: TestConstants.Users.ValidPassword1
         );
 
         _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
@@ -276,7 +277,7 @@ public class AuthenticationServiceTests : UnitTestBase
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().Be("Invalid username/email or password");
+        result.Error.Should().Be(ErrorMessages.InvalidCredentials);
         result.Value.Should().BeNull();
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
@@ -288,14 +289,10 @@ public class AuthenticationServiceTests : UnitTestBase
         // Arrange
         var command = new LoginCommand(
             UsernameOrEmail: TestConstants.Users.DefaultUsername,
-            Password: "WrongPassword123!"
+            Password: TestConstants.Users.WrongPassword
         );
 
-        var user = User.Create(
-            Username.Create(TestConstants.Users.DefaultUsername).Value!,
-            Email.Create(TestConstants.Users.DefaultEmail).Value!,
-            new PasswordHasher().HashPassword("CorrectPassword123!")
-        );
+        var user = User().WithPasswordHash(new PasswordHasher().HashPassword(TestConstants.Users.CorrectPassword)).Build();
         typeof(User).GetProperty("Id")!.SetValue(user, 1);
 
         _mockUserRepository.Setup(x => x.GetByUsernameAsync(It.IsAny<Username>()))
@@ -306,7 +303,7 @@ public class AuthenticationServiceTests : UnitTestBase
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.Error.Should().Be("Invalid username/email or password");
+        result.Error.Should().Be(ErrorMessages.InvalidCredentials);
         result.Value.Should().BeNull(); // Value should be null for failure results
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
@@ -321,11 +318,7 @@ public class AuthenticationServiceTests : UnitTestBase
             Password: TestConstants.Users.DefaultPassword
         );
 
-        var user = User.Create(
-            Username.Create(TestConstants.Users.DefaultUsername).Value!,
-            Email.Create(TestConstants.Users.DefaultEmail).Value!,
-            new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword)
-        );
+        var user = User().WithPasswordHash(new PasswordHasher().HashPassword(TestConstants.Users.DefaultPassword)).Build();
         typeof(User).GetProperty("Id")!.SetValue(user, 1);
 
         _mockUserRepository.Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
@@ -393,8 +386,8 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var validRefreshToken = TestConstants.Jwt.ValidRefreshToken;
-        var user = CreateTestUser(id: 1, username: TestConstants.Users.DefaultUsername, email: TestConstants.Users.DefaultEmail);
-        var refreshTokenEntity = RefreshToken.Create(1, validRefreshToken, 1);
+        var user = User().Build();
+        var refreshTokenEntity = RefreshToken().WithToken(validRefreshToken).Build();
         typeof(RefreshToken).GetProperty("Id")!.SetValue(refreshTokenEntity, 1);
         typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(refreshTokenEntity, false);
 
@@ -442,9 +435,7 @@ public class AuthenticationServiceTests : UnitTestBase
         // Arrange
         var expiredRefreshToken = TestConstants.Jwt.ExpiredRefreshToken;
         
-        var expiredTokenEntity = TestDataBuilder.RefreshToken()
-            .WithId(1)
-            .WithUserId(1)
+        var expiredTokenEntity = RefreshToken()
             .WithToken(expiredRefreshToken)
             .WithExpiresAt(DateTime.UtcNow.AddDays(-1))
             .WithIsRevoked(false)
@@ -464,7 +455,7 @@ public class AuthenticationServiceTests : UnitTestBase
         // Arrange
         var revokedRefreshToken = TestConstants.Jwt.RevokedRefreshToken;
         
-        var revokedTokenEntity = RefreshToken.Create(1, revokedRefreshToken, 1);
+        var revokedTokenEntity = RefreshToken().WithToken(revokedRefreshToken).WithIsRevoked(true).Build();
         typeof(RefreshToken).GetProperty("Id")!.SetValue(revokedTokenEntity, 1);
         typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(revokedTokenEntity, true);
 
@@ -558,7 +549,7 @@ public class AuthenticationServiceTests : UnitTestBase
     {
         // Arrange
         var command = new ForgotPasswordCommand(Email: TestConstants.Users.DefaultEmail);
-        var testUser = CreateTestUser(email: TestConstants.Users.DefaultEmail);
+        var testUser = User().Build();
 
         _mockUserRepository
             .Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
@@ -578,7 +569,7 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Be("If the email exists, a password reset link has been sent.");
+        result.Message.Should().Be(ErrorMessages.PasswordResetEmailSent);
 
         _mockPasswordResetTokenRepository.Verify(x => x.AddAsync(It.IsAny<PasswordResetToken>()), Times.Once);
         _mockEmailService.Verify(x => x.SendPasswordResetEmailAsync(
@@ -591,7 +582,7 @@ public class AuthenticationServiceTests : UnitTestBase
     public async Task ForgotPasswordAsync_WithNonExistentEmail_ReturnsSuccessButNoEmail()
     {
         // Arrange
-        var command = new ForgotPasswordCommand(Email: "nonexistent@example.com");
+        var command = new ForgotPasswordCommand(Email: TestConstants.Users.NonexistentEmail);
 
         _mockUserRepository
             .Setup(x => x.GetByEmailAsync(It.IsAny<Email>()))
@@ -603,7 +594,7 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Be("If the email exists, a password reset link has been sent.");
+        result.Message.Should().Be(ErrorMessages.PasswordResetEmailSent);
 
         _mockPasswordResetTokenRepository.Verify(x => x.AddAsync(It.IsAny<PasswordResetToken>()), Times.Never);
         _mockEmailService.Verify(x => x.SendPasswordResetEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
@@ -620,11 +611,12 @@ public class AuthenticationServiceTests : UnitTestBase
         var resetToken = Guid.NewGuid().ToString();
         var command = new ResetPasswordCommand(
             Token: resetToken,
-            NewPassword: "NewPassword123!"
+            NewPassword: TestConstants.Users.NewPassword,
+            ConfirmPassword: TestConstants.Users.NewPassword
         );
         
-        var testUser = CreateTestUser();
-        var passwordResetToken = PasswordResetToken.Create(testUser.Id, resetToken, 1);
+        var testUser = User().Build();
+        var passwordResetToken = PasswordResetToken().WithUserId(testUser.Id).WithToken(resetToken).Build();
 
         _mockPasswordResetTokenRepository
             .Setup(x => x.GetValidByTokenAsync(It.IsAny<string>()))
@@ -640,7 +632,7 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Message.Should().Be("Password has been reset successfully.");
+        result.Message.Should().Be(ErrorMessages.PasswordResetSuccess);
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.Is<User>(u => u.Id == testUser.Id)), Times.Once);
         _mockPasswordResetTokenRepository.Verify(x => x.UpdateAsync(It.Is<PasswordResetToken>(t => t.IsUsed == true)), Times.Once);
@@ -652,7 +644,8 @@ public class AuthenticationServiceTests : UnitTestBase
         // Arrange
         var command = new ResetPasswordCommand(
             Token: TestConstants.Jwt.InvalidToken,
-            NewPassword: "NewPassword123!"
+            NewPassword: TestConstants.Users.NewPassword,
+            ConfirmPassword: TestConstants.Users.NewPassword
         );
 
         _mockPasswordResetTokenRepository
@@ -665,7 +658,7 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeFalse();
-        result.Message.Should().Be("Invalid or expired reset token.");
+        result.Message.Should().Be(ErrorMessages.InvalidOrExpiredResetToken);
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
     }
@@ -677,11 +670,11 @@ public class AuthenticationServiceTests : UnitTestBase
         var resetToken = Guid.NewGuid().ToString();
         var command = new ResetPasswordCommand(
             Token: resetToken,
-            NewPassword: "NewPassword123!"
+            NewPassword: TestConstants.Users.NewPassword,
+            ConfirmPassword: TestConstants.Users.NewPassword
         );
         
-        var expiredToken = TestDataBuilder.PasswordResetToken()
-            .WithUserId(1)
+        var expiredToken = PasswordResetToken()
             .WithToken(resetToken)
             .WithExpiresAt(DateTime.UtcNow.AddHours(-1))
             .Build();
@@ -697,7 +690,7 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeFalse();
-        result.Message.Should().Be("Invalid or expired reset token.");
+        result.Message.Should().Be(ErrorMessages.InvalidOrExpiredResetToken);
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
     }
@@ -709,10 +702,11 @@ public class AuthenticationServiceTests : UnitTestBase
         var resetToken = Guid.NewGuid().ToString();
         var command = new ResetPasswordCommand(
             Token: resetToken,
-            NewPassword: "NewPassword123!"
+            NewPassword: TestConstants.Users.NewPassword,
+            ConfirmPassword: TestConstants.Users.NewPassword
         );
         
-        var usedToken = PasswordResetToken.Create(1, resetToken, 1);
+        var usedToken = PasswordResetToken().WithToken(resetToken).WithIsUsed(true).Build();
         typeof(PasswordResetToken).GetProperty("IsUsed")!.SetValue(usedToken, true);
 
         // Mock returns empty list because the token is used (filtered out by the query)
@@ -726,7 +720,7 @@ public class AuthenticationServiceTests : UnitTestBase
         // Assert
         result.Should().NotBeNull();
         result.Success.Should().BeFalse();
-        result.Message.Should().Be("Invalid or expired reset token.");
+        result.Message.Should().Be(ErrorMessages.InvalidOrExpiredResetToken);
 
         _mockUserRepository.Verify(x => x.UpdateAsync(It.IsAny<User>()), Times.Never);
     }
@@ -737,7 +731,7 @@ public class AuthenticationServiceTests : UnitTestBase
 
     private static RefreshToken CreateRefreshToken(int id, int userId, bool isRevoked)
     {
-        var token = RefreshToken.Create(userId, $"token-{id}", 1);
+        var token = RefreshToken().WithUserId(userId).WithToken($"token-{id}").Build();
         typeof(RefreshToken).GetProperty("Id")!.SetValue(token, id);
         typeof(RefreshToken).GetProperty("IsRevoked")!.SetValue(token, isRevoked);
         return token;

@@ -7,6 +7,7 @@ using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.ValueObjects;
 using MovieWatchlist.Infrastructure.Data;
+using MovieWatchlist.Tests.TestDataBuilders;
 using MovieWatchlist.Tests.Infrastructure;
 using Xunit;
 

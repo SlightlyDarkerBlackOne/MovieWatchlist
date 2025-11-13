@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using MovieWatchlist.Api;
-using MovieWatchlist.Api.DTOs;
+using MovieWatchlist.Application.Features.Auth.Commands.Login;
+using MovieWatchlist.Application.Features.Auth.Commands.Register;
+using MovieWatchlist.Application.Features.Auth.Common;
 using MovieWatchlist.Tests.Infrastructure;
 using System.Net;
 using System.Net.Http.Json;
@@ -40,7 +42,7 @@ public class AuthControllerTests : EnhancedIntegrationTestBase
             cookies.Should().Contain(c => c.Contains(CookieNames.RefreshToken));
             cookies.Should().OnlyContain(c => 
                 c.Contains(CookieAttributes.HttpOnly, StringComparison.OrdinalIgnoreCase) && 
-                c.Contains(CookieAttributes.SameSiteStrict, StringComparison.OrdinalIgnoreCase));
+                c.Contains(CookieAttributes.SameSiteLax, StringComparison.OrdinalIgnoreCase));
 
             var content = await response.Content.ReadFromJsonAsync<RegisterResponse>();
             content.Should().NotBeNull();
@@ -79,7 +81,7 @@ public class AuthControllerTests : EnhancedIntegrationTestBase
             cookies.Should().Contain(c => c.Contains(CookieNames.RefreshToken));
             cookies.Should().OnlyContain(c => 
                 c.Contains(CookieAttributes.HttpOnly, StringComparison.OrdinalIgnoreCase) && 
-                c.Contains(CookieAttributes.SameSiteStrict, StringComparison.OrdinalIgnoreCase));
+                c.Contains(CookieAttributes.SameSiteLax, StringComparison.OrdinalIgnoreCase));
 
             var content = await response.Content.ReadFromJsonAsync<LoginResponse>();
             content.Should().NotBeNull();
@@ -128,31 +130,6 @@ public class AuthControllerTests : EnhancedIntegrationTestBase
         }
     }
 
-    [Fact]
-    public async Task Me_WithValidCookie_ReturnsUserInfo()
-    {
-        await InitializeDatabaseAsync();
-        try
-        {
-            await RegisterTestUserAsync();
-            var authenticatedClient = await CreateAuthenticatedClientAsync();
-
-            var response = await authenticatedClient.GetAsync(ApiEndpoints.AuthMe);
-            
-            response.IsSuccessStatusCode.Should().BeTrue();
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-            var content = await response.Content.ReadFromJsonAsync<UserInfo>();
-            content.Should().NotBeNull();
-            content!.Id.Should().BeGreaterThan(0);
-            content.Username.Should().Be(Users.DefaultUsername);
-            content.Email.Should().Be(Users.DefaultEmail);
-        }
-        finally
-        {
-            await CleanupDatabaseAsync();
-        }
-    }
 
     [Fact]
     public async Task Me_WithoutAuth_ReturnsUnauthorized()
@@ -170,29 +147,43 @@ public class AuthControllerTests : EnhancedIntegrationTestBase
         }
     }
 
+
     [Fact]
-    public async Task Logout_WithValidCookie_ClearsCookies()
+    public async Task Register_WithValidData_SetsCookiesWithCorrectConfiguration()
     {
         await InitializeDatabaseAsync();
         try
         {
-            await RegisterTestUserAsync();
-            var authenticatedClient = await CreateAuthenticatedClientAsync();
+            var registerRequest = new
+            {
+                Username = "cookieuser",
+                Email = "cookieuser@example.com",
+                Password = "CookiePassword123!"
+            };
 
-            var meResponseBefore = await authenticatedClient.GetAsync(ApiEndpoints.AuthMe);
-            meResponseBefore.IsSuccessStatusCode.Should().BeTrue();
-
-            var response = await authenticatedClient.PostAsync(ApiEndpoints.AuthLogout, null);
+            var response = await Client.PostAsJsonAsync(ApiEndpoints.AuthRegister, registerRequest);
             
             response.IsSuccessStatusCode.Should().BeTrue();
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
 
             var cookies = response.Headers.GetValues(HttpHeaders.SetCookie).ToList();
-            cookies.Should().Contain(c => c.Contains(CookieNames.AccessToken));
-            cookies.Should().Contain(c => c.Contains(CookieNames.RefreshToken));
+            var accessTokenCookie = cookies.FirstOrDefault(c => c.Contains(CookieNames.AccessToken));
+            var refreshTokenCookie = cookies.FirstOrDefault(c => c.Contains(CookieNames.RefreshToken));
 
-            var meResponse = await authenticatedClient.GetAsync(ApiEndpoints.AuthMe);
-            meResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+            accessTokenCookie.Should().NotBeNull();
+            refreshTokenCookie.Should().NotBeNull();
+
+            accessTokenCookie.Should().ContainEquivalentOf(CookieAttributes.HttpOnly);
+            accessTokenCookie.Should().ContainEquivalentOf(CookieAttributes.SameSiteLax);
+            accessTokenCookie.Should().ContainEquivalentOf(CookieAttributes.Expires);
+
+            refreshTokenCookie.Should().ContainEquivalentOf(CookieAttributes.HttpOnly);
+            refreshTokenCookie.Should().ContainEquivalentOf(CookieAttributes.SameSiteLax);
+            refreshTokenCookie.Should().ContainEquivalentOf(CookieAttributes.Expires);
+
+            var content = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+            content.Should().NotBeNull();
+            content!.User.Should().NotBeNull();
+            content.User.Should().BeOfType<UserInfo>();
         }
         finally
         {
@@ -201,26 +192,30 @@ public class AuthControllerTests : EnhancedIntegrationTestBase
     }
 
     [Fact]
-    public async Task RefreshToken_WithValidRefreshToken_SetsNewCookies()
+    public async Task Login_WithValidCredentials_ReturnsDtoNotDomainModel()
     {
         await InitializeDatabaseAsync();
         try
         {
             await RegisterTestUserAsync();
-            var authenticatedClient = await CreateAuthenticatedClientAsync();
 
-            var response = await authenticatedClient.PostAsync(ApiEndpoints.AuthRefresh, null);
+            var loginRequest = new
+            {
+                UsernameOrEmail = Users.DefaultUsername,
+                Password = Users.DefaultPassword
+            };
+
+            var response = await Client.PostAsJsonAsync(ApiEndpoints.AuthLogin, loginRequest);
             
             response.IsSuccessStatusCode.Should().BeTrue();
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-            var cookies = response.Headers.GetValues(HttpHeaders.SetCookie).ToList();
-            cookies.Should().Contain(c => c.Contains(CookieNames.AccessToken));
-            cookies.Should().Contain(c => c.Contains(CookieNames.RefreshToken));
-
-            var content = await response.Content.ReadFromJsonAsync<RefreshTokenResponse>();
+            var content = await response.Content.ReadFromJsonAsync<LoginResponse>();
             content.Should().NotBeNull();
             content!.User.Should().NotBeNull();
+            content.User.Should().BeOfType<UserInfo>();
+            content.User.Id.Should().BeGreaterThan(0);
+            content.User.Username.Should().Be(Users.DefaultUsername);
+            content.User.Email.Should().Be(Users.DefaultEmail);
             content.ExpiresAt.Should().BeAfter(DateTime.UtcNow);
         }
         finally

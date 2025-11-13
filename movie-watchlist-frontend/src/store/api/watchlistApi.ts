@@ -21,9 +21,9 @@ export const watchlistApi = createApi({
       }),
       invalidatesTags: ['Watchlist', 'WatchlistStats'],
     }),
-    updateWatchlistItem: builder.mutation<WatchlistItem, { itemId: number; request: UpdateWatchlistRequest }>({
-      query: ({ itemId, request }) => ({
-        url: `/Watchlist/me/watchlist/item/${itemId}`,
+    updateWatchlistItem: builder.mutation<WatchlistItem, UpdateWatchlistRequest>({
+      query: (request) => ({
+        url: `/Watchlist/me/watchlist/item`,
         method: 'PUT',
         body: request,
       }),

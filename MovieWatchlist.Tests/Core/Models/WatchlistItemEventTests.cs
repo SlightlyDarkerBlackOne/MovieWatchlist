@@ -1,19 +1,18 @@
 using MovieWatchlist.Core.Events;
-using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.ValueObjects;
-using MovieWatchlist.Tests.Infrastructure;
+using static MovieWatchlist.Tests.TestDataBuilders.TestDataBuilder;
 using Xunit;
 
 namespace MovieWatchlist.Tests.Core.Models;
 
-public class WatchlistItemEventTests : UnitTestBase
+public class WatchlistItemEventTests
 {
     [Fact]
     public void MarkAsWatched_RaisesMovieWatchedEvent()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var item = WatchlistItem().WithMovie(movie).Build();
         item.ClearDomainEvents();
         
         // Act
@@ -36,8 +35,8 @@ public class WatchlistItemEventTests : UnitTestBase
     public void MarkAsWatched_DoesNotRaiseDuplicateEvents()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var item = WatchlistItem().WithMovie(movie).Build();
         item.MarkAsWatched();
         item.ClearDomainEvents();
         
@@ -53,8 +52,8 @@ public class WatchlistItemEventTests : UnitTestBase
     public void SetRating_RaisesMovieRatedEvent_WithPreviousRating()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var item = WatchlistItem().WithMovie(movie).Build();
         item.SetRating(Rating.Create(5).Value!);
         item.ClearDomainEvents();
         
@@ -78,8 +77,8 @@ public class WatchlistItemEventTests : UnitTestBase
     public void SetRating_FirstRating_RaisesEvent_WithNullPreviousRating()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var item = WatchlistItem().WithMovie(movie).Build();
         item.ClearDomainEvents();
         
         // Act
@@ -100,8 +99,8 @@ public class WatchlistItemEventTests : UnitTestBase
     public void SetFavorite_True_RaisesMovieFavoritedEvent()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var item = WatchlistItem().WithMovie(movie).Build();
         item.ClearDomainEvents();
         Assert.False(item.IsFavorite);
         
@@ -125,8 +124,8 @@ public class WatchlistItemEventTests : UnitTestBase
     public void SetFavorite_False_RaisesMovieFavoritedEvent()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var item = WatchlistItem().WithMovie(movie).Build();
         item.SetFavorite(true);
         item.ClearDomainEvents();
         
@@ -148,8 +147,8 @@ public class WatchlistItemEventTests : UnitTestBase
     public void SetFavorite_SameValue_DoesNotRaiseEvent()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var item = WatchlistItem().WithMovie(movie).Build();
         item.SetFavorite(true);
         item.ClearDomainEvents();
         
@@ -165,8 +164,8 @@ public class WatchlistItemEventTests : UnitTestBase
     public void ClearDomainEvents_RemovesAllEvents()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var item = WatchlistItem().WithMovie(movie).Build();
         item.MarkAsWatched();
         item.SetRating(Rating.Create(8).Value!);
         item.SetFavorite(true);
@@ -184,8 +183,8 @@ public class WatchlistItemEventTests : UnitTestBase
     public void MultipleOperations_RaisesMultipleEvents()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var item = WatchlistItem().WithMovie(movie).Build();
         
         // Act
         item.MarkAsWatched();
@@ -208,8 +207,8 @@ public class WatchlistItemEventTests : UnitTestBase
     public void DomainEvent_HasOccurredAtTimestamp()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var item = WatchlistItem().WithMovie(movie).Build();
         item.ClearDomainEvents();
         var beforeEvent = DateTime.UtcNow;
         
@@ -226,8 +225,8 @@ public class WatchlistItemEventTests : UnitTestBase
     public void DomainEvent_HasUniqueEventId()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var item = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var item = WatchlistItem().WithMovie(movie).Build();
         item.ClearDomainEvents();
         
         // Act

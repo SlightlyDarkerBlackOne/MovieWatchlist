@@ -23,10 +23,28 @@ public static class TestConstants
         public const string InactiveUsername = "inactiveuser";
         public const string InactiveEmail = "inactive@example.com";
         
+        public const string ExistingUsername = "existinguser";
+        public const string ExistingEmail = "existing@example.com";
+        public const string NonexistentUsername = "nonexistent";
+        public const string NonexistentEmail = "nonexistent@example.com";
+        public const string InvalidEmail = "invalid-email";
+        public const string InvalidUsername = "user@name";
+        
         // Invalid passwords for testing
         public const string WeakPassword = "weak";
         public const string ValidPassword1 = "Password1@";
         public const string ValidPassword2 = "Password2@";
+        public const string WrongPassword = "WrongPassword123!";
+        public const string CorrectPassword = "CorrectPassword123!";
+        public const string NewPassword = "NewPassword123!";
+        
+        public const string TestUser1Username = "user1";
+        public const string TestUser1Email = "user1@example.com";
+        public const string TestUser2Username = "user2";
+        public const string TestUser2Email = "user2@example.com";
+        public const int IntegrationTestUserId = 123;
+        public const string IntegrationTestUsername = "integrationtest";
+        public const string IntegrationTestEmail = "integration@test.com";
         
         // Invalid password scenarios
         public const string NoUppercasePassword = "password";
@@ -48,6 +66,12 @@ public static class TestConstants
         public const double DefaultPopularity = 50.0;
         public const string DefaultPosterPath = "/test-poster.jpg";
         public const string DefaultBackdropPath = "/test-backdrop.jpg";
+        
+        public const int TestTmdbId = 123;
+        public const string TestReleaseDate = "2023-01-01";
+        public const double TestVoteAverage = 8.5;
+        public const double TestPopularity = 85.5;
+        public const string TestOverview = "Test overview";
     }
 
     // Test JWT Data
@@ -69,6 +93,18 @@ public static class TestConstants
         public const string ExpiredRefreshToken = "expired-refresh-token";
         public const string RevokedRefreshToken = "revoked-refresh-token";
         public const string InvalidToken = "invalid-token";
+        
+        public const string WrongSecretKey = "WrongSecretKey123456789012345678901234567890";
+        public const string WrongIssuer = "WrongIssuer";
+        public const string WrongAudience = "WrongAudience";
+        
+        public const int ExpiredTokenMinutesAgo = 60;
+        public const int ExpiredTokenValidMinutesAgo = 120;
+        
+        public const string Base64RegexPattern = "^[A-Za-z0-9+/]*={0,2}$";
+        public const string UsernameClaimName = "username";
+        public const string EmailClaimName = "email";
+        public const string ExpirationClaimName = "exp";
     }
 
     // Test Cookie Names
@@ -90,6 +126,7 @@ public static class TestConstants
     {
         public const string HttpOnly = "HttpOnly";
         public const string SameSiteStrict = "SameSite=Strict";
+        public const string SameSiteLax = "SameSite=Lax";
         public const string Expires = "expires=";
     }
 
@@ -119,7 +156,7 @@ public static class TestConstants
         
         public const string WatchlistMe = "/api/Watchlist/me/watchlist";
         public const string WatchlistMeAdd = "/api/Watchlist/me/watchlist/add";
-        public const string WatchlistMeItem = "/api/Watchlist/me/watchlist/item/{watchlistItemId}";
+        public const string WatchlistMeItem = "/api/Watchlist/me/watchlist/item";
         public const string WatchlistMeStatistics = "/api/Watchlist/me/watchlist/statistics";
         public const string WatchlistMeFavorites = "/api/Watchlist/me/watchlist/favorites";
         public const string WatchlistMeRecommendations = "/api/Watchlist/me/watchlist/recommendations";

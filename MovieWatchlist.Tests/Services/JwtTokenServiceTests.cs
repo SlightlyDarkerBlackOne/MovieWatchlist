@@ -5,6 +5,7 @@ using MovieWatchlist.Core.Configuration;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Infrastructure.Services;
 using MovieWatchlist.Tests.Infrastructure;
+using static MovieWatchlist.Tests.TestDataBuilders.TestDataBuilder;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -15,7 +16,7 @@ namespace MovieWatchlist.Tests.Services;
 /// <summary>
 /// Unit tests for JwtTokenService
 /// </summary>
-public class JwtTokenServiceTests : UnitTestBase
+public class JwtTokenServiceTests
 {
     private readonly JwtSettings _jwtSettings;
     private readonly JwtTokenService _jwtTokenService;
@@ -34,7 +35,7 @@ public class JwtTokenServiceTests : UnitTestBase
         var options = Options.Create(_jwtSettings);
         _jwtTokenService = new JwtTokenService(options);
 
-        _testUser = CreateTestUser(id: 1, username: TestConstants.Users.DefaultUsername, email: TestConstants.Users.DefaultEmail);
+        _testUser = User().Build();
     }
 
     #region GenerateToken Tests
@@ -61,10 +62,10 @@ public class JwtTokenServiceTests : UnitTestBase
         // Assert
         principal.Should().NotBeNull();
         principal!.FindFirst(ClaimTypes.NameIdentifier)?.Value.Should().Be(_testUser.Id.ToString());
-        principal.FindFirst(ClaimTypes.Name)?.Value.Should().Be(_testUser.Username);
-        principal.FindFirst(ClaimTypes.Email)?.Value.Should().Be(_testUser.Email);
-        principal.FindFirst("username")?.Value.Should().Be(_testUser.Username);
-        principal.FindFirst("email")?.Value.Should().Be(_testUser.Email);
+        principal.FindFirst(ClaimTypes.Name)?.Value.Should().Be(_testUser.Username.Value);
+        principal.FindFirst(ClaimTypes.Email)?.Value.Should().Be(_testUser.Email.Value);
+        principal.FindFirst(TestConstants.Jwt.UsernameClaimName)?.Value.Should().Be(_testUser.Username.Value);
+        principal.FindFirst(TestConstants.Jwt.EmailClaimName)?.Value.Should().Be(_testUser.Email.Value);
     }
 
     [Fact]
@@ -76,7 +77,7 @@ public class JwtTokenServiceTests : UnitTestBase
 
         // Assert
         principal.Should().NotBeNull();
-        var expClaim = principal!.FindFirst("exp")?.Value;
+        var expClaim = principal!.FindFirst(TestConstants.Jwt.ExpirationClaimName)?.Value;
         expClaim.Should().NotBeNull();
 
         var expTime = DateTimeOffset.FromUnixTimeSeconds(long.Parse(expClaim!)).DateTime;
@@ -90,8 +91,8 @@ public class JwtTokenServiceTests : UnitTestBase
     public void GenerateToken_WithDifferentUsers_GeneratesDifferentTokens()
     {
         // Arrange
-        var user1 = CreateTestUser(id: 1, username: "user1", email: "user1@example.com");
-        var user2 = CreateTestUser(id: 2, username: "user2", email: "user2@example.com");
+        var user1 = User().WithUsername(TestConstants.Users.TestUser1Username).WithEmail(TestConstants.Users.TestUser1Email).Build();
+        var user2 = User().WithId(TestConstants.Users.SecondUserId).WithUsername(TestConstants.Users.TestUser2Username).WithEmail(TestConstants.Users.TestUser2Email).Build();
 
         // Act
         var token1 = _jwtTokenService.GenerateToken(user1);
@@ -113,7 +114,7 @@ public class JwtTokenServiceTests : UnitTestBase
 
         // Assert
         refreshToken.Should().NotBeNullOrEmpty();
-        refreshToken.Should().MatchRegex("^[A-Za-z0-9+/]*={0,2}$"); // Base64 format
+        refreshToken.Should().MatchRegex(TestConstants.Jwt.Base64RegexPattern);
     }
 
     [Fact]
@@ -188,8 +189,8 @@ public class JwtTokenServiceTests : UnitTestBase
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            NotBefore = DateTime.UtcNow.AddMinutes(-120), // Valid 2 hours ago
-            Expires = DateTime.UtcNow.AddMinutes(-60), // Expired 1 hour ago
+            NotBefore = DateTime.UtcNow.AddMinutes(-TestConstants.Jwt.ExpiredTokenValidMinutesAgo),
+            Expires = DateTime.UtcNow.AddMinutes(-TestConstants.Jwt.ExpiredTokenMinutesAgo),
             Issuer = _jwtSettings.Issuer,
             Audience = _jwtSettings.Audience,
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -211,8 +212,8 @@ public class JwtTokenServiceTests : UnitTestBase
         // Arrange
         var wrongSecretSettings = new JwtSettings
         {
-            SecretKey = "WrongSecretKey123456789012345678901234567890",
-            ExpirationMinutes = 60,
+            SecretKey = TestConstants.Jwt.WrongSecretKey,
+            ExpirationMinutes = TestConstants.Jwt.TestExpirationMinutes,
             Issuer = _jwtSettings.Issuer,
             Audience = _jwtSettings.Audience
         };
@@ -234,8 +235,8 @@ public class JwtTokenServiceTests : UnitTestBase
         var wrongIssuerSettings = new JwtSettings
         {
             SecretKey = _jwtSettings.SecretKey,
-            ExpirationMinutes = 60,
-            Issuer = "WrongIssuer",
+            ExpirationMinutes = TestConstants.Jwt.TestExpirationMinutes,
+            Issuer = TestConstants.Jwt.WrongIssuer,
             Audience = _jwtSettings.Audience
         };
 
@@ -256,9 +257,9 @@ public class JwtTokenServiceTests : UnitTestBase
         var wrongAudienceSettings = new JwtSettings
         {
             SecretKey = _jwtSettings.SecretKey,
-            ExpirationMinutes = 60,
+            ExpirationMinutes = TestConstants.Jwt.TestExpirationMinutes,
             Issuer = _jwtSettings.Issuer,
-            Audience = "WrongAudience"
+            Audience = TestConstants.Jwt.WrongAudience
         };
 
         var wrongAudienceService = new JwtTokenService(Options.Create(wrongAudienceSettings));
@@ -279,7 +280,11 @@ public class JwtTokenServiceTests : UnitTestBase
     public void GenerateAndValidateToken_WithValidFlow_WorksCorrectly()
     {
         // Arrange
-        var user = CreateTestUser(id: 123, username: "integrationtest", email: "integration@test.com");
+        var user = User()
+            .WithId(TestConstants.Users.IntegrationTestUserId)
+            .WithUsername(TestConstants.Users.IntegrationTestUsername)
+            .WithEmail(TestConstants.Users.IntegrationTestEmail)
+            .Build();
 
         // Act
         var token = _jwtTokenService.GenerateToken(user);
@@ -287,9 +292,9 @@ public class JwtTokenServiceTests : UnitTestBase
 
         // Assert
         principal.Should().NotBeNull();
-        principal!.FindFirst(ClaimTypes.NameIdentifier)?.Value.Should().Be("123");
-        principal.FindFirst(ClaimTypes.Name)?.Value.Should().Be("integrationtest");
-        principal.FindFirst(ClaimTypes.Email)?.Value.Should().Be("integration@test.com");
+        principal!.FindFirst(ClaimTypes.NameIdentifier)?.Value.Should().Be(TestConstants.Users.IntegrationTestUserId.ToString());
+        principal.FindFirst(ClaimTypes.Name)?.Value.Should().Be(TestConstants.Users.IntegrationTestUsername);
+        principal.FindFirst(ClaimTypes.Email)?.Value.Should().Be(TestConstants.Users.IntegrationTestEmail);
     }
 
     #endregion

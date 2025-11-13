@@ -12,45 +12,90 @@ A comprehensive movie management platform that allows users to discover, track, 
     |
     ├── MovieWatchlist.Api/              # Presentation Layer
     │   ├── Controllers/                 # API Controllers (HTTP endpoints)
-    │   │   ├── AuthController          # Authentication endpoints
-    │   │   ├── MoviesController        # Movie search and details
-    │   │   └── WatchlistController     # Watchlist management
+    │   │   ├── AuthController          # Authentication endpoints (MediatR)
+    │   │   ├── BaseApiController       # Base controller with token helpers
+    │   │   ├── MoviesController        # Movie search and details (MediatR)
+    │   │   └── WatchlistController     # Watchlist management (MediatR)
     │   ├── DTOs/                       # API Data Transfer Objects
     │   │   ├── AuthenticationDtos      # Auth request/response models
+    │   │   ├── MovieDetailsDto         # Movie details response DTO
     │   │   └── WatchlistDtos          # Watchlist request/response models
+    │   ├── Mapping/                     # Mapster mapping profiles
+    │   │   ├── AuthMappingProfile      # Auth DTO mappings
+    │   │   └── MovieMappingProfile     # Movie DTO mappings
     │   ├── Middleware/                 # Custom middleware
     │   │   ├── GlobalExceptionMiddleware # Error handling
-    │   │   ├── RateLimitingMiddleware  # Rate limiting
-    │   │   └── TransactionMiddleware   # Unit of Work per request
+    │   │   └── RateLimitingMiddleware  # Rate limiting
+    │   ├── Extensions/                  # Extension methods
+    │   │   └── ClaimsPrincipalExtensions # Claims helper extensions
+    │   ├── Helpers/                     # Helper classes
+    │   │   └── AuthCookieManager       # Cookie management for auth
+    │   ├── Options/                      # Options pattern classes
+    │   │   └── AuthCookieOptions        # Cookie configuration options
+    │   ├── Services/                     # API-level services
+    │   │   └── CurrentUserService      # Current user context service
     │   ├── Constants/                  # Configuration constants
     │   │   ├── ConfigurationConstants  # Configuration constants
+    │   │   ├── CookieNames             # Cookie name constants
     │   │   ├── EnvironmentVariables    # Environment variable names
     │   │   └── MiddlewareConstants     # Middleware constants
     │   └── Program.cs                  # Application entry point & DI setup
     |
     ├── MovieWatchlist.Application/      # Application Layer (Business Logic)
-    │   ├── Services/                   # Business logic implementations
-    │   │   ├── AuthenticationService   # User authentication & authorization
-    │   │   └── WatchlistService        # Watchlist business rules
-    │   ├── Validation/                 # Business validation rules
-    │   │   └── InputValidationService  # Input validation logic
-    │   └── Events/                     # Domain event handling
-    │       ├── DomainEventDispatcher   # Event dispatcher
-    │       └── Handlers/               # Event handlers
-    │           ├── LogActivityHandler  # Log domain events
-    │           └── UpdateStatisticsHandler # Update statistics
+    │   ├── Commands/                    # CQRS Commands (MediatR)
+    │   │   ├── AuthenticationCommands   # Register, Login, Reset Password, etc.
+    │   │   └── WatchlistCommands       # Add, Update, Remove watchlist items
+    │   ├── Queries/                     # CQRS Queries (MediatR)
+    │   │   ├── GetCurrentUserQuery      # Get current authenticated user
+    │   │   ├── MovieQueries            # Movie search, details, popular, genre
+    │   │   └── WatchlistQueries        # Get watchlist, statistics, filters
+    │   ├── Handlers/                    # MediatR Request Handlers
+    │   │   ├── Auth/                    # Authentication handlers
+    │   │   │   ├── CreateRefreshTokenCommandHandler
+    │   │   │   ├── ForgotPasswordCommandHandler
+    │   │   │   ├── GetCurrentUserQueryHandler
+    │   │   │   ├── LoginCommandHandler
+    │   │   │   ├── LogoutCommandHandler
+    │   │   │   ├── RefreshTokenCommandHandler
+    │   │   │   ├── RegisterCommandHandler
+    │   │   │   ├── ResetPasswordCommandHandler
+    │   │   │   └── ValidateTokenCommandHandler
+    │   │   ├── Movies/                  # Movie query handlers
+    │   │   │   ├── GetMovieDetailsByTmdbIdQueryHandler # With caching logic
+    │   │   │   ├── GetMovieDetailsQueryHandler
+    │   │   │   ├── GetMoviesByGenreQueryHandler
+    │   │   │   ├── GetPopularMoviesQueryHandler
+    │   │   │   └── SearchMoviesQueryHandler
+    │   │   └── Watchlist/               # Watchlist handlers
+    │   │       ├── AddToWatchlistCommandHandler
+    │   │       ├── GetFavoriteMoviesQueryHandler
+    │   │       ├── GetRecommendedMoviesQueryHandler
+    │   │       ├── GetUserStatisticsQueryHandler
+    │   │       ├── GetUserWatchlistQueryHandler
+    │   │       ├── GetWatchlistByGenreQueryHandler
+    │   │       ├── GetWatchlistByRatingRangeQueryHandler
+    │   │       ├── GetWatchlistByStatusQueryHandler
+    │   │       ├── GetWatchlistByYearRangeQueryHandler
+    │   │       ├── GetWatchlistItemByIdQueryHandler
+    │   │       ├── RemoveFromWatchlistCommandHandler
+    │   │       └── UpdateWatchlistItemCommandHandler
+    │   ├── Behaviors/                   # MediatR pipeline behaviors
+    │   │   └── TransactionBehavior      # Unit of Work per request
+    │   ├── Interfaces/                  # Application service interfaces
+    │   │   ├── IAuthenticationService  # Auth service interface
+    │   │   └── IWatchlistService       # Watchlist service interface
+    │   ├── Services/                    # Business logic implementations
+    │   │   ├── AuthenticationService    # User authentication & authorization
+    │   │   └── WatchlistService         # Watchlist business rules
+    │   └── Events/                      # Domain event handling
+    │       └── Handlers/                # Event handlers
+    │           └── UpdateStatisticsHandler # Update statistics on watchlist changes
     |
     ├── MovieWatchlist.Core/            # Domain Layer (Core Business)
-    │   ├── Commands/                   # Write operations (CQRS pattern)
-    │   │   ├── AuthenticationCommands  # Register, Login, Reset Password
-    │   │   └── WatchlistCommands      # Add, Update, Remove items
-    │   ├── Queries/                    # Read operations (CQRS pattern)
-    │   │   └── WatchlistQueries       # Get watchlist, statistics, filters
     │   ├── Configuration/              # Configuration models
     │   │   └── JwtSettings            # JWT configuration
     │   ├── Interfaces/                 # Service contracts (abstractions)
-    │   │   ├── IAuthenticationService  # Auth service interface
-    │   │   ├── IWatchlistService      # Watchlist service interface
+    │   │   ├── ICurrentUserService     # Current user context interface
     │   │   ├── IRepository            # Generic repository interface
     │   │   ├── IMovieRepository       # Movie data access interface
     │   │   ├── IWatchlistRepository   # Watchlist data access interface
@@ -63,6 +108,7 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   │   ├── IJwtTokenService       # JWT token service interface
     │   │   ├── IPasswordHasher        # Password hashing interface
     │   │   ├── IUnitOfWork            # Transaction management interface
+    │   │   ├── IRetryPolicyService    # Retry policy interface
     │   │   ├── IDomainEventDispatcher # Domain event dispatcher
     │   │   └── IDomainEventHandler    # Domain event handler
     │   ├── Models/                     # Domain entities (business objects)
@@ -70,14 +116,17 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   │   ├── User                   # User entity
     │   │   ├── Movie                  # Movie entity (cached from TMDB)
     │   │   ├── WatchlistItem          # Watchlist entry
+    │   │   ├── WatchlistStatistics    # Watchlist statistics aggregate
     │   │   ├── RefreshToken           # JWT refresh token
     │   │   └── PasswordResetToken     # Password reset token
     │   ├── ValueObjects/               # Domain value objects
     │   │   ├── Email                  # Email value object
-    │   │   ├── Username               # Username value object
-    │   │   └── Rating                 # Rating value object
+    │   │   ├── Password               # Password value object
+    │   │   ├── Rating                 # Rating value object
+    │   │   └── Username               # Username value object
     │   ├── Events/                     # Domain events
     │   │   ├── IDomainEvent           # Domain event interface
+    │   │   ├── AuthenticationEvents   # Authentication domain events
     │   │   └── WatchlistEvents        # Watchlist domain events
     │   ├── Specifications/             # Business rules (Specification pattern)
     │   │   ├── Specification          # Specification base class
@@ -98,6 +147,11 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   │   ├── MovieWatchlistDbContext # EF Core context
     │   │   └── MovieWatchlistDbContextFactory # Design-time factory
     │   ├── Migrations/                 # EF Core migrations
+    │   │   ├── InitialCreate          # Initial database schema
+    │   │   ├── AddPasswordResetToken  # Password reset support
+    │   │   ├── AddCreditsAndVideosToMovie # Movie credits/videos caching
+    │   │   ├── AddValueObjectsSupport # Value object support
+    │   │   └── AddUserStatisticsAndNullableRating # Statistics caching
     │   ├── Repositories/               # Data access implementations
     │   │   ├── EfRepository           # Generic repository (EF Core) + UnitOfWork
     │   │   ├── UserRepository         # User data access
@@ -111,30 +165,53 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   │   ├── EmailService           # Email sending (SMTP)
     │   │   ├── GenreService           # Genre mapping service
     │   │   ├── JwtTokenService        # JWT token generation/validation
-    │   │   └── PasswordHasher         # Password hashing (PBKDF2)
+    │   │   ├── PasswordHasher         # Password hashing (PBKDF2)
+    │   │   └── RetryPolicyService     # Retry policy implementation
+    │   ├── Behaviors/                  # Infrastructure behaviors
+    │   │   └── LoggingBehavior         # Request/response logging
+    │   ├── Events/                     # Domain event implementations
+    │   │   ├── DomainEventDispatcher   # Event dispatcher implementation
+    │   │   ├── LogActivityHandler     # Log domain events
+    │   │   ├── RefreshTokenCreatedEventHandler
+    │   │   ├── UserLoggedInEventHandler
+    │   │   ├── UserPasswordChangedEventHandler
+    │   │   └── UserRegisteredEventHandler
     │   └── DTOs/                       # Infrastructure-specific DTOs
     │       └── TmdbMovieDto           # TMDB API response models
     |
     ├── MovieWatchlist.Tests/           # Test Suite
-    │   ├── Application/                # Application layer tests
-    │   │   ├── AuthenticationServiceTests
-    │   │   └── WatchlistServiceTests
     │   ├── Controllers/                # Controller tests
-    │   │   └── AuthControllerTests
+    │   │   ├── AuthControllerTests     # Auth controller integration tests
+    │   │   ├── MoviesControllerTests   # Movies controller unit tests
+    │   │   └── WatchlistControllerTests # Watchlist controller tests
+    │   ├── Application/                # Application layer tests
+    │   │   └── Events/                 # Event handler tests
+    │   │       ├── DomainEventDispatcherTests
+    │   │       └── Handlers/
+    │   │           └── LogActivityHandlerTests
     │   ├── Core/                       # Domain layer tests
-    │   │   └── Models/
-    │   │       └── WatchlistItemEventTests
-    │   ├── Infrastructure/             # Infrastructure tests
-    │   │   ├── Repositories/          # Repository tests
-    │   │   └── Services/              # Service tests
+    │   │   ├── Models/
+    │   │   │   └── WatchlistItemEventTests
+    │   │   └── ValueObjects/
+    │   │       └── PasswordValueObjectTests
+    │   ├── Infrastructure/             # Infrastructure test utilities
+    │   │   ├── EnhancedIntegrationTestBase # Enhanced integration test base
+    │   │   ├── IntegrationTestBase     # Base class for integration tests
+    │   │   ├── TestConstants          # Test constants and fixtures
+    │   │   ├── TestDatabaseSeeder     # Database seeding utilities
+    │   │   ├── TestDataBuilder        # Test data builder pattern
+    │   │   ├── TestExtensions         # Test helper extensions
+    │   │   ├── UnitTestBase           # Base class for unit tests
+    │   │   └── WebApplicationFactoryExtensions # Web app factory helpers
     │   ├── Integration/                # End-to-end tests
-    │   │   ├── AuthFlowTests
-    │   │   └── WatchlistFlowTests
+    │   │   ├── DomainEventsIntegrationTests
+    │   │   └── InfrastructureIntegrationTests
     │   └── Services/                   # Service unit tests
     │       ├── AuthenticationServiceTests
-    │       ├── WatchlistServiceTests
-    │       ├── InputValidationServiceTests
-    │       └── DomainEventDispatcherTests
+    │       ├── GenreServiceTests
+    │       ├── JwtTokenServiceTests
+    │       ├── TmdbServiceTests
+    │       └── WatchlistServiceTests
     |
     └── movie-watchlist-frontend/       # React Frontend
         ├── src/
@@ -147,10 +224,18 @@ A comprehensive movie management platform that allows users to discover, track, 
         │   │   ├── common/             # Common components
         │   │   │   ├── ErrorBoundary   # Error boundary wrapper
         │   │   │   ├── Header           # Main navigation header
+        │   │   │   ├── HeaderAuthButtons # Auth buttons in header
+        │   │   │   ├── HeaderLogo       # Logo component
+        │   │   │   ├── HeaderSearch     # Search in header
+        │   │   │   ├── LoadingSpinner   # Loading spinner
         │   │   │   ├── LoginRequiredDialog   # Login prompt dialog
         │   │   │   ├── QueryErrorBoundary    # RTK Query error boundary
         │   │   │   ├── SearchDropdown   # Search autocomplete
+        │   │   │   ├── SkipLink         # Accessibility skip link
         │   │   │   └── skeletons/       # Loading skeleton components
+        │   │   │       ├── MovieCardSkeleton
+        │   │   │       ├── MovieDetailsSkeleton
+        │   │   │       └── WatchlistItemSkeleton
         │   │   ├── dialogs/            # Modal dialogs
         │   │   │   ├── AddToWatchlistDialog    # Add to watchlist dialog
         │   │   │   └── EditWatchlistItemDialog  # Edit watchlist item dialog
@@ -161,6 +246,7 @@ A comprehensive movie management platform that allows users to discover, track, 
         │   │   │   ├── InfiniteMovieList      # Infinite scroll list
         │   │   │   ├── MovieCard               # Movie card component
         │   │   │   ├── MovieGenres             # Genre chips
+        │   │   │   ├── MovieList                # Movie list component
         │   │   │   ├── MovieMainDetails        # Movie detail header
         │   │   │   ├── MovieSearch             # Search input
         │   │   │   └── TopCastCrew             # Cast & crew display
@@ -172,7 +258,8 @@ A comprehensive movie management platform that allows users to discover, track, 
         │   │   │   └── WatchlistStats          # Watchlist statistics
         │   │   ├── ui/                 # UI state components
         │   │   │   ├── EmptyState      # Empty state display
-        │   │   │   └── ErrorState      # Error state display
+        │   │   │   ├── ErrorState      # Error state display
+        │   │   │   └── SuccessToast    # Success toast notification
         │   │   └── watchlist/          # Watchlist components
         │   │       ├── WatchlistGrid    # Watchlist grid layout
         │   │       ├── WatchlistItemCard       # Watchlist item card
@@ -182,10 +269,15 @@ A comprehensive movie management platform that allows users to discover, track, 
         │   │   ├── AuthContext         # Authentication state
         │   │   └── WatchlistContext    # Watchlist state (Set-based O(1) lookups)
         │   ├── hooks/                  # Custom React hooks
+        │   │   ├── useAddToWatchlistDialog # Watchlist dialog hook
+        │   │   ├── useFeaturedMovies   # Featured movies hook
         │   │   ├── useForms            # Form handling hooks
         │   │   ├── useInfiniteMovies   # Infinite scroll hook
+        │   │   ├── useMovieSearch      # Movie search hook
+        │   │   ├── useSuccessToast     # Success toast hook
         │   │   ├── useWatchlistFilters # Watchlist filtering logic
-        │   │   └── useWatchlistOperations  # RTK Query hook exports
+        │   │   ├── useWatchlistOperations  # RTK Query hook exports
+        │   │   └── useWatchlistPresence # Check if movie in watchlist
         │   ├── pages/                  # Page components
         │   │   ├── MoviesPage          # Movie discovery page
         │   │   ├── MovieDetailsPage    # Movie detail page
@@ -200,8 +292,7 @@ A comprehensive movie management platform that allows users to discover, track, 
         │   │   ├── movieService      # Movie utilities (TMDB helpers)
         │   │   └── watchlistService  # Watchlist utilities (status helpers)
         │   ├── constants/              # Application constants
-        │   │   ├── formConstants      # Form validation constants
-        │   │   └── routeConstants     # Route definitions
+        │   │   └── constants          # Route and API endpoint constants
         │   ├── theme/                  # Material-UI theme
         │   │   ├── colors            # Color palette
         │   │   ├── theme             # Theme configuration
@@ -226,6 +317,8 @@ A comprehensive movie management platform that allows users to discover, track, 
         │   │   └── AuthLayout       # Authentication layout
         │   ├── __tests__/             # Integration tests
         │   │   ├── integration/     # E2E integration tests
+        │   │   │   ├── moviesApi.test.ts
+        │   │   │   └── watchlistApi.test.ts
         │   │   └── fixtures/        # Test fixtures
         │   ├── App.tsx                # Main app component
         │   ├── index.tsx              # Entry point

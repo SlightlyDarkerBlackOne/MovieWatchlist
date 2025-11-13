@@ -6,7 +6,7 @@ using Xunit;
 
 namespace MovieWatchlist.Tests.Core.ValueObjects;
 
-public class PasswordValueObjectTests : UnitTestBase
+public class PasswordValueObjectTests
 {
     [Theory]
     [InlineData(TestConstants.Users.DefaultPassword)]

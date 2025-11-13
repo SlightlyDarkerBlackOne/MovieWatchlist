@@ -1,8 +1,5 @@
 using System.Net;
 using System.Text.Json;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using MovieWatchlist.Api.Constants;
 using MovieWatchlist.Core.Exceptions;
 
@@ -73,6 +70,27 @@ public class GlobalExceptionMiddleware
                 {
                     code = MiddlewareConstants.ERROR_CODE_BAD_REQUEST,
                     message = MiddlewareConstants.ERROR_MESSAGE_INVALID_REQUEST_PARAMETERS,
+                    timestamp = DateTime.UtcNow
+                }
+            },
+            RateLimitException rateLimitEx => new
+            {
+                statusCode = (int)HttpStatusCode.TooManyRequests,
+                error = new
+                {
+                    code = rateLimitEx.ErrorCode,
+                    message = rateLimitEx.Message,
+                    details = rateLimitEx.Details,
+                    timestamp = DateTime.UtcNow
+                }
+            },
+            ExternalServiceException externalEx => new
+            {
+                statusCode = externalEx.StatusCode,
+                error = new
+                {
+                    code = externalEx.ErrorCode,
+                    message = externalEx.Message,
                     timestamp = DateTime.UtcNow
                 }
             },
