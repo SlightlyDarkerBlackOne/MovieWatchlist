@@ -1,8 +1,8 @@
 using MediatR;
+using MovieWatchlist.Application.Features.Movies.Common;
 using MovieWatchlist.Core.Common;
-using MovieWatchlist.Core.Models;
 
 namespace MovieWatchlist.Application.Features.Movies.Queries.GetMovieDetailsByTmdbId;
 
-public record GetMovieDetailsByTmdbIdQuery(int TmdbId) : IRequest<Result<Movie>>;
+public record GetMovieDetailsByTmdbIdQuery(int TmdbId) : IRequest<Result<MovieDetailsDto>>;
 

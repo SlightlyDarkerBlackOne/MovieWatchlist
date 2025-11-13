@@ -161,8 +161,7 @@ describe('Watchlist RTK Query API', () => {
 
   describe('updateWatchlistItem', () => {
     it('should update watchlist item successfully', async () => {
-      const itemId = TestConstants.Watchlist.DefaultItemId;
-      const request = { userRating: 4.5 };
+      const request = { watchlistItemId: TestConstants.Watchlist.DefaultItemId, userRating: 4.5 };
       const updatedItem = { ...mockWatchlistItem, userRating: 4.5 };
 
       server.use(
@@ -172,15 +171,14 @@ describe('Watchlist RTK Query API', () => {
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.updateWatchlistItem.initiate({ itemId, request })
+        watchlistApi.endpoints.updateWatchlistItem.initiate(request)
       );
 
       expect(result.data).toEqual(updatedItem);
     });
 
     it('should handle item not found error', async () => {
-      const itemId = TestConstants.Users.NonExistentUserId;
-      const request = { userRating: 5 };
+      const request = { watchlistItemId: TestConstants.Users.NonExistentUserId, userRating: 5 };
 
       server.use(
         http.put(TestConstants.ApiEndpoints.WatchlistItem, () => {
@@ -189,15 +187,14 @@ describe('Watchlist RTK Query API', () => {
       );
 
       const result = await store.dispatch(
-        watchlistApi.endpoints.updateWatchlistItem.initiate({ itemId, request })
+        watchlistApi.endpoints.updateWatchlistItem.initiate(request)
       );
 
       expect(result.error).toBeDefined();
     });
 
     it('should invalidate cache after updating', async () => {
-      const itemId = TestConstants.Watchlist.DefaultItemId;
-      const request = { userRating: 4.5 };
+      const request = { watchlistItemId: TestConstants.Watchlist.DefaultItemId, userRating: 4.5 };
 
       server.use(
         http.put(TestConstants.ApiEndpoints.WatchlistItem, () => {
@@ -206,7 +203,7 @@ describe('Watchlist RTK Query API', () => {
       );
 
       await store.dispatch(
-        watchlistApi.endpoints.updateWatchlistItem.initiate({ itemId, request })
+        watchlistApi.endpoints.updateWatchlistItem.initiate(request)
       );
 
       expect(true).toBe(true);

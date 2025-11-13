@@ -1,5 +1,6 @@
+using Mapster;
 using MediatR;
-using MovieWatchlist.Application.Features.Movies.Queries.GetMovieDetailsByTmdbId;
+using MovieWatchlist.Application.Features.Movies.Common;
 using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Interfaces;
@@ -7,7 +8,7 @@ using MovieWatchlist.Core.Models;
 
 namespace MovieWatchlist.Application.Features.Movies.Queries.GetMovieDetailsByTmdbId;
 
-public class GetMovieDetailsByTmdbIdQueryHandler : IRequestHandler<GetMovieDetailsByTmdbIdQuery, Result<Movie>>
+public class GetMovieDetailsByTmdbIdQueryHandler : IRequestHandler<GetMovieDetailsByTmdbIdQuery, Result<MovieDetailsDto>>
 {
     private readonly ITmdbService _tmdbService;
     private readonly IMovieRepository _movieRepository;
@@ -20,47 +21,37 @@ public class GetMovieDetailsByTmdbIdQueryHandler : IRequestHandler<GetMovieDetai
         _movieRepository = movieRepository;
     }
 
-    public async Task<Result<Movie>> Handle(GetMovieDetailsByTmdbIdQuery request, CancellationToken cancellationToken)
+    public async Task<Result<MovieDetailsDto>> Handle(GetMovieDetailsByTmdbIdQuery request, CancellationToken cancellationToken)
     {
-        try
+        var cachedMovie = await _movieRepository.GetByTmdbIdAsync(request.TmdbId);
+        if (cachedMovie != null && HasSupplementalData(cachedMovie))
         {
-            var cachedMovie = await _movieRepository.GetByTmdbIdAsync(request.TmdbId);
-            if (cachedMovie != null && HasSupplementalData(cachedMovie))
-            {
-                return Result<Movie>.Success(cachedMovie);
-            }
-
-            var movie = await _tmdbService.GetMovieDetailsAsync(request.TmdbId);
-            if (movie == null)
-            {
-                var notFoundMessage = string.Format(ErrorMessages.MovieWithTmdbIdNotFound, request.TmdbId);
-                return Result<Movie>.Failure(notFoundMessage);
-            }
-
-            Movie persistedMovie;
-            if (cachedMovie == null)
-            {
-                await _movieRepository.AddAsync(movie);
-                persistedMovie = movie;
-            }
-            else
-            {
-                UpdateCachedMovie(cachedMovie, movie);
-                await _movieRepository.UpdateAsync(cachedMovie);
-                persistedMovie = cachedMovie;
-            }
-
-            return Result<Movie>.Success(persistedMovie);
+            var dto = cachedMovie.Adapt<MovieDetailsDto>();
+            return Result<MovieDetailsDto>.Success(dto);
         }
-        catch (HttpRequestException ex) when (ex.Message.Contains("429", StringComparison.Ordinal))
+
+        var movie = await _tmdbService.GetMovieDetailsAsync(request.TmdbId);
+        if (movie == null)
         {
-            return Result<Movie>.Failure(ErrorMessages.TmdbRateLimitExceeded);
+            var notFoundMessage = string.Format(ErrorMessages.MovieWithTmdbIdNotFound, request.TmdbId);
+            return Result<MovieDetailsDto>.Failure(notFoundMessage);
         }
-        catch (Exception ex)
+
+        Movie persistedMovie;
+        if (cachedMovie == null)
         {
-            var errorMessage = $"{ErrorMessages.FailedToFetchMovieData}: {ex.Message}";
-            return Result<Movie>.Failure(errorMessage);
+            await _movieRepository.AddAsync(movie);
+            persistedMovie = movie;
         }
+        else
+        {
+            UpdateCachedMovie(cachedMovie, movie);
+            await _movieRepository.UpdateAsync(cachedMovie);
+            persistedMovie = cachedMovie;
+        }
+
+        var resultDto = persistedMovie.Adapt<MovieDetailsDto>();
+        return Result<MovieDetailsDto>.Success(resultDto);
     }
 
     private static bool HasSupplementalData(Movie movie)

@@ -1,4 +1,3 @@
-using Mapster;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using MovieWatchlist.Application.Features.Movies.Common;
@@ -7,7 +6,6 @@ using MovieWatchlist.Application.Features.Movies.Queries.GetMovieDetailsByTmdbId
 using MovieWatchlist.Application.Features.Movies.Queries.GetMoviesByGenre;
 using MovieWatchlist.Application.Features.Movies.Queries.GetPopularMovies;
 using MovieWatchlist.Application.Features.Movies.Queries.SearchMovies;
-using MovieWatchlist.Core.Models;
 
 namespace MovieWatchlist.Api.Controllers;
 
@@ -23,39 +21,35 @@ public class MoviesController : ControllerBase
     }
 
     [HttpGet("search")]
-    public async Task<ActionResult<IEnumerable<Movie>>> SearchMovies([FromQuery] string query, [FromQuery] int page = 1)
+    public async Task<ActionResult<IEnumerable<MovieDetailsDto>>> SearchMovies([FromQuery] string query, [FromQuery] int page = 1)
     {
         var result = await _mediator.Send(new SearchMoviesQuery(query, page));
 
-        var response = result.Value.Adapt<IEnumerable<MovieDetailsDto>>();
-        return Ok(response);
+        return Ok(result.Value);
     }
 
     [HttpGet("{tmdbId}")]
-    public async Task<ActionResult<Movie>> GetMovieDetails(int tmdbId)
+    public async Task<ActionResult<MovieDetailsDto>> GetMovieDetails(int tmdbId)
     {
         var result = await _mediator.Send(new GetMovieDetailsQuery(tmdbId));
 
-        var response = result.Value.Adapt<MovieDetailsDto>();
-        return Ok(response);
+        return Ok(result.Value);
     }
 
     [HttpGet("popular")]
-    public async Task<ActionResult<IEnumerable<Movie>>> GetPopularMovies([FromQuery] int page = 1)
+    public async Task<ActionResult<IEnumerable<MovieDetailsDto>>> GetPopularMovies([FromQuery] int page = 1)
     {
         var result = await _mediator.Send(new GetPopularMoviesQuery(page));
 
-        var response = result.Value.Adapt<IEnumerable<MovieDetailsDto>>();
-        return Ok(response);
+        return Ok(result.Value);
     }
 
     [HttpGet("genre/{genre}")]
-    public async Task<ActionResult<IEnumerable<Movie>>> GetMoviesByGenre(string genre, [FromQuery] int page = 1)
+    public async Task<ActionResult<IEnumerable<MovieDetailsDto>>> GetMoviesByGenre(string genre, [FromQuery] int page = 1)
     {
         var result = await _mediator.Send(new GetMoviesByGenreQuery(genre, page));
 
-        var response = result.Value.Adapt<IEnumerable<MovieDetailsDto>>();
-        return Ok(response);
+        return Ok(result.Value);
     }
 
     [HttpGet("tmdb/{tmdbId}")]
@@ -63,7 +57,6 @@ public class MoviesController : ControllerBase
     {
         var result = await _mediator.Send(new GetMovieDetailsByTmdbIdQuery(tmdbId));
 
-        var response = result.Value.Adapt<MovieDetailsDto>();
-        return Ok(response);
+        return Ok(result.Value);
     }
 } 

@@ -114,7 +114,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 if (string.IsNullOrEmpty(context.Token))
                 {
-                    var tokenFromCookie = context.Request.Cookies[MovieWatchlist.Api.Constants.CookieNames.AccessToken];
+                    var tokenFromCookie = context.Request.Cookies[MovieWatchlist.Core.Constants.CookieNames.AccessToken];
                     if (!string.IsNullOrEmpty(tokenFromCookie))
                     {
                         context.Token = tokenFromCookie;
@@ -173,6 +173,7 @@ builder.Services.AddMediatR(cfg =>
 });
 
 builder.Services.AddScoped<IAuthCookieManager, AuthCookieManager>();
+builder.Services.AddScoped<IAuthCookieService, AuthCookieService>();
 
 // Register Application services
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
@@ -184,6 +185,7 @@ builder.Services.AddScoped<IRetryPolicyService, RetryPolicyService>();
 // HttpContext + Current User
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<ITokenExtractor, TokenExtractor>();
 
 // Register Infrastructure services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -194,6 +196,7 @@ builder.Services.AddHttpClient<ITmdbService, TmdbService>();
 
 builder.Services.AddMapster();
 TypeAdapterConfig.GlobalSettings.Scan(typeof(AuthMappingProfile).Assembly);
+TypeAdapterConfig.GlobalSettings.Scan(typeof(MovieWatchlist.Application.Features.Movies.Common.MovieMappingProfile).Assembly);
 
 // Add CORS services
 builder.Services.AddCors(options =>

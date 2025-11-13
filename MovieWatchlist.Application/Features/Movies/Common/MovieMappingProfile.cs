@@ -1,9 +1,8 @@
 using System.Text.Json;
 using Mapster;
-using MovieWatchlist.Application.Features.Movies.Common;
 using MovieWatchlist.Core.Models;
 
-namespace MovieWatchlist.Api.Mapping;
+namespace MovieWatchlist.Application.Features.Movies.Common;
 
 public class MovieMappingProfile : IRegister
 {

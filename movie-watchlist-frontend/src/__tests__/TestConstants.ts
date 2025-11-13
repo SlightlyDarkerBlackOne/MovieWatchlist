@@ -33,7 +33,7 @@ export const TestConstants = {
   ApiEndpoints: {
     WatchlistMe: '*/Watchlist/me/watchlist',
     WatchlistAdd: '*/Watchlist/me/watchlist/add',
-    WatchlistItem: '*/Watchlist/me/watchlist/item/:itemId',
+    WatchlistItem: '*/Watchlist/me/watchlist/item',
     WatchlistStatistics: '*/Watchlist/me/watchlist/statistics',
   },
 

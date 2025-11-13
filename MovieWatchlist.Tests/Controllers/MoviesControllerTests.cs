@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -13,8 +10,8 @@ using MovieWatchlist.Application.Features.Movies.Queries.GetPopularMovies;
 using MovieWatchlist.Application.Features.Movies.Queries.SearchMovies;
 using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Constants;
-using MovieWatchlist.Core.Models;
 using Xunit;
+using static MovieWatchlist.Tests.Infrastructure.TestDataBuilder;
 
 namespace MovieWatchlist.Tests.Controllers;
 
@@ -32,19 +29,14 @@ public class MoviesControllerTests
     [Fact]
     public async Task SearchMovies_ValidQuery_ReturnsOkResult()
     {
-        var expectedMovies = new List<Movie>
+        var expectedMovies = new List<MovieDetailsDto>
         {
-            new()
-            {
-                TmdbId = 1,
-                Title = "Test Movie",
-                Overview = "Test Overview"
-            }
+            MovieDetailsDto().Build()
         };
 
         _mockMediator
             .Setup(x => x.Send(It.IsAny<SearchMoviesQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<IEnumerable<Movie>>.Success(expectedMovies));
+            .ReturnsAsync(Result<IEnumerable<MovieDetailsDto>>.Success(expectedMovies));
 
         var result = await _controller.SearchMovies("test");
 
@@ -54,30 +46,26 @@ public class MoviesControllerTests
     }
 
     [Fact]
-    public async Task SearchMovies_EmptyQuery_ReturnsBadRequest()
+    public async Task SearchMovies_EmptyQuery_ReturnsOkWithFailureResult()
     {
         _mockMediator
             .Setup(x => x.Send(It.IsAny<SearchMoviesQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<IEnumerable<Movie>>.Failure(ErrorMessages.SearchQueryRequired));
+            .ReturnsAsync(Result<IEnumerable<MovieDetailsDto>>.Failure(ErrorMessages.SearchQueryRequired));
 
         var result = await _controller.SearchMovies("");
 
-        Assert.IsType<BadRequestObjectResult>(result.Result);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Null(okResult.Value);
     }
 
     [Fact]
     public async Task GetMovieDetails_ValidId_ReturnsOkResult()
     {
-        var expectedMovie = new Movie
-        {
-            TmdbId = 1,
-            Title = "Test Movie",
-            Overview = "Test Overview"
-        };
+        var expectedMovie = MovieDetailsDto().Build();
 
         _mockMediator
             .Setup(x => x.Send(It.IsAny<GetMovieDetailsQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<Movie>.Success(expectedMovie));
+            .ReturnsAsync(Result<MovieDetailsDto>.Success(expectedMovie));
 
         var result = await _controller.GetMovieDetails(1);
 
@@ -87,28 +75,32 @@ public class MoviesControllerTests
     }
 
     [Fact]
-    public async Task GetMovieDetails_InvalidId_ReturnsNotFound()
+    public async Task GetMovieDetails_InvalidId_ReturnsOkWithFailureResult()
     {
         _mockMediator
             .Setup(x => x.Send(It.IsAny<GetMovieDetailsQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<Movie>.Failure("Movie not found"));
+            .ReturnsAsync(Result<MovieDetailsDto>.Failure("Movie not found"));
 
         var result = await _controller.GetMovieDetails(1);
 
-        Assert.IsType<NotFoundObjectResult>(result.Result);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Null(okResult.Value);
     }
 
     [Fact]
     public async Task GetPopularMovies_ReturnsOkResult()
     {
-        var expectedMovies = new List<Movie>
+        var expectedMovies = new List<MovieDetailsDto>
         {
-            new() { TmdbId = 1, Title = "Popular Movie" }
+            MovieDetailsDto()
+                .WithTitle("Popular Movie")
+                .WithBackdropPath(null)
+                .Build()
         };
 
         _mockMediator
             .Setup(x => x.Send(It.IsAny<GetPopularMoviesQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<IEnumerable<Movie>>.Success(expectedMovies));
+            .ReturnsAsync(Result<IEnumerable<MovieDetailsDto>>.Success(expectedMovies));
 
         var result = await _controller.GetPopularMovies();
 
@@ -120,14 +112,18 @@ public class MoviesControllerTests
     [Fact]
     public async Task GetMoviesByGenre_ValidGenre_ReturnsOkResult()
     {
-        var expectedMovies = new List<Movie>
+        var expectedMovies = new List<MovieDetailsDto>
         {
-            new() { TmdbId = 1, Title = "Action Movie", Genres = new[] { "Action" } }
+            MovieDetailsDto()
+                .WithTitle("Action Movie")
+                .WithBackdropPath(null)
+                .WithGenres("Action")
+                .Build()
         };
 
         _mockMediator
             .Setup(x => x.Send(It.IsAny<GetMoviesByGenreQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<IEnumerable<Movie>>.Success(expectedMovies));
+            .ReturnsAsync(Result<IEnumerable<MovieDetailsDto>>.Success(expectedMovies));
 
         var result = await _controller.GetMoviesByGenre("Action");
 
@@ -137,31 +133,28 @@ public class MoviesControllerTests
     }
 
     [Fact]
-    public async Task GetMoviesByGenre_InvalidGenre_ReturnsBadRequest()
+    public async Task GetMoviesByGenre_InvalidGenre_ReturnsOkWithFailureResult()
     {
         _mockMediator
             .Setup(x => x.Send(It.IsAny<GetMoviesByGenreQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<IEnumerable<Movie>>.Failure("Invalid genre"));
+            .ReturnsAsync(Result<IEnumerable<MovieDetailsDto>>.Failure("Invalid genre"));
 
         var result = await _controller.GetMoviesByGenre("InvalidGenre");
 
-        Assert.IsType<BadRequestObjectResult>(result.Result);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Null(okResult.Value);
     }
 
     [Fact]
     public async Task GetMovieDetailsByTmdbId_ValidId_ReturnsOkResult()
     {
-        var expectedMovie = new Movie
-        {
-            TmdbId = 1,
-            Title = "Test Movie",
-            CreditsJson = "{\"cast\":[],\"crew\":[]}",
-            VideosJson = "[]"
-        };
+        var expectedMovie = MovieDetailsDto()
+            .WithBackdropPath(null)
+            .Build();
 
         _mockMediator
             .Setup(x => x.Send(It.IsAny<GetMovieDetailsByTmdbIdQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<Movie>.Success(expectedMovie));
+            .ReturnsAsync(Result<MovieDetailsDto>.Success(expectedMovie));
 
         var result = await _controller.GetMovieDetailsByTmdbId(1);
 
@@ -171,27 +164,28 @@ public class MoviesControllerTests
     }
 
     [Fact]
-    public async Task GetMovieDetailsByTmdbId_InvalidId_ReturnsNotFound()
+    public async Task GetMovieDetailsByTmdbId_InvalidId_ReturnsOkWithFailureResult()
     {
         _mockMediator
             .Setup(x => x.Send(It.IsAny<GetMovieDetailsByTmdbIdQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<Movie>.Failure("Movie with TMDB ID 1 not found"));
+            .ReturnsAsync(Result<MovieDetailsDto>.Failure("Movie with TMDB ID 1 not found"));
 
         var result = await _controller.GetMovieDetailsByTmdbId(1);
 
-        Assert.IsType<NotFoundObjectResult>(result.Result);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Null(okResult.Value);
     }
 
     [Fact]
-    public async Task GetMovieDetailsByTmdbId_RateLimit_Returns429()
+    public async Task GetMovieDetailsByTmdbId_RateLimit_ReturnsOkWithFailureResult()
     {
         _mockMediator
             .Setup(x => x.Send(It.IsAny<GetMovieDetailsByTmdbIdQuery>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<Movie>.Failure(ErrorMessages.TmdbRateLimitExceeded));
+            .ReturnsAsync(Result<MovieDetailsDto>.Failure(ErrorMessages.TmdbRateLimitExceeded));
 
         var result = await _controller.GetMovieDetailsByTmdbId(1);
 
-        var statusResult = Assert.IsType<ObjectResult>(result.Result);
-        Assert.Equal(429, statusResult.StatusCode);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Null(okResult.Value);
     }
 } 

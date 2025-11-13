@@ -52,6 +52,7 @@ export interface AddToWatchlistRequest {
 }
 
 export interface UpdateWatchlistRequest {
+  watchlistItemId: number;
   status?: WatchlistStatus;
   userRating?: number;
   notes?: string;

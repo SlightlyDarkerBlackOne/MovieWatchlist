@@ -1,33 +1,44 @@
+using Mapster;
 using MediatR;
-using MovieWatchlist.Application.Features.Auth.Commands.RefreshToken;
-using MovieWatchlist.Application.Features.Auth.Common;
 using MovieWatchlist.Application.Interfaces;
 using MovieWatchlist.Core.Common;
+using MovieWatchlist.Core.Constants;
+using MovieWatchlist.Core.Interfaces;
 
 namespace MovieWatchlist.Application.Features.Auth.Commands.RefreshToken;
 
-public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, Result<AuthenticationResult>>
+public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, Result<RefreshTokenResponse>>
 {
     private readonly IAuthenticationService _authService;
+    private readonly ITokenExtractor _tokenExtractor;
+    private readonly IAuthCookieService _cookieService;
 
-    public RefreshTokenCommandHandler(IAuthenticationService authService)
+    public RefreshTokenCommandHandler(
+        IAuthenticationService authService,
+        ITokenExtractor tokenExtractor,
+        IAuthCookieService cookieService)
     {
         _authService = authService;
+        _tokenExtractor = tokenExtractor;
+        _cookieService = cookieService;
     }
 
-    public async Task<Result<AuthenticationResult>> Handle(
+    public async Task<Result<RefreshTokenResponse>> Handle(
         RefreshTokenCommand request,
         CancellationToken cancellationToken)
     {
-        try
+        var refreshToken = _tokenExtractor.ExtractTokenFromCookie(CookieNames.RefreshToken);
+        if (string.IsNullOrEmpty(refreshToken))
         {
-            var authResult = await _authService.RefreshTokenAsync(request.RefreshToken);
-            return Result<AuthenticationResult>.Success(authResult);
+            return Result<RefreshTokenResponse>.Failure("Refresh token not provided");
         }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Result<AuthenticationResult>.Failure(ex.Message);
-        }
+
+        var authResult = await _authService.RefreshTokenAsync(refreshToken);
+        
+        _cookieService.SetAuthCookies(authResult.Token, authResult.RefreshToken, authResult.ExpiresAt);
+        
+        var response = authResult.Adapt<RefreshTokenResponse>();
+        return Result<RefreshTokenResponse>.Success(response);
     }
 }
 

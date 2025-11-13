@@ -107,22 +107,10 @@ public class WatchlistController : ControllerBase
 
     [HttpPost("me/watchlist/add")]
     public async Task<ActionResult<WatchlistItem>> AddToMyWatchlist(
-        [FromBody] AddToWatchlistDto dto, 
+        [FromBody] AddToWatchlistCommand command, 
         CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        var command = new AddToWatchlistCommand(
-            MovieId: dto.MovieId,
-            Status: dto.Status,
-            Notes: dto.Notes
-        );
-
         var result = await _mediator.Send(command, cancellationToken);
-        
-        if (result.IsFailure)
-            return BadRequest(result.Error);
 
         return CreatedAtAction(nameof(GetMyWatchlistItemById), 
             new { watchlistItemId = result.Value!.Id }, result.Value);
@@ -135,36 +123,16 @@ public class WatchlistController : ControllerBase
     {
         var query = new GetMyWatchlistItemByIdQuery(WatchlistItemId: watchlistItemId);
         var watchlistItem = await _mediator.Send(query, cancellationToken);
-        if (watchlistItem == null)
-            return NotFound();
 
         return Ok(watchlistItem);
     }
 
-    [HttpPut("me/watchlist/item/{watchlistItemId}")]
+    [HttpPut("me/watchlist/item")]
     public async Task<ActionResult<WatchlistItem>> UpdateMyWatchlistItem(
-        int watchlistItemId, 
-        [FromBody] UpdateWatchlistItemDto dto,
+        [FromBody] UpdateWatchlistItemCommand command,
         CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(new { errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage) });
-        }
-
-        var command = new UpdateWatchlistItemCommand(
-            WatchlistItemId: watchlistItemId,
-            Status: dto.Status,
-            IsFavorite: dto.IsFavorite,
-            UserRating: dto.UserRating,
-            Notes: dto.Notes,
-            WatchedDate: dto.WatchedDate
-        );
-
         var result = await _mediator.Send(command, cancellationToken);
-        
-        if (result.IsFailure)
-            return NotFound(result.Error);
 
         return Ok(result.Value);
     }
@@ -176,9 +144,6 @@ public class WatchlistController : ControllerBase
     {
         var command = new RemoveFromWatchlistCommand(WatchlistItemId: watchlistItemId);
         var result = await _mediator.Send(command, cancellationToken);
-        
-        if (result.IsFailure)
-            return NotFound(result.Error);
 
         return NoContent();
     }

@@ -5,7 +5,6 @@ using MovieWatchlist.Application.Features.Auth.Commands.Login;
 using MovieWatchlist.Application.Features.Auth.Commands.RefreshToken;
 using MovieWatchlist.Application.Features.Auth.Commands.Register;
 using MovieWatchlist.Application.Features.Auth.Commands.ResetPassword;
-using MovieWatchlist.Application.Features.Auth.Queries.GetCurrentUser;
 
 namespace MovieWatchlist.Api.Mapping;
 

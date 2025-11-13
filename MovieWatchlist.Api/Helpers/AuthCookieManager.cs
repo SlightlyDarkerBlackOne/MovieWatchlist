@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
-using MovieWatchlist.Api.Constants;
 using MovieWatchlist.Api.Options;
 using MovieWatchlist.Application.Features.Auth.Common;
+using MovieWatchlist.Core.Constants;
 
 namespace MovieWatchlist.Api.Helpers;
 

@@ -1,4 +1,4 @@
-namespace MovieWatchlist.Api.Constants;
+namespace MovieWatchlist.Core.Constants;
 
 public static class CookieNames
 {

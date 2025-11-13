@@ -1,25 +1,36 @@
 using MediatR;
-using MovieWatchlist.Application.Features.Auth.Commands.ValidateToken;
 using MovieWatchlist.Application.Interfaces;
 using MovieWatchlist.Core.Common;
+using MovieWatchlist.Core.Interfaces;
 
 namespace MovieWatchlist.Application.Features.Auth.Commands.ValidateToken;
 
-public class ValidateTokenCommandHandler : IRequestHandler<ValidateTokenCommand, Result<bool>>
+public class ValidateTokenCommandHandler : IRequestHandler<ValidateTokenCommand, Result<ValidateTokenResponse>>
 {
     private readonly IAuthenticationService _authService;
+    private readonly ITokenExtractor _tokenExtractor;
 
-    public ValidateTokenCommandHandler(IAuthenticationService authService)
+    public ValidateTokenCommandHandler(
+        IAuthenticationService authService,
+        ITokenExtractor tokenExtractor)
     {
         _authService = authService;
+        _tokenExtractor = tokenExtractor;
     }
 
-    public async Task<Result<bool>> Handle(
+    public async Task<Result<ValidateTokenResponse>> Handle(
         ValidateTokenCommand request,
         CancellationToken cancellationToken)
     {
-        var isValid = await _authService.ValidateTokenAsync(request.Token);
-        return Result<bool>.Success(isValid);
+        var token = _tokenExtractor.ExtractTokenFromHeader();
+        if (string.IsNullOrEmpty(token))
+        {
+            return Result<ValidateTokenResponse>.Failure("Token not provided");
+        }
+
+        var isValid = await _authService.ValidateTokenAsync(token);
+        var response = new ValidateTokenResponse(isValid);
+        return Result<ValidateTokenResponse>.Success(response);
     }
 }
 

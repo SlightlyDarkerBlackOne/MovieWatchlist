@@ -1,5 +1,4 @@
 using MediatR;
-using MovieWatchlist.Application.Features.Auth.Commands.CreateRefreshToken;
 using MovieWatchlist.Application.Interfaces;
 using MovieWatchlist.Core.Common;
 

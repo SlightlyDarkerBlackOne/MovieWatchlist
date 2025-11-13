@@ -120,7 +120,7 @@ public static class TestConstants
         
         public const string WatchlistMe = "/api/Watchlist/me/watchlist";
         public const string WatchlistMeAdd = "/api/Watchlist/me/watchlist/add";
-        public const string WatchlistMeItem = "/api/Watchlist/me/watchlist/item/{watchlistItemId}";
+        public const string WatchlistMeItem = "/api/Watchlist/me/watchlist/item";
         public const string WatchlistMeStatistics = "/api/Watchlist/me/watchlist/statistics";
         public const string WatchlistMeFavorites = "/api/Watchlist/me/watchlist/favorites";
         public const string WatchlistMeRecommendations = "/api/Watchlist/me/watchlist/recommendations";

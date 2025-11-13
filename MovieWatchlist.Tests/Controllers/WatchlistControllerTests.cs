@@ -56,7 +56,7 @@ public class WatchlistControllerTests : EnhancedIntegrationTestBase
         await InitializeDatabaseAsync();
         try
         {
-            var addRequest = new AddToWatchlistDto(
+            var addRequest = new AddToWatchlistCommand(
                 MovieId: Movies.DefaultTmdbId,
                 Status: WatchlistStatus.Planned
             );
@@ -77,13 +77,13 @@ public class WatchlistControllerTests : EnhancedIntegrationTestBase
         await InitializeDatabaseAsync();
         try
         {
-            var updateRequest = new UpdateWatchlistItemDto
-            {
-                Status = WatchlistStatus.Watched
-            };
+            var updateRequest = new UpdateWatchlistItemCommand(
+                WatchlistItemId: WatchlistItems.FirstItemId,
+                Status: WatchlistStatus.Watched
+            );
 
             var response = await Client.PutAsJsonAsync(
-                ApiEndpoints.WatchlistMeItem.Replace("{watchlistItemId}", WatchlistItems.FirstItemId.ToString()), 
+                ApiEndpoints.WatchlistMeItem, 
                 updateRequest);
             
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
@@ -101,7 +101,7 @@ public class WatchlistControllerTests : EnhancedIntegrationTestBase
         try
         {
             var response = await Client.DeleteAsync(
-                ApiEndpoints.WatchlistMeItem.Replace("{watchlistItemId}", WatchlistItems.FirstItemId.ToString()));
+                $"{ApiEndpoints.WatchlistMeItem}/{WatchlistItems.FirstItemId}");
             
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
