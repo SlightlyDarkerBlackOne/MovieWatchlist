@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Infrastructure.Data;
+using MovieWatchlist.Tests.TestDataBuilders;
 using MovieWatchlist.Tests.Infrastructure;
 using Xunit;
 

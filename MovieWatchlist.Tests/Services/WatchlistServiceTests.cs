@@ -17,10 +17,11 @@ using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.ValueObjects;
 using MovieWatchlist.Application.Services;
 using MovieWatchlist.Tests.Infrastructure;
+using static MovieWatchlist.Tests.TestDataBuilders.TestDataBuilder;
 
 namespace MovieWatchlist.Tests.Services;
 
-public class WatchlistServiceTests : UnitTestBase
+public class WatchlistServiceTests
 {
     private readonly Mock<IWatchlistRepository> _mockWatchlistRepository;
     private readonly Mock<IMovieRepository> _mockMovieRepository;
@@ -63,11 +64,7 @@ public class WatchlistServiceTests : UnitTestBase
     {
         // Arrange
         var testWatchlist = CreateTestWatchlist().ToList();
-        var testUser = User.Create(
-            Username.Create("testuser").Value!,
-            Email.Create("test@example.com").Value!,
-            "hashedpassword"
-        );
+        var testUser = User().Build();
         
         _mockUserRepository
             .Setup(x => x.GetByIdAsync(1))
@@ -197,63 +194,59 @@ public class WatchlistServiceTests : UnitTestBase
 
     private static IEnumerable<WatchlistItem> CreateTestWatchlist()
     {
-        var movie1 = new Movie
-        {
-            Title = GenreConstants.ActionTitle,
-            VoteAverage = TestConstants.Ratings.HighRating,
-            VoteCount = 5000,
-            ReleaseDate = new DateTime(2020, 1, 1),
-            Genres = new[] { GenreConstants.Action, GenreConstants.Adventure }
-        };
-        typeof(Movie).GetProperty("Id")!.SetValue(movie1, 1);
+        var movie1 = Movie()
+            .WithId(1)
+            .WithTitle(GenreConstants.ActionTitle)
+            .WithVoteAverage(TestConstants.Ratings.HighRating)
+            .WithVoteCount(5000)
+            .WithReleaseDate(new DateTime(2020, 1, 1))
+            .WithGenres(GenreConstants.Action, GenreConstants.Adventure)
+            .Build();
 
-        var movie2 = new Movie
-        {
-            Title = "Action Movie 2",
-            VoteAverage = TestConstants.Ratings.DefaultTmdbRating,
-            VoteCount = 3000,
-            ReleaseDate = new DateTime(2021, 1, 1),
-            Genres = new[] { GenreConstants.Action, GenreConstants.Thriller }
-        };
-        typeof(Movie).GetProperty("Id")!.SetValue(movie2, 2);
+        var movie2 = Movie()
+            .WithId(2)
+            .WithTitle("Action Movie 2")
+            .WithVoteAverage(TestConstants.Ratings.DefaultTmdbRating)
+            .WithVoteCount(3000)
+            .WithReleaseDate(new DateTime(2021, 1, 1))
+            .WithGenres(GenreConstants.Action, GenreConstants.Thriller)
+            .Build();
 
-        var movie3 = new Movie
-        {
-            Title = GenreConstants.DramaTitle,
-            VoteAverage = TestConstants.Ratings.HighRating,
-            VoteCount = 2000,
-            ReleaseDate = new DateTime(2022, 1, 1),
-            Genres = new[] { GenreConstants.Drama }
-        };
-        typeof(Movie).GetProperty("Id")!.SetValue(movie3, 3);
+        var movie3 = Movie()
+            .WithId(3)
+            .WithTitle(GenreConstants.DramaTitle)
+            .WithVoteAverage(TestConstants.Ratings.HighRating)
+            .WithVoteCount(2000)
+            .WithReleaseDate(new DateTime(2022, 1, 1))
+            .WithGenres(GenreConstants.Drama)
+            .Build();
 
-        var movie4 = new Movie
-        {
-            Title = GenreConstants.ComedyTitle,
-            VoteAverage = TestConstants.Ratings.LowRating,
-            VoteCount = 1500,
-            ReleaseDate = new DateTime(2019, 1, 1),
-            Genres = new[] { GenreConstants.Comedy }
-        };
-        typeof(Movie).GetProperty("Id")!.SetValue(movie4, 4);
+        var movie4 = Movie()
+            .WithId(4)
+            .WithTitle(GenreConstants.ComedyTitle)
+            .WithVoteAverage(TestConstants.Ratings.LowRating)
+            .WithVoteCount(1500)
+            .WithReleaseDate(new DateTime(2019, 1, 1))
+            .WithGenres(GenreConstants.Comedy)
+            .Build();
 
         // Create watchlist items using factory methods
-        var item1 = WatchlistItem.Create(1, movie1);
+        var item1 = WatchlistItem().WithMovie(movie1).Build();
         item1.UpdateStatus(WatchlistStatus.Watched);
         item1.ToggleFavorite();
         item1.SetRating(Rating.Create(5).Value!);
         SetAddedDateViaReflection(item1, DateTime.UtcNow.AddDays(-10)); // Most recent
 
-        var item2 = WatchlistItem.Create(1, movie2);
+        var item2 = WatchlistItem().WithMovie(movie2).Build();
         item2.UpdateStatus(WatchlistStatus.Watched);
         item2.SetRating(Rating.Create(4).Value!);
         SetAddedDateViaReflection(item2, new DateTime(2022, 6, 15, 0, 0, 0, DateTimeKind.Utc)); // Previous year
 
-        var item3 = WatchlistItem.Create(1, movie3);
+        var item3 = WatchlistItem().WithMovie(movie3).Build();
         item3.ToggleFavorite();
         SetAddedDateViaReflection(item3, new DateTime(2021, 3, 10, 0, 0, 0, DateTimeKind.Utc)); // Two years ago
 
-        var item4 = WatchlistItem.Create(1, movie4);
+        var item4 = WatchlistItem().WithMovie(movie4).Build();
         item4.UpdateStatus(WatchlistStatus.Watching);
         SetAddedDateViaReflection(item4, new DateTime(2020, 8, 20, 0, 0, 0, DateTimeKind.Utc)); // Three years ago
 
@@ -273,22 +266,20 @@ public class WatchlistServiceTests : UnitTestBase
     {
         return new List<Movie>
         {
-            new()
-            {
-                Title = "Recommended Action",
-                VoteAverage = TestConstants.Ratings.HighRating,
-                VoteCount = 8000,
-                Popularity = 1000.0,
-                Genres = new[] { GenreConstants.Action, GenreConstants.Adventure }
-            },
-            new()
-            {
-                Title = "Recommended Drama",
-                VoteAverage = TestConstants.Ratings.DefaultTmdbRating,
-                VoteCount = 5000,
-                Popularity = 800.0,
-                Genres = new[] { GenreConstants.Drama }
-            }
+            Movie()
+                .WithTitle("Recommended Action")
+                .WithVoteAverage(TestConstants.Ratings.HighRating)
+                .WithVoteCount(8000)
+                .WithPopularity(1000.0)
+                .WithGenres(GenreConstants.Action, GenreConstants.Adventure)
+                .Build(),
+            Movie()
+                .WithTitle("Recommended Drama")
+                .WithVoteAverage(TestConstants.Ratings.DefaultTmdbRating)
+                .WithVoteCount(5000)
+                .WithPopularity(800.0)
+                .WithGenres(GenreConstants.Drama)
+                .Build()
         };
     }
 
@@ -298,7 +289,7 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task AddToWatchlistAsync_WithValidMovie_ReturnsWatchlistItem()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: GenreConstants.ActionTitle);
+        var movie = Movie().WithTitle(GenreConstants.ActionTitle).Build();
         var command = new AddToWatchlistCommand(
             MovieId: 1,
             Status: WatchlistStatus.Planned,
@@ -328,11 +319,7 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.AddAsync(It.IsAny<WatchlistItem>()))
             .Returns(Task.CompletedTask);
 
-        var testUser = User.Create(
-            Username.Create("testuser").Value!,
-            Email.Create("test@example.com").Value!,
-            "hashedpassword"
-        );
+        var testUser = User().Build();
         
         _mockUserRepository
             .Setup(x => x.GetByIdAsync(1))
@@ -361,7 +348,7 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task AddToWatchlistAsync_WithWatchedStatus_SetsWatchedDate()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: GenreConstants.ActionTitle);
+        var movie = Movie().WithTitle(GenreConstants.ActionTitle).Build();
 
         // Mock movie not in cache
         _mockMovieRepository
@@ -386,11 +373,7 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.AddAsync(It.IsAny<WatchlistItem>()))
             .Returns(Task.CompletedTask);
 
-        var testUser = User.Create(
-            Username.Create("testuser").Value!,
-            Email.Create("test@example.com").Value!,
-            "hashedpassword"
-        );
+        var testUser = User().Build();
         
         _mockUserRepository
             .Setup(x => x.GetByIdAsync(1))
@@ -441,10 +424,10 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task AddToWatchlistAsync_WithDuplicateMovie_ReturnsFailure()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: GenreConstants.ActionTitle);
+        var movie = Movie().WithTitle(GenreConstants.ActionTitle).Build();
         var existingWatchlist = new List<WatchlistItem>
         {
-            CreateTestWatchlistItem(id: 1, userId: 1, movieId: 1, status: WatchlistStatus.Planned)
+            WatchlistItem().Build()
         };
 
         // Mock movie in cache (return existing movie)
@@ -470,8 +453,8 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task UpdateWatchlistItemAsync_WithValidItem_ReturnsUpdatedItem()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var existingItem = WatchlistItem.Create(1, movie);
+        var movie = Movie().Build();
+        var existingItem = WatchlistItem().WithMovie(movie).Build();
         existingItem.UpdateStatus(WatchlistStatus.Planned);
         
         // Set Id using reflection for testing purposes
@@ -493,11 +476,7 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.UpdateAsync(It.IsAny<WatchlistItem>()))
             .Returns(Task.CompletedTask);
 
-        var testUser = User.Create(
-            Username.Create("testuser").Value!,
-            Email.Create("test@example.com").Value!,
-            "hashedpassword"
-        );
+        var testUser = User().Build();
         
         _mockUserRepository
             .Setup(x => x.GetByIdAsync(1))
@@ -555,11 +534,8 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task UpdateWatchlistItemAsync_WithWatchedStatus_SetsWatchedDate()
     {
         // Arrange
-        var existingItem = CreateTestWatchlistItem(
-            id: TestConstants.WatchlistItems.FirstItemId, 
-            userId: TestConstants.Users.DefaultUserId, 
-            movieId: TestConstants.WatchlistItems.FirstItemId, 
-            status: WatchlistStatus.Planned);
+        var existingItem = WatchlistItem().Build();
+        typeof(WatchlistItem).GetProperty("Id")!.SetValue(existingItem, TestConstants.WatchlistItems.FirstItemId);
 
         // Setup current user service for this test
         _mockCurrentUserService
@@ -579,11 +555,7 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.UpdateAsync(It.IsAny<WatchlistItem>()))
             .Returns(Task.CompletedTask);
 
-        var testUser = User.Create(
-            Username.Create("testuser").Value!,
-            Email.Create("test@example.com").Value!,
-            "hashedpassword"
-        );
+        var testUser = User().Build();
         
         _mockUserRepository
             .Setup(x => x.GetByIdAsync(TestConstants.Users.DefaultUserId))
@@ -607,8 +579,9 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task RemoveFromWatchlistAsync_WithValidItem_ReturnsTrue()
     {
         // Arrange
-        var movie = CreateTestMovie(id: 1, title: "Test Movie");
-        var existingItem = CreateTestWatchlistItem(id: 1, userId: 1, movieId: 1);
+        var movie = Movie().Build();
+        var existingItem = WatchlistItem().Build();
+        typeof(WatchlistItem).GetProperty("Id")!.SetValue(existingItem, 1);
         existingItem.Movie = movie;
 
         _mockWatchlistRepository
@@ -619,11 +592,7 @@ public class WatchlistServiceTests : UnitTestBase
             .Setup(x => x.DeleteAsync(It.IsAny<WatchlistItem>()))
             .Returns(Task.CompletedTask);
 
-        var testUser = User.Create(
-            Username.Create("testuser").Value!,
-            Email.Create("test@example.com").Value!,
-            "hashedpassword"
-        );
+        var testUser = User().Build();
         
         _mockUserRepository
             .Setup(x => x.GetByIdAsync(1))
@@ -665,10 +634,8 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task GetWatchlistItemByIdAsync_WithValidId_ReturnsItem()
     {
         // Arrange
-        var existingItem = CreateTestWatchlistItem(
-            id: TestConstants.WatchlistItems.FirstItemId, 
-            userId: TestConstants.Users.DefaultUserId, 
-            movieId: TestConstants.WatchlistItems.FirstItemId);
+        var existingItem = WatchlistItem().Build();
+        typeof(WatchlistItem).GetProperty("Id")!.SetValue(existingItem, TestConstants.WatchlistItems.FirstItemId);
 
         _mockWatchlistRepository
             .Setup(x => x.GetByUserIdAndIdAsync(TestConstants.Users.DefaultUserId, TestConstants.WatchlistItems.FirstItemId))
@@ -809,11 +776,7 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task GetUserStatisticsAsync_WithEmptyWatchlist_ReturnsZeroStatistics()
     {
         // Arrange
-        var testUser = User.Create(
-            Username.Create("testuser").Value!,
-            Email.Create("test@example.com").Value!,
-            "hashedpassword"
-        );
+        var testUser = User().Build();
         
         _mockUserRepository
             .Setup(x => x.GetByIdAsync(1))
@@ -844,15 +807,11 @@ public class WatchlistServiceTests : UnitTestBase
     public async Task GetUserStatisticsAsync_WithNoUserRatings_ReturnsNullAverageUserRating()
     {
         // Arrange
-        var testUser = User.Create(
-            Username.Create("testuser").Value!,
-            Email.Create("test@example.com").Value!,
-            "hashedpassword"
-        );
+        var testUser = User().Build();
         
         var movie = new Movie { VoteAverage = TestConstants.Ratings.DefaultTmdbRating };
         typeof(Movie).GetProperty("Id")!.SetValue(movie, 1);
-        var item = WatchlistItem.Create(1, movie);
+        var item = WatchlistItem().WithMovie(movie).Build();
         item.UpdateStatus(WatchlistStatus.Watched);
         var watchlistWithNoRatings = new List<WatchlistItem> { item };
 
@@ -941,7 +900,7 @@ public class WatchlistServiceTests : UnitTestBase
         // Arrange
         var movie = new Movie { VoteAverage = TestConstants.Ratings.DefaultTmdbRating };
         typeof(Movie).GetProperty("Id")!.SetValue(movie, 1);
-        var item = WatchlistItem.Create(1, movie);
+        var item = WatchlistItem().WithMovie(movie).Build();
         var watchlistWithNoFavorites = new List<WatchlistItem> { item };
 
         _mockWatchlistRepository

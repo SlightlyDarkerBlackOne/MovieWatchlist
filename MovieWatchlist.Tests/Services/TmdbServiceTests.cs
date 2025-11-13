@@ -9,6 +9,7 @@ using MovieWatchlist.Infrastructure.DTOs;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Infrastructure.Services;
 using MovieWatchlist.Tests.Infrastructure;
+using static MovieWatchlist.Tests.TestDataBuilders.TestDataBuilder;
 using System.Net;
 using System.Text;
 using System.Text.Json;
@@ -18,7 +19,7 @@ namespace MovieWatchlist.Tests.Services;
 /// <summary>
 /// Unit tests for TmdbService
 /// </summary>
-public class TmdbServiceTests : UnitTestBase, IDisposable
+public class TmdbServiceTests : IDisposable
 {
     private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
     private readonly HttpClient _httpClient;
@@ -339,23 +340,21 @@ public class TmdbServiceTests : UnitTestBase, IDisposable
     public async Task SearchMoviesAsync_WithValidData_MapsCorrectly()
     {
         // Arrange
-        var movieDto = new TmdbMovieDto
-        {
-            TmdbId = 123,
-            Title = "Test Movie",
-            Overview = "Test overview",
-            PosterPath = "/test-poster.jpg",
-            ReleaseDate = "2023-01-01",
-            VoteAverage = 8.5,
-            VoteCount = 1000,
-            Popularity = 85.5,
-            Genres = new[]
-            {
-                new TmdbGenreDto { Id = GenreConstants.ActionId, Name = GenreConstants.ActionTitle },
-                new TmdbGenreDto { Id = GenreConstants.ComedyId, Name = GenreConstants.ComedyTitle },
-                new TmdbGenreDto { Id = GenreConstants.DramaId, Name = GenreConstants.DramaTitle }
-            }
-        };
+        var movieDto = TmdbMovieDto()
+            .WithTmdbId(TestConstants.Movies.TestTmdbId)
+            .WithTitle(TestConstants.Movies.DefaultTitle)
+            .WithOverview(TestConstants.Movies.TestOverview)
+            .WithPosterPath(TestConstants.Movies.DefaultPosterPath)
+            .WithReleaseDate(TestConstants.Movies.TestReleaseDate)
+            .WithVoteAverage(TestConstants.Movies.TestVoteAverage)
+            .WithVoteCount(TestConstants.Movies.DefaultVoteCount)
+            .WithPopularity(TestConstants.Movies.TestPopularity)
+            .WithGenres(
+                (GenreConstants.ActionId, GenreConstants.ActionTitle),
+                (GenreConstants.ComedyId, GenreConstants.ComedyTitle),
+                (GenreConstants.DramaId, GenreConstants.DramaTitle)
+            )
+            .Build();
 
         var searchResponse = new TmdbSearchResponse
         {
@@ -369,14 +368,14 @@ public class TmdbServiceTests : UnitTestBase, IDisposable
 
         // Assert
         var movie = result.First();
-        movie.TmdbId.Should().Be(123);
-        movie.Title.Should().Be("Test Movie");
-        movie.Overview.Should().Be("Test overview");
-        movie.PosterPath.Should().Be("/test-poster.jpg");
-        movie.ReleaseDate.Should().Be(new DateTime(2023, 1, 1));
-        movie.VoteAverage.Should().Be(8.5);
-        movie.VoteCount.Should().Be(1000);
-        movie.Popularity.Should().Be(85.5);
+        movie.TmdbId.Should().Be(TestConstants.Movies.TestTmdbId);
+        movie.Title.Should().Be(TestConstants.Movies.DefaultTitle);
+        movie.Overview.Should().Be(TestConstants.Movies.TestOverview);
+        movie.PosterPath.Should().Be(TestConstants.Movies.DefaultPosterPath);
+        movie.ReleaseDate.Should().Be(DateTime.Parse(TestConstants.Movies.TestReleaseDate));
+        movie.VoteAverage.Should().Be(TestConstants.Movies.TestVoteAverage);
+        movie.VoteCount.Should().Be(TestConstants.Movies.DefaultVoteCount);
+        movie.Popularity.Should().Be(TestConstants.Movies.TestPopularity);
         movie.Genres.Should().BeEquivalentTo(new[] { GenreConstants.ActionTitle, GenreConstants.ComedyTitle, GenreConstants.DramaTitle });
     }
 
@@ -384,13 +383,12 @@ public class TmdbServiceTests : UnitTestBase, IDisposable
     public async Task SearchMoviesAsync_WithInvalidReleaseDate_MapsToMinValue()
     {
         // Arrange
-        var movieDto = new TmdbMovieDto
-        {
-            TmdbId = 123,
-            Title = "Test Movie",
-            ReleaseDate = "invalid-date",
-            Genres = Array.Empty<TmdbGenreDto>()
-        };
+        var movieDto = TmdbMovieDto()
+            .WithTmdbId(TestConstants.Movies.TestTmdbId)
+            .WithTitle(TestConstants.Movies.DefaultTitle)
+            .WithReleaseDate("invalid-date")
+            .WithNoGenres()
+            .Build();
 
         var searchResponse = new TmdbSearchResponse
         {
@@ -411,13 +409,12 @@ public class TmdbServiceTests : UnitTestBase, IDisposable
     public async Task SearchMoviesAsync_WithNullPosterPath_MapsToEmptyString()
     {
         // Arrange
-        var movieDto = new TmdbMovieDto
-        {
-            TmdbId = 123,
-            Title = "Test Movie",
-            PosterPath = null,
-            Genres = Array.Empty<TmdbGenreDto>()
-        };
+        var movieDto = TmdbMovieDto()
+            .WithTmdbId(TestConstants.Movies.TestTmdbId)
+            .WithTitle(TestConstants.Movies.DefaultTitle)
+            .WithPosterPath(null)
+            .WithNoGenres()
+            .Build();
 
         var searchResponse = new TmdbSearchResponse
         {
@@ -491,45 +488,41 @@ public class TmdbServiceTests : UnitTestBase, IDisposable
             Results = new[]
             {
                 CreateTmdbMovieDto(),
-                new TmdbMovieDto
-                {
-                    TmdbId = 12345,
-                    Title = "Another Movie",
-                    Overview = "Another overview",
-                    PosterPath = "/another-poster.jpg",
-                    ReleaseDate = "2023-02-01",
-                    VoteAverage = 7.5,
-                    VoteCount = 500,
-                    Popularity = 75.0,
-                    Genres = new[]
-                    {
-                        new TmdbGenreDto { Id = GenreConstants.ComedyId, Name = GenreConstants.ComedyTitle },
-                        new TmdbGenreDto { Id = GenreConstants.CrimeId, Name = GenreConstants.CrimeTitle }
-                    }
-                }
+                TmdbMovieDto()
+                    .WithTmdbId(TestConstants.Movies.DefaultTmdbId)
+                    .WithTitle("Another Movie")
+                    .WithOverview("Another overview")
+                    .WithPosterPath("/another-poster.jpg")
+                    .WithReleaseDate("2023-02-01")
+                    .WithVoteAverage(TestConstants.Ratings.DefaultTmdbRating)
+                    .WithVoteCount(500)
+                    .WithPopularity(75.0)
+                    .WithGenres(
+                        (GenreConstants.ComedyId, GenreConstants.ComedyTitle),
+                        (GenreConstants.CrimeId, GenreConstants.CrimeTitle)
+                    )
+                    .Build()
             }
         };
     }
 
     private TmdbMovieDto CreateTmdbMovieDto()
     {
-        return new TmdbMovieDto
-        {
-            TmdbId = 27205,
-            Title = TestConstants.Tmdb.TestMovieTitle,
-            Overview = TestConstants.Tmdb.TestMovieOverview,
-            PosterPath = "/inception-poster.jpg",
-            ReleaseDate = "2010-07-16",
-            VoteAverage = 8.8,
-            VoteCount = 25000,
-            Popularity = 95.0,
-            Genres = new[]
-            {
-                new TmdbGenreDto { Id = GenreConstants.ActionId, Name = GenreConstants.ActionTitle },
-                new TmdbGenreDto { Id = GenreConstants.ScienceFictionId, Name = GenreConstants.ScienceFictionTitle },
-                new TmdbGenreDto { Id = GenreConstants.ThrillerId, Name = GenreConstants.ThrillerTitle }
-            }
-        };
+        return TmdbMovieDto()
+            .WithTmdbId(27205)
+            .WithTitle(TestConstants.Tmdb.TestMovieTitle)
+            .WithOverview(TestConstants.Tmdb.TestMovieOverview)
+            .WithPosterPath("/inception-poster.jpg")
+            .WithReleaseDate("2010-07-16")
+            .WithVoteAverage(8.8)
+            .WithVoteCount(25000)
+            .WithPopularity(95.0)
+            .WithGenres(
+                (GenreConstants.ActionId, GenreConstants.ActionTitle),
+                (GenreConstants.ScienceFictionId, GenreConstants.ScienceFictionTitle),
+                (GenreConstants.ThrillerId, GenreConstants.ThrillerTitle)
+            )
+            .Build();
     }
 
     #endregion

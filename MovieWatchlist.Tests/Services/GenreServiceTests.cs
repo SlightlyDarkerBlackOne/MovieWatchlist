@@ -1,7 +1,6 @@
 using FluentAssertions;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Infrastructure.Services;
-using MovieWatchlist.Tests.Infrastructure;
 using Xunit;
 
 namespace MovieWatchlist.Tests.Services;
@@ -9,7 +8,7 @@ namespace MovieWatchlist.Tests.Services;
 /// <summary>
 /// Unit tests for GenreService
 /// </summary>
-public class GenreServiceTests : UnitTestBase
+public class GenreServiceTests
 {
     private readonly GenreService _genreService;
 

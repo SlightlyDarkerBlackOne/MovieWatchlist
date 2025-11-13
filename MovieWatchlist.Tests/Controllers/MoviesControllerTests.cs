@@ -11,7 +11,7 @@ using MovieWatchlist.Application.Features.Movies.Queries.SearchMovies;
 using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Constants;
 using Xunit;
-using static MovieWatchlist.Tests.Infrastructure.TestDataBuilder;
+using static MovieWatchlist.Tests.TestDataBuilders.TestDataBuilder;
 
 namespace MovieWatchlist.Tests.Controllers;
 

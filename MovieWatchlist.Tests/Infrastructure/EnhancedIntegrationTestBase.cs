@@ -6,6 +6,7 @@ using MovieWatchlist.Application.Features.Auth.Commands.Login;
 using MovieWatchlist.Application.Features.Auth.Commands.Register;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.ValueObjects;
+using MovieWatchlist.Tests.TestDataBuilders;
 using FluentAssertions;
 using System.Net.Http.Json;
 using System.Text.Json;
