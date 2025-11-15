@@ -48,22 +48,12 @@ public class UnitOfWork : IUnitOfWork
         return result;
     }
 
-    /// <summary>
-    /// Disposes the unit of work and underlying context.
-    /// </summary>
     public void Dispose()
     {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposed && disposing)
+        if (!_disposed)
         {
-            _context.Dispose();
+            _disposed = true;
         }
-        _disposed = true;
     }
 }
 

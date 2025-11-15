@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
@@ -33,11 +34,12 @@ public class EfRepository<T> : IRepository<T> where T : class
 
     /// <summary>
     /// Retrieves all entities of type T asynchronously.
+    /// Uses AsNoTracking() for optimal performance since these entities are read-only.
     /// </summary>
     /// <returns>A collection of all entities</returns>
     public async Task<IEnumerable<T>> GetAllAsync()
     {
-        return await _dbSet.ToListAsync();
+        return await _dbSet.AsNoTracking().ToListAsync();
     }
 
     /// <summary>
@@ -77,11 +79,34 @@ public class EfRepository<T> : IRepository<T> where T : class
 
     /// <summary>
     /// Checks if an entity with the specified ID exists asynchronously.
+    /// Uses EF Core metadata API to dynamically build a query that only checks existence
+    /// without loading the entire entity, providing optimal performance.
     /// </summary>
-    /// <param name="id">The ID to check for existence</param>
+    /// <param name="id">The ID of the entity to check for existence</param>
     /// <returns>True if the entity exists, false otherwise</returns>
+    /// <remarks>
+    /// This implementation uses AnyAsync() with a dynamically built expression tree
+    /// instead of FindAsync() to avoid loading the full entity into memory.
+    /// The query executes as: SELECT 1 FROM Table WHERE PrimaryKey = id LIMIT 1
+    /// which is significantly more efficient than loading all entity properties.
+    /// </remarks>
     public async Task<bool> ExistsAsync(int id)
     {
-        return await _dbSet.FindAsync(id) != null;
+        var entityType = _context.Model.FindEntityType(typeof(T));
+        if (entityType == null)
+            return false;
+
+        var primaryKey = entityType.FindPrimaryKey();
+        if (primaryKey == null || primaryKey.Properties.Count != 1)
+            return false;
+
+        var keyProperty = primaryKey.Properties[0];
+        var parameter = Expression.Parameter(typeof(T), "e");
+        var property = Expression.Property(parameter, keyProperty.PropertyInfo!);
+        var constant = Expression.Constant(id);
+        var equals = Expression.Equal(property, constant);
+        var lambda = Expression.Lambda<Func<T, bool>>(equals, parameter);
+
+        return await _dbSet.AnyAsync(lambda);
     }
 }
