@@ -4,9 +4,9 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
-using MovieWatchlist.Infrastructure.Data;
+using MovieWatchlist.Persistence.Data;
 
-namespace MovieWatchlist.Infrastructure.Repositories;
+namespace MovieWatchlist.Persistence.Repositories;
 
 public class RefreshTokenRepository : EfRepository<RefreshToken>, IRefreshTokenRepository
 {

@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
-using MovieWatchlist.Infrastructure.Data;
+using MovieWatchlist.Persistence.Data;
 
-namespace MovieWatchlist.Infrastructure.Repositories;
+namespace MovieWatchlist.Persistence.Repositories;
 
 /// <summary>
 /// Repository for Movie entity with domain-specific operations.
@@ -21,24 +21,28 @@ public class MovieRepository : EfRepository<Movie>, IMovieRepository
 
     /// <summary>
     /// Finds a movie by its TMDB ID asynchronously.
+    /// Uses AsNoTracking() for optimal performance since this is a read-only operation.
     /// </summary>
     /// <param name="tmdbId">The TMDB ID to search for</param>
     /// <returns>The movie if found, null otherwise</returns>
     public async Task<Movie?> GetByTmdbIdAsync(int tmdbId)
     {
         return await _dbSet
+            .AsNoTracking()
             .FirstOrDefaultAsync(m => m.TmdbId == tmdbId);
     }
 
     /// <summary>
     /// Searches for movies by query asynchronously.
+    /// Uses AsNoTracking() for optimal performance and EF.Functions.ILike() for case-insensitive PostgreSQL pattern matching.
     /// </summary>
     /// <param name="query">The search query</param>
     /// <returns>A collection of movies matching the query</returns>
     public async Task<IEnumerable<Movie>> SearchMoviesAsync(string query)
     {
         return await _dbSet
-            .Where(m => m.Title.Contains(query))
+            .AsNoTracking()
+            .Where(m => EF.Functions.ILike(m.Title, $"%{query}%"))
             .OrderBy(m => m.Title)
             .Take(50)
             .ToListAsync();
@@ -46,6 +50,7 @@ public class MovieRepository : EfRepository<Movie>, IMovieRepository
 
     /// <summary>
     /// Gets movies released in a specific year asynchronously.
+    /// Uses AsNoTracking() for optimal performance since this is a read-only operation.
     /// </summary>
     /// <param name="year">The release year to filter by</param>
     /// <param name="limit">Maximum number of results to return (default: 100)</param>
@@ -56,6 +61,7 @@ public class MovieRepository : EfRepository<Movie>, IMovieRepository
         var endDate = new DateTime(year, 12, 31);
 
         return await _dbSet
+            .AsNoTracking()
             .Where(m => m.ReleaseDate >= startDate && m.ReleaseDate <= endDate)
             .OrderByDescending(m => m.Popularity)
             .Take(limit)
@@ -64,11 +70,13 @@ public class MovieRepository : EfRepository<Movie>, IMovieRepository
 
     /// <summary>
     /// Gets popular movies asynchronously.
+    /// Uses AsNoTracking() for optimal performance since this is a read-only operation.
     /// </summary>
     /// <returns>A collection of popular movies</returns>
     public async Task<IEnumerable<Movie>> GetPopularMoviesAsync()
     {
         return await _dbSet
+            .AsNoTracking()
             .OrderByDescending(m => m.Popularity)
             .Take(20)
             .ToListAsync();
@@ -76,6 +84,7 @@ public class MovieRepository : EfRepository<Movie>, IMovieRepository
 
     /// <summary>
     /// Gets the highest rated movies asynchronously.
+    /// Uses AsNoTracking() for optimal performance since this is a read-only operation.
     /// </summary>
     /// <param name="minimumVoteCount">Minimum number of votes required (default: 100)</param>
     /// <param name="limit">Maximum number of results to return (default: 20)</param>
@@ -83,6 +92,7 @@ public class MovieRepository : EfRepository<Movie>, IMovieRepository
     public async Task<IEnumerable<Movie>> GetHighestRatedAsync(int minimumVoteCount = 100, int limit = 20)
     {
         return await _dbSet
+            .AsNoTracking()
             .Where(m => m.VoteCount >= minimumVoteCount)
             .OrderByDescending(m => m.VoteAverage)
             .Take(limit)
@@ -91,12 +101,14 @@ public class MovieRepository : EfRepository<Movie>, IMovieRepository
 
     /// <summary>
     /// Gets movies by genre asynchronously.
+    /// Uses AsNoTracking() for optimal performance since this is a read-only operation.
     /// </summary>
     /// <param name="genre">The genre to filter by</param>
     /// <returns>A collection of movies in the specified genre</returns>
     public async Task<IEnumerable<Movie>> GetMoviesByGenreAsync(string genre)
     {
         return await _dbSet
+            .AsNoTracking()
             .Where(m => m.Genres.Contains(genre))
             .OrderByDescending(m => m.Popularity)
             .Take(50)
@@ -139,5 +151,4 @@ public class MovieRepository : EfRepository<Movie>, IMovieRepository
         return true;
     }
 }
-
 

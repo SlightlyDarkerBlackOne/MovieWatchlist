@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using MovieWatchlist.Infrastructure.Data;
+using MovieWatchlist.Persistence.Data;
 using MovieWatchlist.Application.Features.Auth.Commands.Login;
 using MovieWatchlist.Application.Features.Auth.Commands.Register;
 using MovieWatchlist.Core.Models;

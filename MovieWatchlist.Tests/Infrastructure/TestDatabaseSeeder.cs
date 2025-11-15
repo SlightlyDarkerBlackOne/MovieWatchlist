@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.ValueObjects;
-using MovieWatchlist.Infrastructure.Data;
+using MovieWatchlist.Persistence.Data;
 using MovieWatchlist.Tests.TestDataBuilders;
 
 namespace MovieWatchlist.Tests.Infrastructure;

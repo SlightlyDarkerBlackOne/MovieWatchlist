@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace MovieWatchlist.Infrastructure.Migrations
+namespace MovieWatchlist.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class AddValueObjectsSupport : Migration
@@ -38,3 +38,4 @@ namespace MovieWatchlist.Infrastructure.Migrations
         }
     }
 }
+

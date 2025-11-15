@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
-namespace MovieWatchlist.Infrastructure.Data;
+namespace MovieWatchlist.Persistence.Data;
 
 /// <summary>
 /// Design-time factory for Entity Framework migrations

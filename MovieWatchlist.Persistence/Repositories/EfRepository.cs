@@ -1,9 +1,10 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
-using MovieWatchlist.Infrastructure.Data;
+using MovieWatchlist.Persistence.Data;
 
-namespace MovieWatchlist.Infrastructure.Repositories;
+namespace MovieWatchlist.Persistence.Repositories;
 
 /// <summary>
 /// Entity Framework-based implementation of the generic repository pattern.
@@ -33,11 +34,12 @@ public class EfRepository<T> : IRepository<T> where T : class
 
     /// <summary>
     /// Retrieves all entities of type T asynchronously.
+    /// Uses AsNoTracking() for optimal performance since these entities are read-only.
     /// </summary>
     /// <returns>A collection of all entities</returns>
     public async Task<IEnumerable<T>> GetAllAsync()
     {
-        return await _dbSet.ToListAsync();
+        return await _dbSet.AsNoTracking().ToListAsync();
     }
 
     /// <summary>
@@ -77,74 +79,34 @@ public class EfRepository<T> : IRepository<T> where T : class
 
     /// <summary>
     /// Checks if an entity with the specified ID exists asynchronously.
+    /// Uses EF Core metadata API to dynamically build a query that only checks existence
+    /// without loading the entire entity, providing optimal performance.
     /// </summary>
-    /// <param name="id">The ID to check for existence</param>
+    /// <param name="id">The ID of the entity to check for existence</param>
     /// <returns>True if the entity exists, false otherwise</returns>
+    /// <remarks>
+    /// This implementation uses AnyAsync() with a dynamically built expression tree
+    /// instead of FindAsync() to avoid loading the full entity into memory.
+    /// The query executes as: SELECT 1 FROM Table WHERE PrimaryKey = id LIMIT 1
+    /// which is significantly more efficient than loading all entity properties.
+    /// </remarks>
     public async Task<bool> ExistsAsync(int id)
     {
-        return await _dbSet.FindAsync(id) != null;
-    }
-}
+        var entityType = _context.Model.FindEntityType(typeof(T));
+        if (entityType == null)
+            return false;
 
-/// <summary>
-/// Unit of Work pattern implementation for managing transactions across multiple repositories.
-/// Ensures that all changes are committed together or rolled back if an error occurs.
-/// </summary>
-public class UnitOfWork : IUnitOfWork
-{
-    private readonly MovieWatchlistDbContext _context;
-    private readonly IDomainEventDispatcher _domainEventDispatcher;
-    private bool _disposed = false;
+        var primaryKey = entityType.FindPrimaryKey();
+        if (primaryKey == null || primaryKey.Properties.Count != 1)
+            return false;
 
-    public UnitOfWork(MovieWatchlistDbContext context, IDomainEventDispatcher domainEventDispatcher)
-    {
-        _context = context ?? throw new ArgumentNullException(nameof(context));
-        _domainEventDispatcher = domainEventDispatcher ?? throw new ArgumentNullException(nameof(domainEventDispatcher));
-    }
+        var keyProperty = primaryKey.Properties[0];
+        var parameter = Expression.Parameter(typeof(T), "e");
+        var property = Expression.Property(parameter, keyProperty.PropertyInfo!);
+        var constant = Expression.Constant(id);
+        var equals = Expression.Equal(property, constant);
+        var lambda = Expression.Lambda<Func<T, bool>>(equals, parameter);
 
-    /// <summary>
-    /// Saves all changes made in this unit of work to the database asynchronously.
-    /// Dispatches domain events after successful save.
-    /// </summary>
-    /// <returns>The number of state entries written to the database</returns>
-    public async Task<int> SaveChangesAsync()
-    {
-        var entitiesWithEvents = _context.ChangeTracker.Entries<Entity>()
-            .Where(e => e.Entity.DomainEvents.Any())
-            .Select(e => e.Entity)
-            .ToList();
-        
-        var domainEvents = entitiesWithEvents
-            .SelectMany(e => e.DomainEvents)
-            .ToList();
-        
-        var result = await _context.SaveChangesAsync();
-        
-        await _domainEventDispatcher.DispatchAsync(domainEvents);
-        
-        foreach (var entity in entitiesWithEvents)
-        {
-            entity.ClearDomainEvents();
-        }
-        
-        return result;
-    }
-
-    /// <summary>
-    /// Disposes the unit of work and underlying context.
-    /// </summary>
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (!_disposed && disposing)
-        {
-            _context.Dispose();
-        }
-        _disposed = true;
+        return await _dbSet.AnyAsync(lambda);
     }
 }

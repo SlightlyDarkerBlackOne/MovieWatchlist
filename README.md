@@ -16,13 +16,8 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   │   ├── BaseApiController       # Base controller with token helpers
     │   │   ├── MoviesController        # Movie search and details (MediatR)
     │   │   └── WatchlistController     # Watchlist management (MediatR)
-    │   ├── DTOs/                       # API Data Transfer Objects
-    │   │   ├── AuthenticationDtos      # Auth request/response models
-    │   │   ├── MovieDetailsDto         # Movie details response DTO
-    │   │   └── WatchlistDtos          # Watchlist request/response models
     │   ├── Mapping/                     # Mapster mapping profiles
-    │   │   ├── AuthMappingProfile      # Auth DTO mappings
-    │   │   └── MovieMappingProfile     # Movie DTO mappings
+    │   │   └── AuthMappingProfile      # Auth DTO mappings
     │   ├── Middleware/                 # Custom middleware
     │   │   ├── GlobalExceptionMiddleware # Error handling
     │   │   └── RateLimitingMiddleware  # Rate limiting
@@ -33,52 +28,57 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   ├── Options/                      # Options pattern classes
     │   │   └── AuthCookieOptions        # Cookie configuration options
     │   ├── Services/                     # API-level services
-    │   │   └── CurrentUserService      # Current user context service
+    │   │   ├── AuthCookieService      # Cookie management implementation
+    │   │   ├── CurrentUserService     # Current user context service
+    │   │   └── TokenExtractor         # Token extraction implementation
     │   ├── Constants/                  # Configuration constants
     │   │   ├── ConfigurationConstants  # Configuration constants
-    │   │   ├── CookieNames             # Cookie name constants
     │   │   ├── EnvironmentVariables    # Environment variable names
     │   │   └── MiddlewareConstants     # Middleware constants
     │   └── Program.cs                  # Application entry point & DI setup
     |
     ├── MovieWatchlist.Application/      # Application Layer (Business Logic)
-    │   ├── Commands/                    # CQRS Commands (MediatR)
-    │   │   ├── AuthenticationCommands   # Register, Login, Reset Password, etc.
-    │   │   └── WatchlistCommands       # Add, Update, Remove watchlist items
-    │   ├── Queries/                     # CQRS Queries (MediatR)
-    │   │   ├── GetCurrentUserQuery      # Get current authenticated user
-    │   │   ├── MovieQueries            # Movie search, details, popular, genre
-    │   │   └── WatchlistQueries        # Get watchlist, statistics, filters
-    │   ├── Handlers/                    # MediatR Request Handlers
-    │   │   ├── Auth/                    # Authentication handlers
-    │   │   │   ├── CreateRefreshTokenCommandHandler
-    │   │   │   ├── ForgotPasswordCommandHandler
-    │   │   │   ├── GetCurrentUserQueryHandler
-    │   │   │   ├── LoginCommandHandler
-    │   │   │   ├── LogoutCommandHandler
-    │   │   │   ├── RefreshTokenCommandHandler
-    │   │   │   ├── RegisterCommandHandler
-    │   │   │   ├── ResetPasswordCommandHandler
-    │   │   │   └── ValidateTokenCommandHandler
-    │   │   ├── Movies/                  # Movie query handlers
-    │   │   │   ├── GetMovieDetailsByTmdbIdQueryHandler # With caching logic
-    │   │   │   ├── GetMovieDetailsQueryHandler
-    │   │   │   ├── GetMoviesByGenreQueryHandler
-    │   │   │   ├── GetPopularMoviesQueryHandler
-    │   │   │   └── SearchMoviesQueryHandler
-    │   │   └── Watchlist/               # Watchlist handlers
-    │   │       ├── AddToWatchlistCommandHandler
-    │   │       ├── GetFavoriteMoviesQueryHandler
-    │   │       ├── GetRecommendedMoviesQueryHandler
-    │   │       ├── GetUserStatisticsQueryHandler
-    │   │       ├── GetUserWatchlistQueryHandler
-    │   │       ├── GetWatchlistByGenreQueryHandler
-    │   │       ├── GetWatchlistByRatingRangeQueryHandler
-    │   │       ├── GetWatchlistByStatusQueryHandler
-    │   │       ├── GetWatchlistByYearRangeQueryHandler
-    │   │       ├── GetWatchlistItemByIdQueryHandler
-    │   │       ├── RemoveFromWatchlistCommandHandler
-    │   │       └── UpdateWatchlistItemCommandHandler
+    │   ├── Features/                    # Feature-based organization (CQRS)
+    │   │   ├── Auth/                    # Authentication feature
+    │   │   │   ├── Commands/            # Auth commands
+    │   │   │   │   ├── CreateRefreshToken/ # Command + Handler + DTOs
+    │   │   │   │   ├── ForgotPassword/
+    │   │   │   │   ├── Login/
+    │   │   │   │   ├── Logout/
+    │   │   │   │   ├── RefreshToken/
+    │   │   │   │   ├── Register/
+    │   │   │   │   ├── ResetPassword/
+    │   │   │   │   └── ValidateToken/
+    │   │   │   ├── Queries/             # Auth queries
+    │   │   │   │   └── GetCurrentUser/ # Query + Handler
+    │   │   │   └── Common/              # Shared auth types
+    │   │   │       ├── AuthenticationResult
+    │   │   │       └── UserInfo
+    │   │   ├── Movies/                  # Movies feature
+    │   │   │   ├── Queries/             # Movie queries
+    │   │   │   │   ├── GetMovieDetails/
+    │   │   │   │   ├── GetMovieDetailsByTmdbId/
+    │   │   │   │   ├── GetMoviesByGenre/
+    │   │   │   │   ├── GetPopularMovies/
+    │   │   │   │   └── SearchMovies/
+    │   │   │   └── Common/              # Shared movie types
+    │   │   │       ├── MovieDetailsDto
+    │   │   │       └── MovieMappingProfile
+    │   │   └── Watchlist/               # Watchlist feature
+    │   │       ├── Commands/            # Watchlist commands
+    │   │       │   ├── AddToWatchlist/
+    │   │       │   ├── RemoveFromWatchlist/
+    │   │       │   └── UpdateWatchlistItem/
+    │   │       └── Queries/             # Watchlist queries
+    │   │           ├── GetMyFavoriteMovies/
+    │   │           ├── GetMyRecommendedMovies/
+    │   │           ├── GetMyStatistics/
+    │   │           ├── GetMyWatchlist/
+    │   │           ├── GetMyWatchlistByGenre/
+    │   │           ├── GetMyWatchlistByRatingRange/
+    │   │           ├── GetMyWatchlistByStatus/
+    │   │           ├── GetMyWatchlistByYearRange/
+    │   │           └── GetMyWatchlistItemById/
     │   ├── Behaviors/                   # MediatR pipeline behaviors
     │   │   └── TransactionBehavior      # Unit of Work per request
     │   ├── Interfaces/                  # Application service interfaces
@@ -110,7 +110,9 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   │   ├── IUnitOfWork            # Transaction management interface
     │   │   ├── IRetryPolicyService    # Retry policy interface
     │   │   ├── IDomainEventDispatcher # Domain event dispatcher
-    │   │   └── IDomainEventHandler    # Domain event handler
+    │   │   ├── IDomainEventHandler    # Domain event handler
+    │   │   ├── ITokenExtractor        # Token extraction abstraction
+    │   │   └── IAuthCookieService     # Cookie management abstraction
     │   ├── Models/                     # Domain entities (business objects)
     │   │   ├── Entity                 # Base entity with domain events
     │   │   ├── User                   # User entity
@@ -136,30 +138,34 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   ├── Exceptions/                 # Custom exceptions
     │   │   └── ApiException           # Custom exception hierarchy
     │   └── Constants/                  # Domain constants
+    │       ├── CookieNames            # Cookie name constants
     │       ├── ErrorMessages          # Centralized error messages
     │       ├── GenreConstants         # Movie genre definitions
     │       └── ValidationConstants    # Validation rules
     |
-    ├── MovieWatchlist.Infrastructure/  # 🔧 Infrastructure Layer (External Concerns)
-    │   ├── Configuration/              # Infrastructure configuration
-    │   │   └── TmdbSettings           # TMDB API settings
+    ├── MovieWatchlist.Persistence/     # Persistence Layer (Data Access)
     │   ├── Data/                       # Database context
     │   │   ├── MovieWatchlistDbContext # EF Core context
     │   │   └── MovieWatchlistDbContextFactory # Design-time factory
-    │   ├── Migrations/                 # EF Core migrations
-    │   │   ├── InitialCreate          # Initial database schema
-    │   │   ├── AddPasswordResetToken  # Password reset support
-    │   │   ├── AddCreditsAndVideosToMovie # Movie credits/videos caching
-    │   │   ├── AddValueObjectsSupport # Value object support
-    │   │   └── AddUserStatisticsAndNullableRating # Statistics caching
     │   ├── Repositories/               # Data access implementations
-    │   │   ├── EfRepository           # Generic repository (EF Core) + UnitOfWork
+    │   │   ├── EfRepository           # Generic repository (EF Core)
+    │   │   ├── UnitOfWork             # Transaction management & domain events
     │   │   ├── UserRepository         # User data access
     │   │   ├── MovieRepository        # Movie data access
     │   │   ├── WatchlistRepository    # Watchlist data access
     │   │   ├── RefreshTokenRepository # Refresh token repository
     │   │   ├── PasswordResetTokenRepository # Password reset repository
     │   │   └── InMemoryRepository     # In-memory repository for testing
+    │   └── Migrations/                 # EF Core migrations
+    │       ├── InitialCreate          # Initial database schema
+    │       ├── AddPasswordResetToken  # Password reset support
+    │       ├── AddCreditsAndVideosToMovie # Movie credits/videos caching
+    │       ├── AddValueObjectsSupport # Value object support
+    │       └── AddUserStatisticsAndNullableRating # Statistics caching
+    |
+    ├── MovieWatchlist.Infrastructure/  # Infrastructure Layer (External Concerns)
+    │   ├── Configuration/              # Infrastructure configuration
+    │   │   └── TmdbSettings           # TMDB API settings
     │   ├── Services/                   # External service implementations
     │   │   ├── TmdbService            # TMDB API integration
     │   │   ├── EmailService           # Email sending (SMTP)
@@ -199,19 +205,26 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   │   ├── IntegrationTestBase     # Base class for integration tests
     │   │   ├── TestConstants          # Test constants and fixtures
     │   │   ├── TestDatabaseSeeder     # Database seeding utilities
-    │   │   ├── TestDataBuilder        # Test data builder pattern
     │   │   ├── TestExtensions         # Test helper extensions
-    │   │   ├── UnitTestBase           # Base class for unit tests
     │   │   └── WebApplicationFactoryExtensions # Web app factory helpers
     │   ├── Integration/                # End-to-end tests
     │   │   ├── DomainEventsIntegrationTests
     │   │   └── InfrastructureIntegrationTests
-    │   └── Services/                   # Service unit tests
-    │       ├── AuthenticationServiceTests
-    │       ├── GenreServiceTests
-    │       ├── JwtTokenServiceTests
-    │       ├── TmdbServiceTests
-    │       └── WatchlistServiceTests
+    │   ├── Services/                   # Service unit tests
+    │   │   ├── AuthenticationServiceTests
+    │   │   ├── GenreServiceTests
+    │   │   ├── JwtTokenServiceTests
+    │   │   ├── TmdbServiceTests
+    │   │   └── WatchlistServiceTests
+    │   └── TestDataBuilders/            # Test data builder pattern
+    │       ├── TestDataBuilder        # Main builder factory
+    │       ├── UserBuilder           # User test data builder
+    │       ├── MovieBuilder          # Movie test data builder
+    │       ├── WatchlistItemBuilder  # WatchlistItem test data builder
+    │       ├── RefreshTokenBuilder   # RefreshToken test data builder
+    │       ├── PasswordResetTokenBuilder # PasswordResetToken builder
+    │       ├── MovieDetailsDtoBuilder # MovieDetailsDto test data builder
+    │       └── TmdbMovieDtoBuilder   # TmdbMovieDto test data builder
     |
     └── movie-watchlist-frontend/       # React Frontend
         ├── src/

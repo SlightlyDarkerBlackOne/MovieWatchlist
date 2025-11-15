@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
-using MovieWatchlist.Infrastructure.Data;
+using MovieWatchlist.Persistence.Data;
 
-namespace MovieWatchlist.Infrastructure.Repositories;
+namespace MovieWatchlist.Persistence.Repositories;
 
 /// <summary>
 /// Repository for WatchlistItem entity with domain-specific operations.
@@ -169,5 +169,4 @@ public class WatchlistRepository : EfRepository<WatchlistItem>, IWatchlistReposi
         return true;
     }
 }
-
 

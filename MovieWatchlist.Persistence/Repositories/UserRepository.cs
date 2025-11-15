@@ -5,9 +5,9 @@ using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Interfaces;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.ValueObjects;
-using MovieWatchlist.Infrastructure.Data;
+using MovieWatchlist.Persistence.Data;
 
-namespace MovieWatchlist.Infrastructure.Repositories;
+namespace MovieWatchlist.Persistence.Repositories;
 
 /// <summary>
 /// Repository for User entity with domain-specific operations.
@@ -94,5 +94,4 @@ public class UserRepository : EfRepository<User>, IUserRepository
         return true;
     }
 }
-
 
