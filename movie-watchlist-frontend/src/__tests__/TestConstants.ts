@@ -34,6 +34,7 @@ export const TestConstants = {
     WatchlistMe: '*/Watchlist/me/watchlist',
     WatchlistAdd: '*/Watchlist/me/watchlist/add',
     WatchlistItem: '*/Watchlist/me/watchlist/item',
+    WatchlistItemWithId: '*/Watchlist/me/watchlist/item/:itemId',
     WatchlistStatistics: '*/Watchlist/me/watchlist/statistics',
   },
 

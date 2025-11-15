@@ -15,9 +15,12 @@ public static class ErrorMessages
     public const string InvalidModelState = "Invalid model state";
     public const string ValidationFailed = "Validation failed";
     public const string RegistrationFailed = "Registration failed";
-    public const string LogoutFailed = "Failed to logout";
+    public const string LogoutFailed = "Logout failed";
     public const string TokenNotProvided = "Token not provided";
+    public const string RefreshTokenNotProvided = "Refresh token not provided";
+    public const string InvalidToken = "Invalid token";
     public const string ResetTokenRequired = "Reset token is required";
+    public const string PasswordMismatch = "New password and confirm password do not match";
     
     #endregion
 
@@ -25,7 +28,8 @@ public static class ErrorMessages
     
     public const string InvalidOrExpiredResetToken = "Invalid or expired reset token.";
     public const string InvalidOrExpiredRefreshToken = "Invalid or expired refresh token.";
-    public const string UserNotFound = "User not found.";
+    public const string UserNotAuthenticated = "User not authenticated";
+    public const string UserNotFound = "User not found";
     public const string PasswordResetSuccess = "Password has been reset successfully.";
     public const string PasswordResetFailed = "An error occurred while resetting your password.";
     public const string PasswordResetRequestError = "An error occurred while processing your request.";
@@ -35,7 +39,7 @@ public static class ErrorMessages
 
     #region Watchlist Errors
     
-    public const string MovieNotFound = "Movie with TMDB ID {0} not found";
+    public const string MovieNotFound = "Movie not found";
     public const string MovieAlreadyInWatchlist = "Movie is already in user's watchlist";
     public const string WatchlistItemNotFound = "Watchlist item not found";
     public const string SearchQueryRequired = "Search query is required";
@@ -47,12 +51,13 @@ public static class ErrorMessages
     public const string TmdbRateLimitExceeded = "TMDB API rate limit exceeded. Please try again in a moment.";
     public const string FailedToFetchMovieData = "Failed to fetch movie data";
     public const string MovieWithTmdbIdNotFound = "Movie with TMDB ID {0} not found";
+    public const string GenreRequired = "Genre is required.";
     
     #endregion
 
-    #region Success Messages
+    #region Generic Error Messages
     
-    public const string LogoutSuccess = "Logged out successfully";
+    public const string UnexpectedError = "An unexpected error occurred";
     
     #endregion
 
@@ -64,4 +69,3 @@ public static class ErrorMessages
     
     #endregion
 }
-

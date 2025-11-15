@@ -417,7 +417,7 @@ public class WatchlistServiceTests
         
         // Assert
         Assert.False(result.IsSuccess);
-        Assert.Contains(string.Format(ErrorMessages.MovieNotFound, 999), result.Error);
+        Assert.Contains(string.Format(ErrorMessages.MovieWithTmdbIdNotFound, 999), result.Error);
     }
 
     [Fact]

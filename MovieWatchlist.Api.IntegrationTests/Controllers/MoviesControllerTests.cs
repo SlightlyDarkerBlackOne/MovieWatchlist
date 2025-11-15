@@ -61,7 +61,9 @@ public class MoviesControllerTests
     [Fact]
     public async Task GetMovieDetails_ValidId_ReturnsOkResult()
     {
-        var expectedMovie = MovieDetailsDto().Build();
+        var expectedMovie = MovieDetailsDto()
+            .WithTmdbId(1)
+            .Build();
 
         _mockMediator
             .Setup(x => x.Send(It.IsAny<GetMovieDetailsQuery>(), It.IsAny<CancellationToken>()))
@@ -149,6 +151,7 @@ public class MoviesControllerTests
     public async Task GetMovieDetailsByTmdbId_ValidId_ReturnsOkResult()
     {
         var expectedMovie = MovieDetailsDto()
+            .WithTmdbId(1)
             .WithBackdropPath(null)
             .Build();
 

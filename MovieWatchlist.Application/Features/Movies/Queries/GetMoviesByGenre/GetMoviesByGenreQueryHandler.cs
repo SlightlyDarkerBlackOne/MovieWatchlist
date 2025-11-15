@@ -3,6 +3,7 @@ using MediatR;
 using MovieWatchlist.Application.Features.Movies.Common;
 using MovieWatchlist.Application.Features.Movies.Queries.GetMoviesByGenre;
 using MovieWatchlist.Core.Common;
+using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Interfaces;
 
 namespace MovieWatchlist.Application.Features.Movies.Queries.GetMoviesByGenre;
@@ -22,7 +23,7 @@ public class GetMoviesByGenreQueryHandler : IRequestHandler<GetMoviesByGenreQuer
         {
             var genre = request.Genre?.Trim();
             if (string.IsNullOrWhiteSpace(genre))
-                return Result<IEnumerable<MovieDetailsDto>>.Failure("Genre is required.");
+                return Result<IEnumerable<MovieDetailsDto>>.Failure(ErrorMessages.GenreRequired);
 
             var movies = await _tmdbService.GetMoviesByGenreAsync(genre, request.Page);
             var dtos = movies.Adapt<IEnumerable<MovieDetailsDto>>();

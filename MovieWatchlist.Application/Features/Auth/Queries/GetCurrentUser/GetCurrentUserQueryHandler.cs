@@ -1,6 +1,7 @@
 using MediatR;
 using MovieWatchlist.Application.Features.Auth.Common;
 using MovieWatchlist.Core.Common;
+using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Interfaces;
 
 namespace MovieWatchlist.Application.Features.Auth.Queries.GetCurrentUser;
@@ -25,13 +26,13 @@ public class GetCurrentUserQueryHandler : IRequestHandler<GetCurrentUserQuery, R
         var userId = _currentUserService.UserId;
         if (!userId.HasValue)
         {
-            return Result<UserInfo>.Failure("User not authenticated");
+            return Result<UserInfo>.Failure(ErrorMessages.UserNotAuthenticated);
         }
 
         var user = await _userRepository.GetByIdAsync(userId.Value);
         if (user == null)
         {
-            return Result<UserInfo>.Failure("User not found");
+            return Result<UserInfo>.Failure(ErrorMessages.UserNotFound);
         }
 
         var userInfo = new UserInfo(

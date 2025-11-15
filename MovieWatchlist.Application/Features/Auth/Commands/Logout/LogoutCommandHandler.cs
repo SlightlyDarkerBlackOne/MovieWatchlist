@@ -32,13 +32,13 @@ public class LogoutCommandHandler : IRequestHandler<LogoutCommand, Result<Logout
             var success = await _authService.LogoutAsync(token);
             if (!success)
             {
-                return Result<LogoutResponse>.Failure("Logout failed");
+                return Result<LogoutResponse>.Failure(ErrorMessages.LogoutFailed);
             }
         }
 
         _cookieService.ClearAuthCookies();
 
-        var response = new LogoutResponse("Logout successful");
+        var response = new LogoutResponse(SuccessMessages.LogoutSuccess);
         return Result<LogoutResponse>.Success(response);
     }
 }

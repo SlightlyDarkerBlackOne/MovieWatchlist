@@ -80,6 +80,7 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   │           ├── GetMyWatchlistByYearRange/
     │   │           └── GetMyWatchlistItemById/
     │   ├── Behaviors/                   # MediatR pipeline behaviors
+    │   │   ├── ResultFailureBehavior    # Converts Result failures to exceptions
     │   │   └── TransactionBehavior      # Unit of Work per request
     │   ├── Interfaces/                  # Application service interfaces
     │   │   ├── IAuthenticationService  # Auth service interface
@@ -136,11 +137,13 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   ├── Common/                     # Shared abstractions
     │   │   └── Result                 # Result pattern for error handling
     │   ├── Exceptions/                 # Custom exceptions
-    │   │   └── ApiException           # Custom exception hierarchy
+    │   │   └── ApiException           # Custom exception hierarchy (ApiException, ValidationException, AuthenticationException, AuthorizationException, NotFoundException, ConflictException, RateLimitException, ExternalServiceException)
     │   └── Constants/                  # Domain constants
     │       ├── CookieNames            # Cookie name constants
+    │       ├── ErrorCodes             # Error code constants
     │       ├── ErrorMessages          # Centralized error messages
     │       ├── GenreConstants         # Movie genre definitions
+    │       ├── SuccessMessages        # Success message constants
     │       └── ValidationConstants    # Validation rules
     |
     ├── MovieWatchlist.Persistence/     # Persistence Layer (Data Access)
@@ -185,46 +188,93 @@ A comprehensive movie management platform that allows users to discover, track, 
     │   └── DTOs/                       # Infrastructure-specific DTOs
     │       └── TmdbMovieDto           # TMDB API response models
     |
-    ├── MovieWatchlist.Tests/           # Test Suite
-    │   ├── Controllers/                # Controller tests
-    │   │   ├── AuthControllerTests     # Auth controller integration tests
-    │   │   ├── MoviesControllerTests   # Movies controller unit tests
-    │   │   └── WatchlistControllerTests # Watchlist controller tests
-    │   ├── Application/                # Application layer tests
-    │   │   └── Events/                 # Event handler tests
-    │   │       ├── DomainEventDispatcherTests
-    │   │       └── Handlers/
-    │   │           └── LogActivityHandlerTests
-    │   ├── Core/                       # Domain layer tests
-    │   │   ├── Models/
-    │   │   │   └── WatchlistItemEventTests
-    │   │   └── ValueObjects/
-    │   │       └── PasswordValueObjectTests
-    │   ├── Infrastructure/             # Infrastructure test utilities
-    │   │   ├── EnhancedIntegrationTestBase # Enhanced integration test base
-    │   │   ├── IntegrationTestBase     # Base class for integration tests
-    │   │   ├── TestConstants          # Test constants and fixtures
-    │   │   ├── TestDatabaseSeeder     # Database seeding utilities
-    │   │   ├── TestExtensions         # Test helper extensions
-    │   │   └── WebApplicationFactoryExtensions # Web app factory helpers
-    │   ├── Integration/                # End-to-end tests
-    │   │   ├── DomainEventsIntegrationTests
-    │   │   └── InfrastructureIntegrationTests
-    │   ├── Services/                   # Service unit tests
-    │   │   ├── AuthenticationServiceTests
-    │   │   ├── GenreServiceTests
-    │   │   ├── JwtTokenServiceTests
-    │   │   ├── TmdbServiceTests
-    │   │   └── WatchlistServiceTests
-    │   └── TestDataBuilders/            # Test data builder pattern
-    │       ├── TestDataBuilder        # Main builder factory
-    │       ├── UserBuilder           # User test data builder
-    │       ├── MovieBuilder          # Movie test data builder
-    │       ├── WatchlistItemBuilder  # WatchlistItem test data builder
-    │       ├── RefreshTokenBuilder   # RefreshToken test data builder
-    │       ├── PasswordResetTokenBuilder # PasswordResetToken builder
-    │       ├── MovieDetailsDtoBuilder # MovieDetailsDto test data builder
-    │       └── TmdbMovieDtoBuilder   # TmdbMovieDto test data builder
+    ├── MovieWatchlist.Application.UnitTests/  # Application layer unit tests
+    │   ├── Features/                  # Handler tests (CQRS)
+    │   │   ├── Auth/                  # Auth handler tests
+    │   │   │   ├── Commands/         # Command handler tests
+    │   │   │   │   ├── CreateRefreshTokenCommandHandlerTests
+    │   │   │   │   ├── ForgotPasswordCommandHandlerTests
+    │   │   │   │   ├── LoginCommandHandlerTests
+    │   │   │   │   ├── LogoutCommandHandlerTests
+    │   │   │   │   ├── RefreshTokenCommandHandlerTests
+    │   │   │   │   ├── RegisterCommandHandlerTests
+    │   │   │   │   ├── ResetPasswordCommandHandlerTests
+    │   │   │   │   └── ValidateTokenCommandHandlerTests
+    │   │   │   └── Queries/          # Query handler tests
+    │   │   │       └── GetCurrentUserQueryHandlerTests
+    │   │   ├── Movies/               # Movie handler tests
+    │   │   │   └── Queries/          # Movie query handler tests
+    │   │   │       ├── GetMovieDetailsByTmdbIdQueryHandlerTests
+    │   │   │       ├── GetMovieDetailsQueryHandlerTests
+    │   │   │       ├── GetMoviesByGenreQueryHandlerTests
+    │   │   │       ├── GetPopularMoviesQueryHandlerTests
+    │   │   │       └── SearchMoviesQueryHandlerTests
+    │   │   └── Watchlist/            # Watchlist handler tests
+    │   │       ├── Commands/         # Watchlist command handler tests
+    │   │       │   ├── AddToWatchlistCommandHandlerTests
+    │   │       │   ├── RemoveFromWatchlistCommandHandlerTests
+    │   │       │   └── UpdateWatchlistItemCommandHandlerTests
+    │   │       └── Queries/          # Watchlist query handler tests
+    │   │           ├── GetMyFavoriteMoviesQueryHandlerTests
+    │   │           ├── GetMyRecommendedMoviesQueryHandlerTests
+    │   │           ├── GetMyStatisticsQueryHandlerTests
+    │   │           ├── GetMyWatchlistByGenreQueryHandlerTests
+    │   │           ├── GetMyWatchlistByRatingRangeQueryHandlerTests
+    │   │           ├── GetMyWatchlistByStatusQueryHandlerTests
+    │   │           ├── GetMyWatchlistByYearRangeQueryHandlerTests
+    │   │           ├── GetMyWatchlistItemByIdQueryHandlerTests
+    │   │           └── GetMyWatchlistQueryHandlerTests
+    │   ├── Events/                    # Event handler tests
+    │   │   └── UpdateStatisticsHandlerTests
+    │   └── Services/                  # Service unit tests
+    │       ├── AuthenticationServiceTests
+    │       └── WatchlistServiceTests
+    |
+    ├── MovieWatchlist.Core.UnitTests/  # Domain layer unit tests
+    │   ├── Models/                    # Domain model tests
+    │   │   └── WatchlistItemEventTests
+    │   ├── Specifications/           # Specification tests
+    │   └── ValueObjects/              # Value object tests
+    │       └── PasswordValueObjectTests
+    |
+    ├── MovieWatchlist.Infrastructure.UnitTests/  # Infrastructure layer unit tests
+    │   ├── Repositories/              # Repository tests
+    │   └── Services/                  # Infrastructure service tests
+    │       ├── GenreServiceTests
+    │       ├── JwtTokenServiceTests
+    │       └── TmdbServiceTests
+    |
+    ├── MovieWatchlist.Api.IntegrationTests/  # API integration tests
+    │   ├── Controllers/                # Controller integration tests
+    │   │   ├── AuthControllerTests
+    │   │   ├── MoviesControllerTests
+    │   │   └── WatchlistControllerTests
+    │   └── Integration/               # End-to-end integration tests
+    │       └── DomainEventsIntegrationTests
+    |
+    ├── MovieWatchlist.Persistence.IntegrationTests/  # Persistence integration tests
+    │   └── PersistenceIntegrationTests  # Database and repository integration tests
+    |
+    ├── MovieWatchlist.Infrastructure.IntegrationTests/  # Infrastructure integration tests
+    │   └── InfrastructureIntegrationTests  # Infrastructure service integration tests
+    |
+    └── MovieWatchlist.Tests.Shared/   # Shared test utilities
+        ├── Infrastructure/            # Test infrastructure
+        │   ├── EnhancedIntegrationTestBase  # Enhanced integration test base
+        │   ├── IntegrationTestBase    # Base class for integration tests
+        │   ├── TestConstants         # Test constants and fixtures
+        │   ├── TestDatabaseSeeder    # Database seeding utilities
+        │   ├── TestExtensions        # Test helper extensions
+        │   └── WebApplicationFactoryExtensions  # Web app factory helpers
+        └── TestDataBuilders/          # Test data builder pattern
+            ├── TestDataBuilder       # Main builder factory
+            ├── UserBuilder           # User test data builder
+            ├── MovieBuilder         # Movie test data builder
+            ├── WatchlistItemBuilder # WatchlistItem test data builder
+            ├── RefreshTokenBuilder  # RefreshToken test data builder
+            ├── PasswordResetTokenBuilder  # PasswordResetToken builder
+            ├── MovieDetailsDtoBuilder  # MovieDetailsDto test data builder
+            └── TmdbMovieDtoBuilder  # TmdbMovieDto test data builder
     |
     └── movie-watchlist-frontend/       # React Frontend
         ├── src/
@@ -366,8 +416,11 @@ A comprehensive movie management platform that allows users to discover, track, 
 ## Tests
 
 ### Backend (.NET)
-- 230 tests total
-- 77.55% line coverage
-- 52.38% branch coverage
+- 303 tests total
+- 81% line coverage
+- 54.2% branch coverage
 
 ### Frontend (React)
+- 247 tests total
+- 67.68% line coverage
+- 55.84% branch coverage

@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MovieWatchlist.Api\MovieWatchlist.Api.csproj" />
     <ProjectReference Include="..\MovieWatchlist.Application\MovieWatchlist.Application.csproj" />
     <ProjectReference Include="..\MovieWatchlist.Core\MovieWatchlist.Core.csproj" />
     <ProjectReference Include="..\MovieWatchlist.Infrastructure\MovieWatchlist.Infrastructure.csproj" />

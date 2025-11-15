@@ -34,8 +34,7 @@ public class TmdbService : ITmdbService
     }
 
     /// <summary>
-    /// Searches for movies by query string. Results are sorted by vote count descending
-    /// to show most popular/relevant movies first.
+    /// Searches for movies by query string.
     /// </summary>
     public async Task<IEnumerable<Movie>> SearchMoviesAsync(string query, int page = 1)
     {
@@ -44,7 +43,7 @@ public class TmdbService : ITmdbService
 
         var movies = MapToMovies(response?.Results ?? Array.Empty<TmdbMovieDto>());
         
-        return movies.OrderByDescending(m => m.VoteCount);
+        return movies;
     }
 
     /// <summary>
