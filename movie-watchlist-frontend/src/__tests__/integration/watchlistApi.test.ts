@@ -215,7 +215,7 @@ describe('Watchlist RTK Query API', () => {
       const itemId = TestConstants.Watchlist.DefaultItemId;
 
       server.use(
-        http.delete(TestConstants.ApiEndpoints.WatchlistItem, () => {
+        http.delete(TestConstants.ApiEndpoints.WatchlistItemWithId, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );
@@ -232,7 +232,7 @@ describe('Watchlist RTK Query API', () => {
       const itemId = TestConstants.Users.NonExistentUserId;
 
       server.use(
-        http.delete(TestConstants.ApiEndpoints.WatchlistItem, () => {
+        http.delete(TestConstants.ApiEndpoints.WatchlistItemWithId, () => {
           return HttpResponse.json({ message: TestConstants.ErrorMessages.FailedToLoad }, { status: TestConstants.HttpStatusCodes.NotFound });
         })
       );
@@ -248,7 +248,7 @@ describe('Watchlist RTK Query API', () => {
       const itemId = TestConstants.Watchlist.DefaultItemId;
 
       server.use(
-        http.delete(TestConstants.ApiEndpoints.WatchlistItem, () => {
+        http.delete(TestConstants.ApiEndpoints.WatchlistItemWithId, () => {
           return new HttpResponse(null, { status: 204 });
         })
       );

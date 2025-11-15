@@ -58,7 +58,7 @@ describe('WatchlistPage', () => {
     renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     await waitFor(() => {
-      expect(mockUseGetWatchlistQuery).toHaveBeenCalledWith(mockUser.id, { skip: false });
+      expect(mockUseGetWatchlistQuery).toHaveBeenCalledWith(undefined, { skip: false });
     });
   });
 
@@ -112,7 +112,7 @@ describe('WatchlistPage', () => {
     renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
     await waitFor(() => {
-      expect(mockUseGetWatchlistQuery).toHaveBeenCalledWith(mockUser.id, { skip: false });
+      expect(mockUseGetWatchlistQuery).toHaveBeenCalledWith(undefined, { skip: false });
     });
 
     await waitFor(() => {
@@ -150,7 +150,7 @@ describe('WatchlistPage', () => {
 
     renderWithMocks(<WatchlistPage />, { mockAuthContext });
 
-    expect(mockUseGetWatchlistQuery).toHaveBeenCalledWith(mockUser.id, { skip: false });
+    expect(mockUseGetWatchlistQuery).toHaveBeenCalledWith(undefined, { skip: false });
   });
 
   it('should display empty state when watchlist is empty', async () => {

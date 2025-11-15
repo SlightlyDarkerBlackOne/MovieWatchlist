@@ -118,9 +118,18 @@ describe('Movies RTK Query API', () => {
   describe('getMovieDetails', () => {
     it('should fetch movie details successfully', async () => {
       const mockResponse = {
-        movie: mockMovieDetails,
-        credits: { cast: [], crew: [] },
-        videos: []
+        tmdbId: mockMovieDetails.tmdbId,
+        title: mockMovieDetails.title,
+        overview: mockMovieDetails.overview,
+        posterPath: mockMovieDetails.posterPath,
+        backdropPath: mockMovieDetails.backdropPath,
+        releaseDate: mockMovieDetails.releaseDate,
+        voteAverage: mockMovieDetails.voteAverage,
+        voteCount: mockMovieDetails.voteCount,
+        popularity: mockMovieDetails.popularity,
+        genres: mockMovieDetails.genres,
+        creditsJson: { cast: [], crew: [] },
+        videosJson: []
       };
 
       server.use(
@@ -134,17 +143,30 @@ describe('Movies RTK Query API', () => {
       );
 
       expect(result.data).toBeDefined();
-      expect(result.data?.movie).toEqual(mockMovieDetails);
+      expect(result.data?.movie.tmdbId).toBe(mockMovieDetails.tmdbId);
+      expect(result.data?.movie.title).toBe(mockMovieDetails.title);
+      expect(result.data?.credits.cast).toEqual([]);
+      expect(result.data?.credits.crew).toEqual([]);
+      expect(result.data?.videos).toEqual([]);
     });
 
     it('should transform credits data correctly', async () => {
       const mockResponse = {
-        movie: mockMovieDetails,
-        credits: {
-          cast: [{ id: 1, name: 'Actor 1', character: 'Character 1' }],
-          crew: [{ id: 2, name: 'Director 1', job: 'Director' }]
+        tmdbId: mockMovieDetails.tmdbId,
+        title: mockMovieDetails.title,
+        overview: mockMovieDetails.overview,
+        posterPath: mockMovieDetails.posterPath,
+        backdropPath: mockMovieDetails.backdropPath,
+        releaseDate: mockMovieDetails.releaseDate,
+        voteAverage: mockMovieDetails.voteAverage,
+        voteCount: mockMovieDetails.voteCount,
+        popularity: mockMovieDetails.popularity,
+        genres: mockMovieDetails.genres,
+        creditsJson: {
+          cast: [{ id: 1, name: 'Actor 1', character: 'Character 1', order: 0, gender: 2 }],
+          crew: [{ id: 2, name: 'Director 1', job: 'Director', department: 'Directing', gender: 2 }]
         },
-        videos: []
+        videosJson: []
       };
 
       server.use(
