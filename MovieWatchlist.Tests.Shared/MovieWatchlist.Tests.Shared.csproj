@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Bogus" Version="35.6.4" />
+    <PackageReference Include="FluentAssertions" Version="6.12.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
+    <PackageReference Include="xunit" Version="2.6.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MovieWatchlist.Api\MovieWatchlist.Api.csproj" />
+    <ProjectReference Include="..\MovieWatchlist.Core\MovieWatchlist.Core.csproj" />
+    <ProjectReference Include="..\MovieWatchlist.Application\MovieWatchlist.Application.csproj" />
+    <ProjectReference Include="..\MovieWatchlist.Infrastructure\MovieWatchlist.Infrastructure.csproj" />
+    <ProjectReference Include="..\MovieWatchlist.Persistence\MovieWatchlist.Persistence.csproj" />
+  </ItemGroup>
+
+</Project>
+
