@@ -1,7 +1,6 @@
 using Mapster;
 using MediatR;
 using MovieWatchlist.Application.Features.Movies.Common;
-using MovieWatchlist.Application.Features.Movies.Queries.SearchMovies;
 using MovieWatchlist.Core.Common;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Interfaces;
@@ -23,7 +22,8 @@ public class SearchMoviesQueryHandler : IRequestHandler<SearchMoviesQuery, Resul
             return Result<IEnumerable<MovieDetailsDto>>.Failure(ErrorMessages.SearchQueryRequired);
 
         var movies = await _tmdbService.SearchMoviesAsync(request.Query, request.Page);
-        var dtos = movies.Adapt<IEnumerable<MovieDetailsDto>>();
+        var sortedMovies = movies.OrderByDescending(m => m.VoteCount);
+        var dtos = sortedMovies.Adapt<IEnumerable<MovieDetailsDto>>();
         return Result<IEnumerable<MovieDetailsDto>>.Success(dtos);
     }
 }

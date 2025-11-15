@@ -1,8 +1,8 @@
 using Mapster;
 using MediatR;
 using MovieWatchlist.Application.Features.Movies.Common;
-using MovieWatchlist.Application.Features.Movies.Queries.GetMovieDetails;
 using MovieWatchlist.Core.Common;
+using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Core.Interfaces;
 
 namespace MovieWatchlist.Application.Features.Movies.Queries.GetMovieDetails;
@@ -20,7 +20,7 @@ public class GetMovieDetailsQueryHandler : IRequestHandler<GetMovieDetailsQuery,
     {
         var movie = await _tmdbService.GetMovieDetailsAsync(request.TmdbId);
         if (movie == null)
-            return Result<MovieDetailsDto>.Failure("Movie not found.");
+            return Result<MovieDetailsDto>.Failure(ErrorMessages.MovieNotFound);
 
         var dto = movie.Adapt<MovieDetailsDto>();
         return Result<MovieDetailsDto>.Success(dto);

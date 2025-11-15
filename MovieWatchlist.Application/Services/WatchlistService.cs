@@ -193,7 +193,7 @@ public class WatchlistService : IWatchlistService
             );
             
             if (tmdbMovie == null)
-                return Result<WatchlistItem>.Failure(string.Format(ErrorMessages.MovieNotFound, command.MovieId));
+                return Result<WatchlistItem>.Failure(string.Format(ErrorMessages.MovieWithTmdbIdNotFound, command.MovieId));
             
             await _movieRepository.AddAsync(tmdbMovie);
             movie = tmdbMovie;

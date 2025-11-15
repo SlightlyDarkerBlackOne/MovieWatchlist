@@ -1,9 +1,9 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using MovieWatchlist.Application.Features.Auth.Commands.ForgotPassword;
-using MovieWatchlist.Application.Features.Auth.Commands.ResetPassword;
 using MovieWatchlist.Application.Interfaces;
 using MovieWatchlist.Core.Common;
+using MovieWatchlist.Core.Constants;
 
 namespace MovieWatchlist.Application.Features.Auth.Commands.ResetPassword;
 
@@ -26,7 +26,7 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
     {
         if (request.NewPassword != request.ConfirmPassword)
         {
-            return Result<PasswordResetResponse>.Failure("New password and confirm password do not match");
+            return Result<PasswordResetResponse>.Failure(ErrorMessages.PasswordMismatch);
         }
 
         var tokenPreview = string.IsNullOrEmpty(request.Token) ? "" : request.Token.Substring(0, Math.Min(8, request.Token.Length)) + "...";

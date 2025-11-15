@@ -7,6 +7,7 @@ using MovieWatchlist.Infrastructure.Configuration;
 using MovieWatchlist.Core.Constants;
 using MovieWatchlist.Infrastructure.DTOs;
 using MovieWatchlist.Core.Interfaces;
+using MovieWatchlist.Core.Exceptions;
 using MovieWatchlist.Infrastructure.Services;
 using MovieWatchlist.Tests.Shared.Infrastructure;
 using static MovieWatchlist.Tests.Shared.TestDataBuilders.TestDataBuilder;
@@ -186,13 +187,13 @@ public class TmdbServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetPopularMoviesAsync_WithFailureResponse_ThrowsHttpRequestException()
+    public async Task GetPopularMoviesAsync_WithFailureResponse_ThrowsExternalServiceException()
     {
         // Arrange
         SetupHttpErrorResponse(HttpStatusCode.BadRequest, "Invalid API key");
 
         // Act & Assert
-        await Assert.ThrowsAsync<HttpRequestException>(
+        await Assert.ThrowsAsync<ExternalServiceException>(
             () => _tmdbService.GetPopularMoviesAsync());
     }
 
@@ -285,7 +286,7 @@ public class TmdbServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetMoviesByGenreAsync_WithFailureResponse_ThrowsHttpRequestException()
+    public async Task GetMoviesByGenreAsync_WithFailureResponse_ThrowsExternalServiceException()
     {
         // Arrange
         var genre = "drama";
@@ -297,7 +298,7 @@ public class TmdbServiceTests : IDisposable
         SetupHttpErrorResponse(HttpStatusCode.InternalServerError, "Server error");
 
         // Act & Assert
-        await Assert.ThrowsAsync<HttpRequestException>(
+        await Assert.ThrowsAsync<ExternalServiceException>(
             () => _tmdbService.GetMoviesByGenreAsync(genre));
     }
 

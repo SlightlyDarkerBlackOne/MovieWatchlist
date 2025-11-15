@@ -30,7 +30,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         var refreshToken = _tokenExtractor.ExtractTokenFromCookie(CookieNames.RefreshToken);
         if (string.IsNullOrEmpty(refreshToken))
         {
-            return Result<RefreshTokenResponse>.Failure("Refresh token not provided");
+            return Result<RefreshTokenResponse>.Failure(ErrorMessages.RefreshTokenNotProvided);
         }
 
         var authResult = await _authService.RefreshTokenAsync(refreshToken);
