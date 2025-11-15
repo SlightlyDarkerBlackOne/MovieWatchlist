@@ -10,13 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.12" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.12" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.2" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
     <PackageReference Include="Mapster" Version="7.4.0" />
@@ -27,6 +21,7 @@
     <ProjectReference Include="..\MovieWatchlist.Core\MovieWatchlist.Core.csproj" />
     <ProjectReference Include="..\MovieWatchlist.Application\MovieWatchlist.Application.csproj" />
     <ProjectReference Include="..\MovieWatchlist.Infrastructure\MovieWatchlist.Infrastructure.csproj" />
+    <ProjectReference Include="..\MovieWatchlist.Persistence\MovieWatchlist.Persistence.csproj" />
   </ItemGroup>
 
 </Project>

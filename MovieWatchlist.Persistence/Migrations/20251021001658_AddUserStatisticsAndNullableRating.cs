@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace MovieWatchlist.Infrastructure.Migrations
+namespace MovieWatchlist.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class AddUserStatisticsAndNullableRating : Migration
@@ -70,3 +70,4 @@ namespace MovieWatchlist.Infrastructure.Migrations
         }
     }
 }
+

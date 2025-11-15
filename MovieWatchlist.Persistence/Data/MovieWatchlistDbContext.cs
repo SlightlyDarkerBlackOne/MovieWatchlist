@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.ValueObjects;
 
-namespace MovieWatchlist.Infrastructure.Data;
+namespace MovieWatchlist.Persistence.Data;
 
 public class MovieWatchlistDbContext : DbContext
 {

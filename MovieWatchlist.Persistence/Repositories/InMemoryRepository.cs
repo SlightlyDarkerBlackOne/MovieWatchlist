@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using MovieWatchlist.Core.Interfaces;
 
-namespace MovieWatchlist.Infrastructure.Repositories;
+namespace MovieWatchlist.Persistence.Repositories;
 
 public class InMemoryRepository<T> : IRepository<T> where T : class
 {
@@ -86,4 +86,5 @@ public class InMemoryRepository<T> : IRepository<T> where T : class
         var exists = _items.Any(GetIdPredicate(id));
         return Task.FromResult(exists);
     }
-} 
+}
+

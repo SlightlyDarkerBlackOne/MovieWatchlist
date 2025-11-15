@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace MovieWatchlist.Infrastructure.Migrations
+namespace MovieWatchlist.Persistence.Migrations
 {
     /// <inheritdoc />
     public partial class AddPasswordResetToken : Migration
@@ -60,3 +60,4 @@ namespace MovieWatchlist.Infrastructure.Migrations
         }
     }
 }
+
