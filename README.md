@@ -1,6 +1,6 @@
 # MovieWatchlist
 
-A full-stack movie watchlist application with TMDB integration, built with .NET 8 backend, React frontend, and PostgreSQL database
+A full-stack movie watchlist application with TMDB integration, built with .NET 9 backend, React frontend, and PostgreSQL database
 
 ## Description
 
@@ -341,7 +341,7 @@ A comprehensive movie management platform that allows users to discover, track, 
 ## Technologies
 
 ### Backend
-- [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0) - Cross-platform development framework
+- [.NET 9](https://dotnet.microsoft.com/download/dotnet/9.0) - Cross-platform development framework
 - [ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/) - Web API framework
 - [Entity Framework Core](https://docs.microsoft.com/en-us/ef/core/) - ORM for data access
 - [PostgreSQL](https://www.postgresql.org/) - Relational database

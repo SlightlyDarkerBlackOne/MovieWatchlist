@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using MovieWatchlist.Api.Constants;
 using MovieWatchlist.Core.Configuration;
 using MovieWatchlist.Infrastructure.Configuration;
@@ -35,31 +36,29 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "MovieWatchlist API", Version = "v1" });
-    
-    // Add JWT Authentication to Swagger
-    c.AddSecurityDefinition("Bearer", new()
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "MovieWatchlist API",
+        Version = "v1"
+    });
+
+    var securityScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-        Scheme = "Bearer",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
         BearerFormat = "JWT",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\""
-    });
-    
-    c.AddSecurityRequirement(new()
+        In = ParameterLocation.Header,
+        Description = "JWT Authorization header using the Bearer scheme."
+    };
+
+    c.AddSecurityDefinition("Bearer", securityScheme);
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new()
-            {
-                Reference = new()
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] {}
+            securityScheme,
+            new[] { "Bearer" }
         }
     });
 });
@@ -264,3 +263,4 @@ app.Run();
 
 // Make Program class accessible for testing
 public partial class Program { }
+
