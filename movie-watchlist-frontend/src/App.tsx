@@ -6,7 +6,7 @@ import { useAuth } from './contexts/AuthContext';
 import { useError } from './contexts/ErrorContext';
 import { appTheme } from './theme';
 import SkipLink from './components/common/SkipLink';
-import { setNavigateHandler, setGlobalErrorHandler } from './services/api';
+import { setNavigateHandler, setGlobalErrorHandler } from './store/api/baseApi';
 
 /**
  * App Content Component

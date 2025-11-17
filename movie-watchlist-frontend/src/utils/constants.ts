@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
     SEARCH: '/Movies/search',
     POPULAR: '/Movies/popular',
     DETAILS: (id: number) => `/Movies/${id}`,
+    TMDB_DETAILS: (tmdbId: number) => `/Movies/tmdb/${tmdbId}`,
     BY_GENRE: (genre: string) => `/Movies/genre/${genre}`,
   },
   
@@ -23,6 +24,7 @@ export const API_ENDPOINTS = {
   WATCHLIST: {
     ME: '/Watchlist/me/watchlist',
     ADD: '/Watchlist/me/watchlist/add',
+    UPDATE_ITEM: '/Watchlist/me/watchlist/item',
     ITEM: (itemId: number) => `/Watchlist/me/watchlist/item/${itemId}`,
     STATISTICS: '/Watchlist/me/watchlist/statistics',
     FAVORITES: '/Watchlist/me/watchlist/favorites',
@@ -69,4 +71,57 @@ export const TMDB_IMAGE_CONFIG = {
     LARGE: 'original',
   },
 };
+
+// Error Messages
+export const ERROR_MESSAGES = {
+  UNKNOWN_ERROR: 'An unknown error occurred',
+  NETWORK_ERROR: 'Network error. Please check your connection.',
+  PARSING_ERROR: 'Failed to parse server response.',
+  FAILED_TO_SEND_RESET_EMAIL: 'Failed to send reset email',
+  FAILED_TO_RESET_PASSWORD: 'Failed to reset password',
+} as const;
+
+// RTK Query Error Status Values
+export const RTK_QUERY_ERROR_STATUS = {
+  FETCH_ERROR: 'FETCH_ERROR',
+  PARSING_ERROR: 'PARSING_ERROR',
+} as const;
+
+// Error Object Property Names
+export const ERROR_PROPERTIES = {
+  STATUS: 'status',
+  DATA: 'data',
+  MESSAGE: 'message',
+} as const;
+
+// JavaScript Typeof Values
+export const TYPE_OF_VALUES = {
+  OBJECT: 'object',
+  STRING: 'string',
+} as const;
+
+// HTTP Methods
+export const HTTP_METHODS = {
+  GET: 'GET',
+  POST: 'POST',
+  PUT: 'PUT',
+  DELETE: 'DELETE',
+  PATCH: 'PATCH',
+} as const;
+
+// RTK Query Reducer Paths
+export const RTK_REDUCER_PATHS = {
+  MOVIES_API: 'moviesApi',
+  WATCHLIST_API: 'watchlistApi',
+  AUTH_API: 'authApi',
+} as const;
+
+// RTK Query Tag Types
+export const RTK_TAG_TYPES = {
+  MOVIES: 'Movies',
+  MOVIE_DETAILS: 'MovieDetails',
+  WATCHLIST: 'Watchlist',
+  WATCHLIST_STATS: 'WatchlistStats',
+  AUTH: 'Auth',
+} as const;
 

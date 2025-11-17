@@ -1,7 +1,12 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
-import authService from '../services/authService';
-import api from '../services/api';
-import { API_ENDPOINTS } from '../utils/constants';
+import {
+  useLoginMutation,
+  useRegisterMutation,
+  useLogoutMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
+  useGetCurrentUserQuery,
+} from '../store/api/authApi';
 import { 
   LoginCredentials, 
   RegisterData, 
@@ -11,6 +16,8 @@ import {
   PasswordResetResponse,
   UserInfo
 } from '../types/auth.types';
+import { extractErrorMessage } from '../utils/errorHandler';
+import { ERROR_MESSAGES } from '../utils/constants';
  
 
 /**
@@ -37,49 +44,89 @@ interface AuthProviderProps {
 /**
  * Auth Provider Component
  * Wraps the app and provides authentication methods to all children
- * 
- * C# Equivalent: Similar to DI Container or Service Provider
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserInfo | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  const [loginMutation] = useLoginMutation();
+  const [registerMutation] = useRegisterMutation();
+  const [logoutMutation] = useLogoutMutation();
+  const [forgotPasswordMutation] = useForgotPasswordMutation();
+  const [resetPasswordMutation] = useResetPasswordMutation();
+  
+  const { data: currentUser, isLoading } = useGetCurrentUserQuery(undefined, {
+    skip: false,
+  });
 
-  // Restore user session via /Auth/me on mount
   useEffect(() => {
-    const restoreSession = async () => {
-      try {
-        const response = await api.get(API_ENDPOINTS.AUTH.ME);
-        setUser(response.data);
-      } catch {
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    restoreSession();
-  }, []);
+    if (currentUser) {
+      setUser(currentUser);
+    } else if (!isLoading) {
+      setUser(null);
+    }
+  }, [currentUser, isLoading]);
 
   const login = async (credentials: LoginCredentials): Promise<AuthenticationResult> => {
-    const result = await authService.login(credentials);
-    if (result.isSuccess && result.user) {
-      setUser(result.user);
+    try {
+      const result = await loginMutation(credentials).unwrap();
+      if (result.isSuccess && result.user) {
+        setUser(result.user);
+      }
+      return result;
+    } catch (error) {
+      return {
+        isSuccess: false,
+        errorMessage: extractErrorMessage(error),
+      };
     }
-    return result;
   };
 
   const register = async (userData: RegisterData): Promise<AuthenticationResult> => {
-    const result = await authService.register(userData);
-    if (result.isSuccess && result.user) {
-      setUser(result.user);
+    try {
+      const result = await registerMutation(userData).unwrap();
+      if (result.isSuccess && result.user) {
+        setUser(result.user);
+      }
+      return result;
+    } catch (error) {
+      return {
+        isSuccess: false,
+        errorMessage: extractErrorMessage(error),
+      };
     }
-    return result;
   };
 
   const logout = async (): Promise<boolean> => {
-    const result = await authService.logout();
-    setUser(null);
-    return result;
+    try {
+      await logoutMutation().unwrap();
+      setUser(null);
+      return true;
+    } catch {
+      setUser(null);
+      return false;
+    }
+  };
+
+  const forgotPassword = async (data: ForgotPasswordData): Promise<PasswordResetResponse> => {
+    try {
+      return await forgotPasswordMutation(data).unwrap();
+    } catch (error) {
+      return {
+        success: false,
+        message: extractErrorMessage(error) || ERROR_MESSAGES.FAILED_TO_SEND_RESET_EMAIL,
+      };
+    }
+  };
+
+  const resetPassword = async (data: ResetPasswordData): Promise<PasswordResetResponse> => {
+    try {
+      return await resetPasswordMutation(data).unwrap();
+    } catch (error) {
+      return {
+        success: false,
+        message: extractErrorMessage(error) || ERROR_MESSAGES.FAILED_TO_RESET_PASSWORD,
+      };
+    }
   };
 
   const value: AuthContextType = {
@@ -88,8 +135,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     logout,
-    forgotPassword: (data) => authService.forgotPassword(data),
-    resetPassword: (data) => authService.resetPassword(data),
+    forgotPassword,
+    resetPassword,
     isAuthenticated: () => !!user,
   };
 

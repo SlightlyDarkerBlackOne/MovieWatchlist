@@ -1,44 +1,43 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithReauth } from './baseApi';
 import { WatchlistItem, WatchlistStatistics, AddToWatchlistRequest, UpdateWatchlistRequest } from '../../types/watchlist.types';
- 
-
-const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5250/api';
+import { API_ENDPOINTS, HTTP_METHODS, RTK_REDUCER_PATHS, RTK_TAG_TYPES } from '../../utils/constants';
 
 export const watchlistApi = createApi({
-  reducerPath: 'watchlistApi',
-  baseQuery: fetchBaseQuery({ baseUrl, credentials: 'include' }),
-  tagTypes: ['Watchlist', 'WatchlistStats'],
+  reducerPath: RTK_REDUCER_PATHS.WATCHLIST_API,
+  baseQuery: baseQueryWithReauth,
+  tagTypes: [RTK_TAG_TYPES.WATCHLIST, RTK_TAG_TYPES.WATCHLIST_STATS],
   endpoints: (builder) => ({
     getWatchlist: builder.query<WatchlistItem[], void>({
-      query: () => `/Watchlist/me/watchlist`,
-      providesTags: ['Watchlist'],
+      query: () => API_ENDPOINTS.WATCHLIST.ME,
+      providesTags: [RTK_TAG_TYPES.WATCHLIST],
     }),
     addToWatchlist: builder.mutation<WatchlistItem, AddToWatchlistRequest>({
       query: (request) => ({
-        url: `/Watchlist/me/watchlist/add`,
-        method: 'POST',
+        url: API_ENDPOINTS.WATCHLIST.ADD,
+        method: HTTP_METHODS.POST,
         body: request,
       }),
-      invalidatesTags: ['Watchlist', 'WatchlistStats'],
+      invalidatesTags: [RTK_TAG_TYPES.WATCHLIST, RTK_TAG_TYPES.WATCHLIST_STATS],
     }),
     updateWatchlistItem: builder.mutation<WatchlistItem, UpdateWatchlistRequest>({
       query: (request) => ({
-        url: `/Watchlist/me/watchlist/item`,
-        method: 'PUT',
+        url: API_ENDPOINTS.WATCHLIST.UPDATE_ITEM,
+        method: HTTP_METHODS.PUT,
         body: request,
       }),
-      invalidatesTags: ['Watchlist', 'WatchlistStats'],
+      invalidatesTags: [RTK_TAG_TYPES.WATCHLIST, RTK_TAG_TYPES.WATCHLIST_STATS],
     }),
     removeFromWatchlist: builder.mutation<void, number>({
       query: (itemId) => ({
-        url: `/Watchlist/me/watchlist/item/${itemId}`,
-        method: 'DELETE',
+        url: API_ENDPOINTS.WATCHLIST.ITEM(itemId),
+        method: HTTP_METHODS.DELETE,
       }),
-      invalidatesTags: ['Watchlist', 'WatchlistStats'],
+      invalidatesTags: [RTK_TAG_TYPES.WATCHLIST, RTK_TAG_TYPES.WATCHLIST_STATS],
     }),
     getWatchlistStatistics: builder.query<WatchlistStatistics, void>({
-      query: () => `/Watchlist/me/watchlist/statistics`,
-      providesTags: ['WatchlistStats'],
+      query: () => API_ENDPOINTS.WATCHLIST.STATISTICS,
+      providesTags: [RTK_TAG_TYPES.WATCHLIST_STATS],
     }),
   }),
 });
