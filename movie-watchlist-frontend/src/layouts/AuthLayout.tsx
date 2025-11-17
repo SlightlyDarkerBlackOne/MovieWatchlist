@@ -1,11 +1,11 @@
 import React from 'react';
 import { Alert, Box } from '@mui/material';
-import Header from '../components/common/Header';
-import LoginForm from '../components/auth/LoginForm';
-import RegisterForm from '../components/auth/RegisterForm';
-import ForgotPasswordForm from '../components/auth/ForgotPasswordForm';
-import ResetPasswordForm from '../components/auth/ResetPasswordForm';
-import { AUTH_VIEWS, type AuthView } from '../constants/routeConstants';
+import Header from '../shared/components/common/Header';
+import LoginForm from '../features/auth/components/LoginForm';
+import RegisterForm from '../features/auth/components/RegisterForm';
+import ForgotPasswordForm from '../features/auth/components/ForgotPasswordForm';
+import ResetPasswordForm from '../features/auth/components/ResetPasswordForm';
+import { AUTH_VIEWS, type AuthView } from '../shared/constants/routeConstants';
 
 interface AuthLayoutProps {
   view: AuthView;

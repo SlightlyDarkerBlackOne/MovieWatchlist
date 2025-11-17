@@ -9,19 +9,26 @@ import {
   Snackbar,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useGetMovieDetailsQuery } from '../store/api/moviesApi';
-import { WatchlistStatus, AddToWatchlistRequest } from '../types/watchlist.types';
-import { useWatchlistPresence } from '../hooks/useWatchlistPresence';
-import { useAddToWatchlistMutation, useRemoveFromWatchlistMutation, useGetWatchlistQuery } from '../hooks/useWatchlistOperations';
-import { useAddToWatchlistDialog } from '../hooks/useAddToWatchlistDialog';
-import { useAuth } from '../contexts/AuthContext';
-import MovieMainDetails from '../components/movies/MovieMainDetails';
-import MovieGenres from '../components/movies/MovieGenres';
-import TopCastCrew from '../components/movies/TopCastCrew';
-import TrailerSection from '../components/pages/TrailerSection';
-import { findMainTrailer } from '../services/movieService';
-import { AddToWatchlistDialog } from '../components/dialogs';
-import LoginRequiredDialog from '../components/common/LoginRequiredDialog';
+import { useGetMovieDetailsQuery } from '../features/movies/api/moviesApi';
+import { WatchlistStatus, AddToWatchlistRequest } from '../features/watchlist/model/watchlist.types';
+import { useWatchlistPresence } from '../features/watchlist/hooks/useWatchlistPresence';
+import { useAddToWatchlistMutation, useRemoveFromWatchlistMutation, useGetWatchlistQuery } from '../features/watchlist/api/watchlistApi';
+import { useAddToWatchlistDialog } from '../features/watchlist/hooks/useAddToWatchlistDialog';
+import { useAuth } from '../features/auth/contexts/AuthContext';
+import MovieMainDetails from '../features/movies/components/MovieMainDetails';
+import MovieGenres from '../features/movies/components/MovieGenres';
+import TopCastCrew from '../features/movies/components/TopCastCrew';
+import TrailerSection from '../features/movies/components/TrailerSection';
+import { findMainTrailer } from '../features/movies/lib/tmdbUtils';
+import { AddToWatchlistDialog } from '../features/watchlist/components';
+import LoginRequiredDialog from '../shared/components/common/LoginRequiredDialog';
+import {
+  ERROR_MESSAGES,
+  SUCCESS_MESSAGES,
+  UI_CONSTANTS,
+  MOVIE_DETAILS_PAGE_TEXT,
+  DEFAULT_VALUES,
+} from '../shared/constants/appConstants';
 
 const MovieDetailsPage: React.FC = () => {
   const { tmdbId } = useParams<{ tmdbId: string }>();
@@ -36,12 +43,12 @@ const MovieDetailsPage: React.FC = () => {
     isLoading: loading,
     error: loadError
   } = useGetMovieDetailsQuery(
-    { tmdbId: parseInt(tmdbId || '0') },
+    { tmdbId: parseInt(tmdbId || String(DEFAULT_VALUES.TMDB_ID)) },
     { skip: !tmdbId }
   );
 
   const movieDetails = movieData?.movie;
-  const { isInWatchlist: isMovieInWatchlist } = useWatchlistPresence(movieDetails?.tmdbId ?? 0);
+  const { isInWatchlist: isMovieInWatchlist } = useWatchlistPresence(movieDetails?.tmdbId ?? DEFAULT_VALUES.TMDB_ID);
   const videos = movieData?.videos || [];
   const credits = movieData?.credits || null;
   
@@ -74,11 +81,11 @@ const MovieDetailsPage: React.FC = () => {
       
       await addToWatchlist(request).unwrap();
       
-      setSuccessMessage(`Added "${dialog.selectedMovie.title}" to your watchlist!`);
+      setSuccessMessage(SUCCESS_MESSAGES.ADDED_TO_WATCHLIST(dialog.selectedMovie.title));
       dialog.closeDialog();
     } catch (err) {
       const error = err as Error;
-      setActionError(error.message || 'Failed to add to watchlist');
+      setActionError(error.message || ERROR_MESSAGES.FAILED_TO_ADD_TO_WATCHLIST);
     }
   };
 
@@ -93,16 +100,16 @@ const MovieDetailsPage: React.FC = () => {
     const watchlistItem = watchlistItems.find(item => item.movie?.tmdbId === movieDetails.tmdbId);
     
     if (!watchlistItem) {
-      setActionError('Movie not found in watchlist');
+      setActionError(ERROR_MESSAGES.MOVIE_NOT_FOUND_IN_WATCHLIST);
       return;
     }
     
     try {
       await removeFromWatchlist(watchlistItem.id).unwrap();
-      setSuccessMessage(`Removed "${movieDetails.title}" from your watchlist!`);
+      setSuccessMessage(SUCCESS_MESSAGES.REMOVED_FROM_WATCHLIST(movieDetails.title));
     } catch (err) {
       const error = err as Error;
-      setActionError(error.message || 'Failed to remove from watchlist');
+      setActionError(error.message || ERROR_MESSAGES.FAILED_TO_REMOVE_FROM_WATCHLIST);
     }
   };
 
@@ -116,7 +123,7 @@ const MovieDetailsPage: React.FC = () => {
 
   useEffect(() => {
     if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 3000);
+      const timer = setTimeout(() => setSuccessMessage(null), UI_CONSTANTS.TIMEOUT.SUCCESS_MESSAGE);
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
@@ -124,7 +131,7 @@ const MovieDetailsPage: React.FC = () => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh' }}>
-        <CircularProgress size={60} />
+        <CircularProgress size={UI_CONSTANTS.LOADING_SPINNER.SIZE} />
       </Box>
     );
   }
@@ -132,13 +139,13 @@ const MovieDetailsPage: React.FC = () => {
   if (loadError || !movieDetails) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error">{loadError ? String(loadError) : 'Movie not found'}</Alert>
+        <Alert severity={UI_CONSTANTS.ALERT_SEVERITY.ERROR}>{loadError ? String(loadError) : ERROR_MESSAGES.MOVIE_NOT_FOUND}</Alert>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate(-1)}
           sx={{ mt: 2 }}
         >
-          Go Back
+          {MOVIE_DETAILS_PAGE_TEXT.GO_BACK}
         </Button>
       </Container>
     );
@@ -150,11 +157,14 @@ const MovieDetailsPage: React.FC = () => {
       {/* Success Toast */}
       <Snackbar
         open={!!successMessage}
-        autoHideDuration={3000}
+        autoHideDuration={UI_CONSTANTS.SNACKBAR.SUCCESS_AUTO_HIDE_DURATION}
         onClose={() => setSuccessMessage(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ 
+          vertical: UI_CONSTANTS.SNACKBAR.ANCHOR_ORIGIN.VERTICAL_TOP, 
+          horizontal: UI_CONSTANTS.SNACKBAR.ANCHOR_ORIGIN.HORIZONTAL_CENTER 
+        }}
       >
-        <Alert severity="success" variant="filled" sx={{ width: '100%' }}>
+        <Alert severity={UI_CONSTANTS.ALERT_SEVERITY.SUCCESS} variant="filled" sx={{ width: '100%' }}>
           {successMessage}
         </Alert>
       </Snackbar>
@@ -162,11 +172,14 @@ const MovieDetailsPage: React.FC = () => {
       {/* Error Toasts */}
       <Snackbar
         open={!!actionError}
-        autoHideDuration={5000}
+        autoHideDuration={UI_CONSTANTS.SNACKBAR.AUTO_HIDE_DURATION}
         onClose={() => setActionError(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ 
+          vertical: UI_CONSTANTS.SNACKBAR.ANCHOR_ORIGIN.VERTICAL_TOP, 
+          horizontal: UI_CONSTANTS.SNACKBAR.ANCHOR_ORIGIN.HORIZONTAL_CENTER 
+        }}
       >
-        <Alert severity="error" variant="filled" sx={{ width: '100%' }} onClose={() => setActionError(null)}>
+        <Alert severity={UI_CONSTANTS.ALERT_SEVERITY.ERROR} variant="filled" sx={{ width: '100%' }} onClose={() => setActionError(null)}>
           {actionError}
         </Alert>
       </Snackbar>
@@ -187,7 +200,7 @@ const MovieDetailsPage: React.FC = () => {
 
       <TrailerSection trailer={findMainTrailer(videos)} show={showTrailer} />
 
-      <TopCastCrew topCast={credits?.cast.slice(0, 10) || []} />
+      <TopCastCrew topCast={credits?.cast.slice(0, UI_CONSTANTS.CAST_SLICE.TOP_COUNT) || []} />
 
       {/* Add to Watchlist Dialog */}
       <AddToWatchlistDialog

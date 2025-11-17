@@ -3,7 +3,7 @@
  */
 
 import { configureStore } from '@reduxjs/toolkit';
-import { moviesApi } from '../../store/api/moviesApi';
+import { moviesApi } from '../../features/movies/api/moviesApi';
 import { mockMovies, mockMovieDetails } from '../fixtures/movieFixtures';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';

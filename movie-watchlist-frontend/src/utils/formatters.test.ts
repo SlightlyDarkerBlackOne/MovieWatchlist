@@ -2,7 +2,7 @@
  * Tests for utility formatter functions
  */
 
-import { formatVoteCount, formatRuntime, getReleaseYear } from './formatters';
+import { formatVoteCount, formatRuntime, getReleaseYear } from '../shared/lib/formatters';
 
 describe('formatVoteCount', () => {
   it('should format vote count of 0', () => {

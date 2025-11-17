@@ -3,9 +3,9 @@
  */
 
 import { configureStore } from '@reduxjs/toolkit';
-import { watchlistApi } from '../../store/api/watchlistApi';
+import { watchlistApi } from '../../features/watchlist/api/watchlistApi';
 import { mockWatchlistItems, mockWatchlistItem } from '../fixtures/watchlistFixtures';
-import { WatchlistStatus } from '../../types/watchlist.types';
+import { WatchlistStatus } from '../../features/watchlist/model/watchlist.types';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { TestConstants } from '../TestConstants';

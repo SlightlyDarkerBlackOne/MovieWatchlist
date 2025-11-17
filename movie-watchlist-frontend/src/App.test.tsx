@@ -8,12 +8,12 @@ import { ThemeProvider } from '@mui/material/styles';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import App from './App';
-import { AuthProvider } from './contexts/AuthContext';
-import { ErrorProvider } from './contexts/ErrorContext';
-import { appTheme } from './theme';
-import { moviesApi } from './store/api/moviesApi';
-import { watchlistApi } from './store/api/watchlistApi';
-import { authApi } from './store/api/authApi';
+import { AuthProvider } from './features/auth/contexts/AuthContext';
+import { ErrorProvider } from './shared/contexts/ErrorContext';
+import { appTheme } from './shared/theme';
+import { moviesApi } from './features/movies/api/moviesApi';
+import { watchlistApi } from './features/watchlist/api/watchlistApi';
+import { authApi } from './features/auth/api/authApi';
 
 // Mock child components to avoid deep rendering
 jest.mock('./routes/AppRoutes', () => {
@@ -22,16 +22,16 @@ jest.mock('./routes/AppRoutes', () => {
   };
 });
 
-jest.mock('./components/common/LoadingSpinner', () => {
+jest.mock('./shared/components/common/LoadingSpinner', () => {
   return function MockLoadingSpinner() {
     return <div data-testid="loading-spinner">Loading...</div>;
   };
 });
 
-jest.mock('./store/api/baseApi', () => ({
+jest.mock('./shared/api/baseApi', () => ({
   setNavigateHandler: jest.fn(),
   setGlobalErrorHandler: jest.fn(),
-  baseQueryWithReauth: jest.fn(),
+  baseQueryWithReauth: jest.fn().mockResolvedValue({ data: {} }),
 }));
 
 const createTestStore = () => {

@@ -6,28 +6,28 @@
 
 import React from 'react';
 import { screen, waitFor, fireEvent } from '@testing-library/react';
-import { renderWithMocks } from '../utils/test-utils';
+import { renderWithMocks } from '../shared/lib/test-utils';
 import MovieDetailsPage from './MovieDetailsPage';
-import * as moviesApi from '../store/api/moviesApi';
-import * as watchlistApi from '../store/api/watchlistApi';
-import * as movieService from '../services/movieService';
+import * as moviesApi from '../features/movies/api/moviesApi';
+import * as watchlistApi from '../features/watchlist/api/watchlistApi';
+import * as movieService from '../features/movies/lib/tmdbUtils';
 import { mockMovieDetails, mockMovieCredits, mockMovieVideo } from '../__tests__/fixtures/movieFixtures';
 import { mockWatchlistItems } from '../__tests__/fixtures/watchlistFixtures';
 import { mockUser } from '../__tests__/fixtures/authFixtures';
 import { useParams } from 'react-router-dom';
 import { TestConstants } from '../__tests__/TestConstants';
-import { WatchlistStatus } from '../types/watchlist.types';
+import { WatchlistStatus } from '../features/watchlist/model/watchlist.types';
 
-jest.mock('../store/api/moviesApi', () => {
-  const actual = jest.requireActual('../store/api/moviesApi');
+jest.mock('../features/movies/api/moviesApi', () => {
+  const actual = jest.requireActual('../features/movies/api/moviesApi');
   return {
     ...actual,
     useGetMovieDetailsQuery: jest.fn(),
   };
 });
 
-jest.mock('../store/api/watchlistApi', () => {
-  const actual = jest.requireActual('../store/api/watchlistApi');
+jest.mock('../features/watchlist/api/watchlistApi', () => {
+  const actual = jest.requireActual('../features/watchlist/api/watchlistApi');
   return {
     ...actual,
     useGetWatchlistQuery: jest.fn(),
@@ -35,11 +35,11 @@ jest.mock('../store/api/watchlistApi', () => {
     useRemoveFromWatchlistMutation: jest.fn(),
   };
 });
-jest.mock('../hooks/useWatchlistPresence', () => ({
+jest.mock('../features/watchlist/hooks/useWatchlistPresence', () => ({
   useWatchlistPresence: jest.fn(),
 }));
-jest.mock('../services/movieService', () => ({
-  ...jest.requireActual('../services/movieService'),
+jest.mock('../features/movies/lib/tmdbUtils', () => ({
+  ...jest.requireActual('../features/movies/lib/tmdbUtils'),
   findMainTrailer: jest.fn(),
 }));
 
@@ -149,7 +149,7 @@ describe('MovieDetailsPage', () => {
     renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 
     await waitFor(() => {
-      mockMovieDetails.genres.forEach(genre => {
+      mockMovieDetails.genres.forEach((genre: string) => {
         expect(screen.getByText(genre)).toBeInTheDocument();
       });
     });

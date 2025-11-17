@@ -1,7 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { moviesApi } from './api/moviesApi';
-import { watchlistApi } from './api/watchlistApi';
-import { authApi } from './api/authApi';
+import { moviesApi } from '../features/movies/api/moviesApi';
+import { watchlistApi } from '../features/watchlist/api/watchlistApi';
+import { authApi } from '../features/auth/api/authApi';
 
 export const store = configureStore({
   reducer: {

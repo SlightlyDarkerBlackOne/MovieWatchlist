@@ -1,11 +1,11 @@
 import React from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { MainLayout } from '../components/layout';
-import { LoginForm, RegisterForm, ForgotPasswordForm, ResetPasswordForm } from '../components/auth';
+import { MainLayout } from '../shared/components/layout';
+import { LoginForm, RegisterForm, ForgotPasswordForm, ResetPasswordForm } from '../features/auth/components';
 import MoviesPage from '../pages/MoviesPage';
 import MovieDetailsPage from '../pages/MovieDetailsPage';
 import WatchlistPage from '../pages/WatchlistPage';
-import { ROUTES } from '../constants/routeConstants';
+import { ROUTES } from '../shared/constants/routeConstants';
 
 interface AppRoutesProps {
   resetToken?: string | null;
