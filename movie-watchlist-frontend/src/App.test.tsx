@@ -13,6 +13,7 @@ import { ErrorProvider } from './contexts/ErrorContext';
 import { appTheme } from './theme';
 import { moviesApi } from './store/api/moviesApi';
 import { watchlistApi } from './store/api/watchlistApi';
+import { authApi } from './store/api/authApi';
 
 // Mock child components to avoid deep rendering
 jest.mock('./routes/AppRoutes', () => {
@@ -27,9 +28,10 @@ jest.mock('./components/common/LoadingSpinner', () => {
   };
 });
 
-jest.mock('./services/api', () => ({
+jest.mock('./store/api/baseApi', () => ({
   setNavigateHandler: jest.fn(),
   setGlobalErrorHandler: jest.fn(),
+  baseQueryWithReauth: jest.fn(),
 }));
 
 const createTestStore = () => {
@@ -37,9 +39,14 @@ const createTestStore = () => {
     reducer: {
       [moviesApi.reducerPath]: moviesApi.reducer,
       [watchlistApi.reducerPath]: watchlistApi.reducer,
+      [authApi.reducerPath]: authApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware().concat(moviesApi.middleware, watchlistApi.middleware),
+      getDefaultMiddleware().concat(
+        moviesApi.middleware,
+        watchlistApi.middleware,
+        authApi.middleware
+      ),
   });
 };
 

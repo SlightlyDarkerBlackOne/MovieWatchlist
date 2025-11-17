@@ -1,6 +1,8 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQueryWithReauth } from './baseApi';
 import { MovieSearchResult, MovieDetails, MovieCredits, MovieVideo, Movie, CastMember, CrewMember } from '../../types/movie.types';
 import { transformCastMember, transformCrewMember, transformVideo } from '../../utils/tmdbTransformers';
+import { API_ENDPOINTS, RTK_REDUCER_PATHS, RTK_TAG_TYPES } from '../../utils/constants';
 
 interface TmdbCastMemberRaw {
   id: number;
@@ -58,16 +60,14 @@ interface MovieDetailsApiResponse {
   videosJson: TmdbVideoRaw[];
 }
 
-const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5250/api';
-
 export const moviesApi = createApi({
-  reducerPath: 'moviesApi',
-  baseQuery: fetchBaseQuery({ baseUrl, credentials: 'include' }),
-  tagTypes: ['Movies', 'MovieDetails'],
+  reducerPath: RTK_REDUCER_PATHS.MOVIES_API,
+  baseQuery: baseQueryWithReauth,
+  tagTypes: [RTK_TAG_TYPES.MOVIES, RTK_TAG_TYPES.MOVIE_DETAILS],
   endpoints: (builder) => ({
     searchMovies: builder.query<MovieSearchResult, { query: string; page?: number }>({
       query: ({ query, page = 1 }) => ({
-        url: '/Movies/search',
+        url: API_ENDPOINTS.MOVIES.SEARCH,
         params: { query, page },
       }),
       transformResponse: (response: Movie[]) => ({
@@ -76,11 +76,11 @@ export const moviesApi = createApi({
         totalPages: 1,
         currentPage: 1,
       }),
-      providesTags: ['Movies'],
+      providesTags: [RTK_TAG_TYPES.MOVIES],
     }),
     getPopularMovies: builder.query<MovieSearchResult, { page?: number }>({
       query: ({ page = 1 }) => ({
-        url: '/Movies/popular',
+        url: API_ENDPOINTS.MOVIES.POPULAR,
         params: { page },
       }),
       transformResponse: (response: Movie[]) => ({
@@ -89,7 +89,7 @@ export const moviesApi = createApi({
         totalPages: 1,
         currentPage: 1,
       }),
-      providesTags: ['Movies'],
+      providesTags: [RTK_TAG_TYPES.MOVIES],
     }),
     getPopularMoviesInfinite: builder.query<MovieSearchResult[], { limit?: number }>({
       async queryFn({ limit = 10 }, _api, _extraOptions, fetchWithBQ) {
@@ -97,7 +97,7 @@ export const moviesApi = createApi({
         
         for (let page = 1; page <= limit; page++) {
           const result = await fetchWithBQ({
-            url: '/Movies/popular',
+            url: API_ENDPOINTS.MOVIES.POPULAR,
             params: { page },
           });
           
@@ -143,14 +143,14 @@ export const moviesApi = createApi({
       forceRefetch({ currentArg, previousArg }) {
         return currentArg?.limit !== previousArg?.limit;
       },
-      providesTags: ['Movies'],
+      providesTags: [RTK_TAG_TYPES.MOVIES],
     }),
     getMovieDetails: builder.query<{
       movie: MovieDetails;
       credits: MovieCredits;
       videos: MovieVideo[];
     }, { tmdbId: number }>({
-      query: ({ tmdbId }) => `/Movies/tmdb/${tmdbId}`,
+      query: ({ tmdbId }) => API_ENDPOINTS.MOVIES.TMDB_DETAILS(tmdbId),
       transformResponse: (response: MovieDetailsApiResponse) => {
         const { creditsJson, videosJson, ...movieData } = response;
         return {
@@ -162,7 +162,7 @@ export const moviesApi = createApi({
           videos: (videosJson || []).map(transformVideo),
         };
       },
-      providesTags: (_result, _error, { tmdbId }) => [{ type: 'MovieDetails', id: tmdbId }],
+      providesTags: (_result, _error, { tmdbId }) => [{ type: RTK_TAG_TYPES.MOVIE_DETAILS, id: tmdbId }],
     }),
   }),
 });
