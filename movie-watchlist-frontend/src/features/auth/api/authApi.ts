@@ -32,6 +32,7 @@ export const authApi = baseApiSlice.injectEndpoints({
         user: response.user,
         expiresAt: response.expiresAt,
       }),
+      invalidatesTags: [RTK_TAG_TYPES.AUTH],
     }),
     register: builder.mutation<AuthenticationResult, RegisterData>({
       query: (userData) => ({
@@ -44,12 +45,14 @@ export const authApi = baseApiSlice.injectEndpoints({
         user: response.user,
         expiresAt: response.expiresAt,
       }),
+      invalidatesTags: [RTK_TAG_TYPES.AUTH],
     }),
     logout: builder.mutation<void, void>({
       query: () => ({
         url: API_ENDPOINTS.AUTH.LOGOUT,
         method: HTTP_METHODS.POST,
       }),
+      invalidatesTags: [RTK_TAG_TYPES.AUTH],
     }),
     forgotPassword: builder.mutation<PasswordResetResponse, ForgotPasswordData>({
       query: (data) => ({
@@ -75,6 +78,7 @@ export const authApi = baseApiSlice.injectEndpoints({
     }),
     getCurrentUser: builder.query<UserInfo, void>({
       query: () => API_ENDPOINTS.AUTH.ME,
+      providesTags: [RTK_TAG_TYPES.AUTH],
     }),
   }),
 });

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import {
   useLoginMutation,
   useRegisterMutation,
@@ -14,15 +14,15 @@ import {
   ForgotPasswordData,
   ResetPasswordData,
   PasswordResetResponse,
-  UserInfo
+  UserInfo,
 } from '../model/auth.types';
 import { getErrorMessage } from '../../../shared/lib/errorHandler';
 import { ERROR_MESSAGES } from '../../../shared/constants/appConstants';
- 
 
 /**
  * Auth Context Interface
- * Defines all authentication-related methods available to components
+ * Thin wrapper around RTK Query - provides convenient API without duplicating state.
+ * Server state (user data) is managed entirely by RTK Query.
  */
 export interface AuthContextType {
   user: UserInfo | null;
@@ -43,36 +43,23 @@ interface AuthProviderProps {
 
 /**
  * Auth Provider Component
- * Wraps the app and provides authentication methods to all children
+ * Thin wrapper around RTK Query that provides authentication methods.
+ * Does NOT duplicate state - user data comes directly from RTK Query cache.
  */
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<UserInfo | null>(null);
-  
   const [loginMutation] = useLoginMutation();
   const [registerMutation] = useRegisterMutation();
   const [logoutMutation] = useLogoutMutation();
   const [forgotPasswordMutation] = useForgotPasswordMutation();
   const [resetPasswordMutation] = useResetPasswordMutation();
   
-  const { data: currentUser, isLoading, error } = useGetCurrentUserQuery(undefined, {
+  const { data: currentUser, isLoading } = useGetCurrentUserQuery(undefined, {
     skip: false,
   });
 
-  useEffect(() => {
-    if (currentUser) {
-      setUser(currentUser);
-    } else if (!isLoading) {
-      setUser(null);
-    }
-  }, [currentUser, isLoading, error]);
-
   const login = async (credentials: LoginCredentials): Promise<AuthenticationResult> => {
     try {
-      const result = await loginMutation(credentials).unwrap();
-      if (result.isSuccess && result.user) {
-        setUser(result.user);
-      }
-      return result;
+      return await loginMutation(credentials).unwrap();
     } catch (error) {
       return {
         isSuccess: false,
@@ -83,11 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (userData: RegisterData): Promise<AuthenticationResult> => {
     try {
-      const result = await registerMutation(userData).unwrap();
-      if (result.isSuccess && result.user) {
-        setUser(result.user);
-      }
-      return result;
+      return await registerMutation(userData).unwrap();
     } catch (error) {
       return {
         isSuccess: false,
@@ -99,10 +82,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async (): Promise<boolean> => {
     try {
       await logoutMutation().unwrap();
-      setUser(null);
       return true;
     } catch {
-      setUser(null);
       return false;
     }
   };
@@ -130,14 +111,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const value: AuthContextType = {
-    user,
+    user: currentUser ?? null,
     isLoading,
     login,
     register,
     logout,
     forgotPassword,
     resetPassword,
-    isAuthenticated: () => !!user,
+    isAuthenticated: () => !!currentUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

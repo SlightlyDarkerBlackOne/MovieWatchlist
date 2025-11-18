@@ -278,115 +278,141 @@ A comprehensive movie management platform that allows users to discover, track, 
     |
     └── movie-watchlist-frontend/       # React Frontend
         ├── src/
-        │   ├── components/             # Reusable components
-        │   │   ├── auth/               # Authentication components
-        │   │   │   ├── ForgotPasswordForm   # Forgot password form
-        │   │   │   ├── LoginForm           # Login form
-        │   │   │   ├── RegisterForm         # Registration form
-        │   │   │   └── ResetPasswordForm    # Password reset form
-        │   │   ├── common/             # Common components
-        │   │   │   ├── ErrorBoundary   # Error boundary wrapper
-        │   │   │   ├── Header           # Main navigation header
-        │   │   │   ├── HeaderAuthButtons # Auth buttons in header
-        │   │   │   ├── HeaderLogo       # Logo component
-        │   │   │   ├── HeaderSearch     # Search in header
-        │   │   │   ├── LoadingSpinner   # Loading spinner
-        │   │   │   ├── LoginRequiredDialog   # Login prompt dialog
-        │   │   │   ├── QueryErrorBoundary    # RTK Query error boundary
-        │   │   │   ├── SearchDropdown   # Search autocomplete
-        │   │   │   ├── SkipLink         # Accessibility skip link
-        │   │   │   └── skeletons/       # Loading skeleton components
-        │   │   │       ├── MovieCardSkeleton
-        │   │   │       ├── MovieDetailsSkeleton
-        │   │   │       └── WatchlistItemSkeleton
-        │   │   ├── dialogs/            # Modal dialogs
-        │   │   │   ├── AddToWatchlistDialog    # Add to watchlist dialog
-        │   │   │   └── EditWatchlistItemDialog  # Edit watchlist item dialog
-        │   │   ├── layout/             # Layout components
-        │   │   │   └── MainLayout     # Main app layout
-        │   │   ├── movies/             # Movie display components
-        │   │   │   ├── FeaturedMoviesCarousel  # Hero carousel
-        │   │   │   ├── InfiniteMovieList      # Infinite scroll list
-        │   │   │   ├── MovieCard               # Movie card component
-        │   │   │   ├── MovieGenres             # Genre chips
-        │   │   │   ├── MovieList                # Movie list component
-        │   │   │   ├── MovieMainDetails        # Movie detail header
-        │   │   │   ├── MovieSearch             # Search input
-        │   │   │   └── TopCastCrew             # Cast & crew display
-        │   │   ├── pages/              # Page-level components
-        │   │   │   ├── PopularMoviesSection    # Popular movies section
-        │   │   │   ├── SearchResults           # Search results page
-        │   │   │   ├── TrailerSection          # Video trailer player
-        │   │   │   ├── WatchlistFilters         # Watchlist filters
-        │   │   │   └── WatchlistStats          # Watchlist statistics
-        │   │   ├── ui/                 # UI state components
-        │   │   │   ├── EmptyState      # Empty state display
-        │   │   │   ├── ErrorState      # Error state display
-        │   │   │   └── SuccessToast    # Success toast notification
-        │   │   └── watchlist/          # Watchlist components
-        │   │       ├── WatchlistGrid    # Watchlist grid layout
-        │   │       ├── WatchlistItemCard       # Watchlist item card
-        │   │       ├── WatchlistFilters        # Filter controls
-        │   │       └── WatchlistStats           # Statistics display
-        │   ├── contexts/               # React contexts
-        │   │   ├── AuthContext         # Authentication state
-        │   │   └── WatchlistContext    # Watchlist state (Set-based O(1) lookups)
-        │   ├── hooks/                  # Custom React hooks
-        │   │   ├── useAddToWatchlistDialog # Watchlist dialog hook
-        │   │   ├── useFeaturedMovies   # Featured movies hook
-        │   │   ├── useForms            # Form handling hooks
-        │   │   ├── useInfiniteMovies   # Infinite scroll hook
-        │   │   ├── useMovieSearch      # Movie search hook
-        │   │   ├── useSuccessToast     # Success toast hook
-        │   │   ├── useWatchlistFilters # Watchlist filtering logic
-        │   │   ├── useWatchlistOperations  # RTK Query hook exports
-        │   │   └── useWatchlistPresence # Check if movie in watchlist
+        │   ├── features/               # Feature-based organization
+        │   │   ├── auth/               # Authentication feature
+        │   │   │   ├── api/            # RTK Query API slice
+        │   │   │   │   └── authApi.ts # Auth endpoints (injectEndpoints)
+        │   │   │   ├── components/     # Auth components
+        │   │   │   │   ├── ForgotPasswordForm.tsx
+        │   │   │   │   ├── LoginForm.tsx
+        │   │   │   │   ├── RegisterForm.tsx
+        │   │   │   │   └── ResetPasswordForm.tsx
+        │   │   │   ├── contexts/        # Auth context
+        │   │   │   │   └── AuthContext.tsx # Thin wrapper around RTK Query
+        │   │   │   └── model/          # Auth types & schemas
+        │   │   │       ├── auth.types.ts
+        │   │   │       └── authSchemas.ts
+        │   │   ├── movies/             # Movies feature
+        │   │   │   ├── api/            # RTK Query API slice
+        │   │   │   │   └── moviesApi.ts # Movie endpoints (injectEndpoints)
+        │   │   │   ├── components/     # Movie components
+        │   │   │   │   ├── FeaturedMoviesCarousel.tsx
+        │   │   │   │   ├── InfiniteMovieList.tsx
+        │   │   │   │   ├── MovieCard.tsx
+        │   │   │   │   ├── MovieGenres.tsx
+        │   │   │   │   ├── MovieList.tsx
+        │   │   │   │   ├── MovieMainDetails.tsx
+        │   │   │   │   ├── MovieSearch.tsx
+        │   │   │   │   ├── PopularMoviesSection.tsx
+        │   │   │   │   ├── SearchResults.tsx
+        │   │   │   │   ├── TopCastCrew.tsx
+        │   │   │   │   └── TrailerSection.tsx
+        │   │   │   ├── hooks/          # Movie hooks
+        │   │   │   │   ├── useFeaturedMovies.ts
+        │   │   │   │   ├── useInfiniteMovies.ts
+        │   │   │   │   └── useMovieSearch.ts
+        │   │   │   ├── lib/            # Movie utilities
+        │   │   │   │   └── tmdbUtils.ts
+        │   │   │   └── model/          # Movie types & adapters
+        │   │   │       ├── movie.types.ts
+        │   │   │       └── movieAdapters.ts
+        │   │   └── watchlist/          # Watchlist feature
+        │   │       ├── api/            # RTK Query API slice
+        │   │       │   └── watchlistApi.ts # Watchlist endpoints (injectEndpoints)
+        │   │       ├── components/     # Watchlist components
+        │   │       │   ├── AddToWatchlistDialog.tsx
+        │   │       │   ├── EditWatchlistItemDialog.tsx
+        │   │       │   ├── WatchlistFilters.tsx
+        │   │       │   ├── WatchlistGrid.tsx
+        │   │       │   ├── WatchlistItemCard.tsx
+        │   │       │   └── WatchlistStats.tsx
+        │   │       ├── hooks/          # Watchlist hooks
+        │   │       │   ├── useAddToWatchlistDialog.ts
+        │   │       │   ├── useWatchlistFilters.ts
+        │   │       │   ├── useWatchlistOperations.ts
+        │   │       │   └── useWatchlistPresence.ts
+        │   │       ├── lib/            # Watchlist utilities
+        │   │       │   └── watchlistUtils.ts
+        │   │       └── model/          # Watchlist types & schemas
+        │   │           ├── watchlist.types.ts
+        │   │           ├── watchlistSchemas.ts
+        │   │           └── watchlistSelectors.ts
+        │   ├── shared/                 # Shared code across features
+        │   │   ├── api/                # Base API configuration
+        │   │   │   ├── baseApi.ts      # Base query with reauth
+        │   │   │   └── baseApiSlice.ts # Centralized RTK Query API slice
+        │   │   ├── components/         # Shared components
+        │   │   │   ├── common/         # Common UI components
+        │   │   │   │   ├── ErrorBoundary.tsx
+        │   │   │   │   ├── Header.tsx
+        │   │   │   │   ├── HeaderAuthButtons.tsx
+        │   │   │   │   ├── HeaderLogo.tsx
+        │   │   │   │   ├── HeaderSearch.tsx
+        │   │   │   │   ├── LoadingSpinner.tsx
+        │   │   │   │   ├── LoginRequiredDialog.tsx
+        │   │   │   │   ├── QueryErrorBoundary.tsx
+        │   │   │   │   ├── SearchDropdown.tsx
+        │   │   │   │   ├── SkipLink.tsx
+        │   │   │   │   └── skeletons/  # Loading skeletons
+        │   │   │   │       ├── MovieCardSkeleton.tsx
+        │   │   │   │       ├── MovieDetailsSkeleton.tsx
+        │   │   │   │       └── WatchlistItemSkeleton.tsx
+        │   │   │   ├── layout/         # Layout components
+        │   │   │   │   └── MainLayout.tsx
+        │   │   │   └── ui/             # UI state components
+        │   │   │       ├── EmptyState.tsx
+        │   │   │       ├── ErrorState.tsx
+        │   │   │       └── SuccessToast.tsx
+        │   │   ├── constants/          # Application constants
+        │   │   │   ├── appConstants.ts # API endpoints, tag types, etc.
+        │   │   │   ├── formConstants.ts
+        │   │   │   └── routeConstants.ts
+        │   │   ├── contexts/           # Shared contexts
+        │   │   │   └── ErrorContext.tsx # Error notification context
+        │   │   ├── hooks/              # Shared hooks
+        │   │   │   ├── useForms.ts
+        │   │   │   └── useSuccessToast.ts
+        │   │   ├── lib/                # Shared utilities
+        │   │   │   ├── accessibility.ts
+        │   │   │   ├── errorHandler.ts
+        │   │   │   ├── formatters.ts
+        │   │   │   ├── retryUtils.ts
+        │   │   │   ├── test-utils.tsx  # Testing utilities & Redux setup
+        │   │   │   └── validationService.ts
+        │   │   ├── theme/              # Material-UI theme
+        │   │   │   ├── colors.ts
+        │   │   │   ├── theme.ts
+        │   │   │   └── index.ts
+        │   │   └── types/              # Shared types
+        │   │       └── error.types.ts
         │   ├── pages/                  # Page components
-        │   │   ├── MoviesPage          # Movie discovery page
-        │   │   ├── MovieDetailsPage    # Movie detail page
-        │   │   └── WatchlistPage      # User watchlist page
-        │   ├── store/                  # Redux store (RTK Query)
-        │   │   └── api/               # RTK Query APIs
-        │   │       ├── moviesApi       # Movie endpoints
-        │   │       └── watchlistApi    # Watchlist endpoints
-        │   ├── services/               # Service layer
-        │   │   ├── api               # Axios instance with interceptors
-        │   │   ├── authService        # Authentication service
-        │   │   ├── movieService      # Movie utilities (TMDB helpers)
-        │   │   └── watchlistService  # Watchlist utilities (status helpers)
-        │   ├── constants/              # Application constants
-        │   │   └── constants          # Route and API endpoint constants
-        │   ├── theme/                  # Material-UI theme
-        │   │   ├── colors            # Color palette
-        │   │   ├── theme             # Theme configuration
-        │   │   └── index             # Theme exports
-        │   ├── types/                  # TypeScript types
-        │   │   ├── auth.types        # Auth types
-        │   │   ├── movie.types       # Movie types
-        │   │   ├── watchlist.types   # Watchlist types
-        │   │   └── error.types      # Error types
-        │   ├── utils/                  # Helper utilities
-        │   │   ├── cacheService      # Browser cache utilities
-        │   │   ├── errorHandler      # Centralized error extraction
-        │   │   ├── formatters        # Data formatting utilities
-        │   │   ├── test-utils        # Testing utilities & Redux setup
-        │   │   ├── tmdbTransformers  # TMDB data transformers
-        │   │   └── validationService # Frontend validation service
-        │   ├── validation/             # Zod schemas
-        │   │   └── schemas           # Validation schemas (aligned with backend)
-        │   ├── routes/                 # Routing configuration
-        │   │   └── AppRoutes         # Route definitions
+        │   │   ├── MoviesPage.tsx      # Movie discovery page
+        │   │   ├── MovieDetailsPage.tsx # Movie detail page
+        │   │   └── WatchlistPage.tsx   # User watchlist page
         │   ├── layouts/                # Layout components
-        │   │   └── AuthLayout       # Authentication layout
-        │   ├── __tests__/             # Integration tests
-        │   │   ├── integration/     # E2E integration tests
+        │   │   └── AuthLayout.tsx     # Authentication layout
+        │   ├── routes/                 # Routing configuration
+        │   │   └── AppRoutes.tsx      # Route definitions
+        │   ├── store/                  # Redux store configuration
+        │   │   └── index.ts           # Store setup with baseApiSlice
+        │   ├── utils/                  # Helper utilities (legacy)
+        │   │   ├── formatters.test.ts
+        │   │   └── validationService.test.ts
+        │   ├── __tests__/              # Integration tests
+        │   │   ├── integration/        # E2E integration tests
+        │   │   │   ├── MovieBrowsing.test.tsx
         │   │   │   ├── moviesApi.test.ts
         │   │   │   └── watchlistApi.test.ts
-        │   │   └── fixtures/        # Test fixtures
-        │   ├── App.tsx                # Main app component
-        │   ├── index.tsx              # Entry point
-        │   └── setupTests.ts         # Test configuration (MSW polyfills)
-        └── public/                    # Static assets
+        │   │   ├── fixtures/           # Test fixtures
+        │   │   │   ├── authFixtures.ts
+        │   │   │   ├── movieFixtures.ts
+        │   │   │   └── watchlistFixtures.ts
+        │   │   └── TestConstants.ts
+        │   ├── App.tsx                 # Main app component
+        │   ├── App.test.tsx            # App component tests
+        │   ├── index.tsx               # Entry point
+        │   └── setupTests.ts           # Test configuration (MSW polyfills)
+        └── public/                     # Static assets
 
 ## Technologies
 
@@ -421,6 +447,6 @@ A comprehensive movie management platform that allows users to discover, track, 
 - 54.2% branch coverage
 
 ### Frontend (React)
-- 247 tests total
-- 67.68% line coverage
-- 55.84% branch coverage
+- 231 tests total
+- 56.27% line coverage
+- 47.64% branch coverage
