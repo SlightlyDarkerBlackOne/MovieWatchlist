@@ -4,6 +4,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import InfiniteMovieList from './InfiniteMovieList';
 import ErrorState from '../../../shared/components/ui/ErrorState';
 import { useInfiniteMovies } from '../hooks/useInfiniteMovies';
+import { getErrorMessage } from '../../../shared/lib/errorHandler';
 
 interface PopularMoviesSectionProps {
   onRefresh?: () => void;
@@ -34,7 +35,7 @@ const PopularMoviesSection: React.FC<PopularMoviesSectionProps> = ({
           </Typography>
         </Box>
         <ErrorState 
-          message={`Failed to load popular movies. ${error instanceof Error ? error.message : 'Please try again.'}`}
+          message={`Failed to load popular movies. ${getErrorMessage(error)}`}
           onRetry={onRetry || onRefresh}
           retryLabel="Retry"
         />

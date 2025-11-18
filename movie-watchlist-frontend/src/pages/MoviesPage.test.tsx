@@ -156,12 +156,21 @@ describe('MoviesPage', () => {
   });
 
   it('should display error message on API failure', async () => {
-    const errorMessage = new Error(TestConstants.ErrorMessages.FailedToFetchMovies);
     mockUseGetPopularMoviesQuery.mockReturnValue({
       data: undefined,
       isLoading: false,
       isError: true,
-      error: errorMessage,
+      error: {
+        status: 500,
+        data: {
+          message: TestConstants.ErrorMessages.FailedToFetchMovies,
+          status: 500,
+          endpoint: '/api/movies/popular',
+          timestamp: Date.now(),
+          originalError: { status: 500, data: { message: TestConstants.ErrorMessages.FailedToFetchMovies } },
+          retryable: false,
+        },
+      },
       status: 'rejected',
       refetch: jest.fn(),
     });

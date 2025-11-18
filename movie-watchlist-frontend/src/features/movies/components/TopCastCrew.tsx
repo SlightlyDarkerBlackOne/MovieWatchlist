@@ -10,7 +10,7 @@ import {
 } from '@mui/material';
 import { CastMember } from '../model/movie.types';
 import { colors } from '../../../shared/theme/colors';
-import * as movieService from '../lib/tmdbUtils';
+import * as tmdbUtils from '../lib/tmdbUtils';
 
 interface TopCastCrewProps {
   topCast: CastMember[];
@@ -58,7 +58,7 @@ const TopCastCrew: React.FC<TopCastCrewProps> = ({ topCast }) => {
         }}
       >
         {topCast.map((cast) => {
-          const profileUrl = movieService.getProfileUrl(cast.profilePath, 'small');          
+          const profileUrl = tmdbUtils.getProfileUrl(cast.profilePath, 'small');          
           return (
             <Card
               key={`${cast.id}-${cast.castId}`}

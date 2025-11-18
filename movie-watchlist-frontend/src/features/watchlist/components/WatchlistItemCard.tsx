@@ -21,8 +21,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import StarIcon from '@mui/icons-material/Star';
 import { WatchlistItem } from '../model/watchlist.types';
 import { ROUTES } from '../../../shared/constants/routeConstants';
-import * as movieService from '../../movies/lib/tmdbUtils';
-import * as watchlistService from '../lib/watchlistUtils';
+import * as tmdbUtils from '../../movies/lib/tmdbUtils';
+import * as watchlistUtils from '../lib/watchlistUtils';
 import { colors } from '../../../shared/theme/colors';
 import { formatVoteCount } from '../../../shared/lib/formatters';
 
@@ -81,7 +81,7 @@ const WatchlistItemCard: React.FC<WatchlistItemCardProps> = ({
     }
   };
 
-  const posterUrl = movieService.getPosterUrl(item.movie?.posterPath || null, 'medium');
+  const posterUrl = tmdbUtils.getPosterUrl(item.movie?.posterPath || null, 'medium');
   const releaseYear = item.movie?.releaseDate 
     ? new Date(item.movie.releaseDate).getFullYear() 
     : 'N/A';
@@ -135,8 +135,8 @@ const WatchlistItemCard: React.FC<WatchlistItemCardProps> = ({
       {/* Status Chip */}
       <Box sx={{ position: 'absolute', top: 8, left: 8 }}>
         <Chip 
-          label={watchlistService.getStatusLabel(item.status)} 
-          color={watchlistService.getStatusColor(item.status)}
+          label={watchlistUtils.getStatusLabel(item.status)} 
+          color={watchlistUtils.getStatusColor(item.status)}
           size="small"
           sx={{ fontWeight: 'bold' }}
         />

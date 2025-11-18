@@ -10,7 +10,7 @@ import { renderWithMocks } from '../shared/lib/test-utils';
 import MovieDetailsPage from './MovieDetailsPage';
 import * as moviesApi from '../features/movies/api/moviesApi';
 import * as watchlistApi from '../features/watchlist/api/watchlistApi';
-import * as movieService from '../features/movies/lib/tmdbUtils';
+import * as tmdbUtils from '../features/movies/lib/tmdbUtils';
 import { mockMovieDetails, mockMovieCredits, mockMovieVideo } from '../__tests__/fixtures/movieFixtures';
 import { mockWatchlistItems } from '../__tests__/fixtures/watchlistFixtures';
 import { mockUser } from '../__tests__/fixtures/authFixtures';
@@ -50,7 +50,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockedUseParams = useParams as jest.MockedFunction<typeof useParams>;
-const { useWatchlistPresence } = require('../hooks/useWatchlistPresence');
+const { useWatchlistPresence } = require('../features/watchlist/hooks/useWatchlistPresence');
 const mockedUseWatchlistPresence = useWatchlistPresence as jest.MockedFunction<typeof useWatchlistPresence>;
 
 describe('MovieDetailsPage', () => {
@@ -119,7 +119,7 @@ describe('MovieDetailsPage', () => {
       { isLoading: false, isError: false, error: undefined, status: 'idle' },
     ]);
 
-    (movieService.findMainTrailer as jest.Mock).mockReturnValue(mockMovieVideo);
+    (tmdbUtils.findMainTrailer as jest.Mock).mockReturnValue(mockMovieVideo);
   });
 
   it('should load movie details on mount using RTK Query', async () => {
@@ -180,18 +180,21 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should display error message on load failure', async () => {
-    const errorObj = { status: 500, data: { message: 'Failed to load movie' } };
-    // Make String() conversion return the message
-    Object.defineProperty(errorObj, 'toString', {
-      value: () => 'Failed to load movie',
-      enumerable: false,
-    });
-    
     (moviesApi.useGetMovieDetailsQuery as jest.Mock).mockReturnValue({
       data: undefined,
       isLoading: false,
       isError: true,
-      error: errorObj,
+      error: {
+        status: 500,
+        data: {
+          message: 'Failed to load movie',
+          status: 500,
+          endpoint: '/api/movies/details',
+          timestamp: Date.now(),
+          originalError: { status: 500, data: { message: 'Failed to load movie' } },
+          retryable: false,
+        },
+      },
       status: 'rejected',
       refetch: jest.fn(),
     });
@@ -246,7 +249,7 @@ describe('MovieDetailsPage', () => {
   });
 
   it('should handle missing trailer gracefully', async () => {
-    (movieService.findMainTrailer as jest.Mock).mockReturnValue(null);
+    (tmdbUtils.findMainTrailer as jest.Mock).mockReturnValue(null);
 
     renderWithMocks(<MovieDetailsPage />, { mockAuthContext });
 

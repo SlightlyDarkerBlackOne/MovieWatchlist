@@ -30,6 +30,7 @@ import {
   WATCHLIST_FILTER_VALUES,
   UI_CONSTANTS,
 } from '../shared/constants/appConstants';
+import { getErrorMessage } from '../shared/lib/errorHandler';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -88,8 +89,7 @@ const WatchlistPage: React.FC = () => {
       
       await updateItem(updatePayload).unwrap();
     } catch (err) {
-      const error = err as Error;
-      setErrorMessage(error.message || ERROR_MESSAGES.FAILED_TO_UPDATE_ITEM);
+      setErrorMessage(getErrorMessage(err) || ERROR_MESSAGES.FAILED_TO_UPDATE_ITEM);
     }
   };
 
@@ -118,8 +118,7 @@ const WatchlistPage: React.FC = () => {
       setEditDialogOpen(false);
       setSelectedItem(null);
     } catch (err) {
-      const error = err as Error;
-      setErrorMessage(error.message || ERROR_MESSAGES.FAILED_TO_UPDATE_ITEM);
+      setErrorMessage(getErrorMessage(err) || ERROR_MESSAGES.FAILED_TO_UPDATE_ITEM);
     }
   };
 
@@ -129,8 +128,7 @@ const WatchlistPage: React.FC = () => {
     try {
       await removeItem(itemId).unwrap();
     } catch (err) {
-      const error = err as Error;
-      setErrorMessage(error.message || ERROR_MESSAGES.FAILED_TO_REMOVE_ITEM);
+      setErrorMessage(getErrorMessage(err) || ERROR_MESSAGES.FAILED_TO_REMOVE_ITEM);
     }
   };
 
@@ -172,7 +170,7 @@ const WatchlistPage: React.FC = () => {
         }}
       >
         <Alert severity={UI_CONSTANTS.ALERT_SEVERITY.ERROR} variant="filled" sx={{ width: '100%' }} onClose={() => setErrorMessage(null)}>
-          {errorMessage || (error ? String(error) : ERROR_MESSAGES.AN_ERROR_OCCURRED)}
+          {errorMessage || (error ? getErrorMessage(error) : ERROR_MESSAGES.AN_ERROR_OCCURRED)}
         </Alert>
       </Snackbar>
 

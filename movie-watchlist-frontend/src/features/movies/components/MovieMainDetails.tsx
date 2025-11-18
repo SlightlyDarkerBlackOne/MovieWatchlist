@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { MovieDetails, MovieVideo, MovieCredits, CrewMember } from '../model/movie.types';
 import { colors } from '../../../shared/theme/colors';
 import { formatVoteCount, formatRuntime } from '../../../shared/lib/formatters';
-import * as movieService from '../lib/tmdbUtils';
+import * as tmdbUtils from '../lib/tmdbUtils';
 
 interface MovieMainDetailsProps {
   movieDetails: MovieDetails;
@@ -43,8 +43,8 @@ const MovieMainDetails: React.FC<MovieMainDetailsProps> = ({
 }) => {
   const navigate = useNavigate();
   const [isHoveringWatchlistBtn, setIsHoveringWatchlistBtn] = React.useState(false);
-  const posterUrl = movieService.getPosterUrl(movieDetails.posterPath, 'large');
-  const mainTrailer = movieService.findMainTrailer(videos);
+  const posterUrl = tmdbUtils.getPosterUrl(movieDetails.posterPath, 'large');
+  const mainTrailer = tmdbUtils.findMainTrailer(videos);
   const director = credits?.crew.find((c: CrewMember) => c.job === 'Director');
   const writers = credits?.crew.filter((c: CrewMember) => 
     c.department === 'Writing' && (c.job === 'Writer' || c.job === 'Screenplay')
@@ -56,7 +56,7 @@ const MovieMainDetails: React.FC<MovieMainDetailsProps> = ({
         position: 'relative',
         minHeight: '60vh',
         backgroundImage: movieDetails.backdropPath 
-          ? `url(${movieService.getBackdropUrl(movieDetails.backdropPath, 'original')})`
+          ? `url(${tmdbUtils.getBackdropUrl(movieDetails.backdropPath, 'original')})`
           : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center',

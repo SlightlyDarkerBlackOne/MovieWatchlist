@@ -29,6 +29,7 @@ import {
   MOVIE_DETAILS_PAGE_TEXT,
   DEFAULT_VALUES,
 } from '../shared/constants/appConstants';
+import { getErrorMessage } from '../shared/lib/errorHandler';
 
 const MovieDetailsPage: React.FC = () => {
   const { tmdbId } = useParams<{ tmdbId: string }>();
@@ -84,8 +85,7 @@ const MovieDetailsPage: React.FC = () => {
       setSuccessMessage(SUCCESS_MESSAGES.ADDED_TO_WATCHLIST(dialog.selectedMovie.title));
       dialog.closeDialog();
     } catch (err) {
-      const error = err as Error;
-      setActionError(error.message || ERROR_MESSAGES.FAILED_TO_ADD_TO_WATCHLIST);
+      setActionError(getErrorMessage(err) || ERROR_MESSAGES.FAILED_TO_ADD_TO_WATCHLIST);
     }
   };
 
@@ -108,8 +108,7 @@ const MovieDetailsPage: React.FC = () => {
       await removeFromWatchlist(watchlistItem.id).unwrap();
       setSuccessMessage(SUCCESS_MESSAGES.REMOVED_FROM_WATCHLIST(movieDetails.title));
     } catch (err) {
-      const error = err as Error;
-      setActionError(error.message || ERROR_MESSAGES.FAILED_TO_REMOVE_FROM_WATCHLIST);
+      setActionError(getErrorMessage(err) || ERROR_MESSAGES.FAILED_TO_REMOVE_FROM_WATCHLIST);
     }
   };
 
@@ -139,7 +138,7 @@ const MovieDetailsPage: React.FC = () => {
   if (loadError || !movieDetails) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity={UI_CONSTANTS.ALERT_SEVERITY.ERROR}>{loadError ? String(loadError) : ERROR_MESSAGES.MOVIE_NOT_FOUND}</Alert>
+        <Alert severity={UI_CONSTANTS.ALERT_SEVERITY.ERROR}>{loadError ? getErrorMessage(loadError) : ERROR_MESSAGES.MOVIE_NOT_FOUND}</Alert>
         <Button
           startIcon={<ArrowBackIcon />}
           onClick={() => navigate(-1)}

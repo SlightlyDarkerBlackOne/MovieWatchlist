@@ -16,7 +16,7 @@ import {
   PasswordResetResponse,
   UserInfo
 } from '../model/auth.types';
-import { extractErrorMessage } from '../../../shared/lib/errorHandler';
+import { getErrorMessage } from '../../../shared/lib/errorHandler';
 import { ERROR_MESSAGES } from '../../../shared/constants/appConstants';
  
 
@@ -76,7 +76,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       return {
         isSuccess: false,
-        errorMessage: extractErrorMessage(error),
+        errorMessage: getErrorMessage(error),
       };
     }
   };
@@ -91,7 +91,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       return {
         isSuccess: false,
-        errorMessage: extractErrorMessage(error),
+        errorMessage: getErrorMessage(error),
       };
     }
   };
@@ -113,7 +113,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       return {
         success: false,
-        message: extractErrorMessage(error) || ERROR_MESSAGES.FAILED_TO_SEND_RESET_EMAIL,
+        message: getErrorMessage(error) || ERROR_MESSAGES.FAILED_TO_SEND_RESET_EMAIL,
       };
     }
   };
@@ -124,7 +124,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       return {
         success: false,
-        message: extractErrorMessage(error) || ERROR_MESSAGES.FAILED_TO_RESET_PASSWORD,
+        message: getErrorMessage(error) || ERROR_MESSAGES.FAILED_TO_RESET_PASSWORD,
       };
     }
   };

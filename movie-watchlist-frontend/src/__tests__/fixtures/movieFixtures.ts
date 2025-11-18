@@ -2,7 +2,7 @@
  * Test fixtures for movie data
  */
 
-import { Movie, MovieDetails, MovieVideo, CastMember, CrewMember, MovieCredits } from '../../types/movie.types';
+import { Movie, MovieDetails, MovieVideo, CastMember, CrewMember, MovieCredits } from '../../features/movies/model/movie.types';
 
 export const mockMovie: Movie = {
   id: 1,

@@ -3,6 +3,7 @@ import { Box, Typography } from '@mui/material';
 import MovieList from './MovieList';
 import ErrorState from '../../../shared/components/ui/ErrorState';
 import { Movie } from '../model/movie.types';
+import { getErrorMessage } from '../../../shared/lib/errorHandler';
 
 interface SearchResultsProps {
   query: string;
@@ -27,7 +28,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({
     return (
       <Box ref={containerRef} sx={{ mb: 4, scrollMarginTop: '100px' }}>
         <ErrorState 
-          message={`Failed to search for "${query}". ${error instanceof Error ? error.message : 'Please try again.'}`}
+          message={`Failed to search for "${query}". ${getErrorMessage(error)}`}
           onRetry={onRetry}
           retryLabel="Retry Search"
         />

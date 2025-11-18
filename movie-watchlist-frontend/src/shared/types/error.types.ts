@@ -5,4 +5,13 @@ export interface ApiErrorResponse {
   status?: number;
 }
 
+export interface TransformedApiError {
+  message: string;
+  status: number | string;
+  endpoint: string;
+  timestamp: number;
+  originalError: unknown;
+  retryable: boolean;
+}
+
 

@@ -7,7 +7,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import StarIcon from '@mui/icons-material/Star';
 import { Movie } from '../model/movie.types';
-import * as movieService from '../lib/tmdbUtils';
+import * as tmdbUtils from '../lib/tmdbUtils';
 import { colors } from '../../../shared/theme';
 import { useWatchlistPresence } from '../../watchlist/hooks/useWatchlistPresence';
 
@@ -62,9 +62,9 @@ const FeaturedMoviesCarousel: React.FC<FeaturedMoviesCarouselProps> = ({
 
   // Use backdrop if available, fallback to poster
   const backdropUrl = currentMovie.backdropPath 
-    ? movieService.getBackdropUrl(currentMovie.backdropPath, 'original')
+    ? tmdbUtils.getBackdropUrl(currentMovie.backdropPath, 'original')
     : currentMovie.posterPath 
-    ? movieService.getPosterUrl(currentMovie.posterPath, 'original')
+    ? tmdbUtils.getPosterUrl(currentMovie.posterPath, 'original')
     : null;
 
   return (

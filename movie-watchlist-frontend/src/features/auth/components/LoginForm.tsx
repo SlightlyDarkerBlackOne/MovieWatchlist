@@ -26,6 +26,7 @@ import {
   FORM_SETTINGS,
   TEST_CREDENTIALS
 } from '../../../shared/constants/formConstants';
+import { getErrorMessage } from '../../../shared/lib/errorHandler';
 
 interface LoginFormProps {
   onLoginSuccess: () => void;
@@ -61,16 +62,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess, onForgotPassword,
         reset({ usernameOrEmail: data.usernameOrEmail, password: '' });
       }
     } catch (error: unknown) {
-      
-      let errorMessage: string = ERROR_MESSAGES.UNEXPECTED_ERROR;
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null && 'message' in error) {
-        errorMessage = String(error.message);
-      }
-      
-      setError(errorMessage);
+      setError(getErrorMessage(error) || ERROR_MESSAGES.UNEXPECTED_ERROR);
       reset({ usernameOrEmail: data.usernameOrEmail, password: '' });
     }
   });

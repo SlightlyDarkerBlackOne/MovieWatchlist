@@ -11,7 +11,10 @@ import {
   API_ENDPOINT_PATTERNS,
   DEFAULT_API_CONFIG,
   TYPE_OF_VALUES,
+  RETRY_CONFIG,
 } from '../constants/appConstants';
+import { retryWithBackoff, shouldRetry } from '../lib/retryUtils';
+import { transformError } from '../lib/errorHandler';
 
 let navigateHandler: ((path: string) => void) | null = null;
 let globalErrorHandler: ((message: string) => void) | null = null;
@@ -33,12 +36,61 @@ const baseQuery = fetchBaseQuery({
   },
 });
 
+/**
+ * Extracts endpoint URL from args
+ */
+function getEndpointUrl(args: string | FetchArgs): string {
+  if (typeof args === TYPE_OF_VALUES.STRING) {
+    return args as string;
+  }
+  return ((args as FetchArgs).url ?? '') as string;
+}
+
 export const baseQueryWithReauth: BaseQueryFn<
   string | FetchArgs,
   unknown,
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
-  let result = await baseQuery(args, api, extraOptions);
+  const endpoint = getEndpointUrl(args);
+  const isAuthEndpoint = endpoint.includes(API_ENDPOINT_PATTERNS.AUTH);
+
+  // Execute query with retry logic for retryable errors
+  let result: Awaited<ReturnType<typeof baseQuery>>;
+  
+  try {
+    result = await retryWithBackoff(
+      async () => {
+        const queryResult = await baseQuery(args, api, extraOptions);
+        
+        if (!queryResult) {
+          return {
+            error: {
+              status: RTK_QUERY_ERROR_STATUS.FETCH_ERROR,
+              error: ERROR_MESSAGES.UNEXPECTED_ERROR,
+            },
+            data: undefined,
+          };
+        }
+        
+        // If error is retryable, throw to trigger retry
+        if (queryResult.error && shouldRetry(queryResult, isAuthEndpoint)) {
+          throw queryResult.error;
+        }
+        
+        return queryResult;
+      },
+      {
+        maxRetries: RETRY_CONFIG.MAX_RETRIES,
+        baseDelayMs: RETRY_CONFIG.RETRY_DELAY_BASE_MS,
+      }
+    );
+  } catch (error) {
+    // If retry failed, return error result
+    result = {
+      error: error as FetchBaseQueryError,
+      data: undefined,
+    };
+  }
 
   if (!result) {
     return {
@@ -52,18 +104,13 @@ export const baseQueryWithReauth: BaseQueryFn<
 
   if (result.error) {
     const errorStatus = result.error.status;
-    let url: string;
-    if (typeof args === TYPE_OF_VALUES.STRING) {
-      url = args as string;
-    } else {
-      url = (args as FetchArgs).url ?? '';
-    }
-    const isAuthEndpoint = url.includes(API_ENDPOINT_PATTERNS.AUTH);
 
+    // Handle 401 unauthorized with token refresh
     if (errorStatus === HTTP_STATUS_CODES.UNAUTHORIZED && !isAuthEndpoint) {
       const refreshResult = await baseQuery(API_ENDPOINTS.AUTH.REFRESH, api, extraOptions);
       
       if (refreshResult && !refreshResult.error && refreshResult.data) {
+        // Retry original query after successful refresh
         result = await baseQuery(args, api, extraOptions);
         if (!result) {
           return {
@@ -75,6 +122,7 @@ export const baseQueryWithReauth: BaseQueryFn<
           };
         }
       } else {
+        // Refresh failed, redirect to login
         if (globalErrorHandler) {
           globalErrorHandler(ERROR_MESSAGES.SESSION_EXPIRED);
         }
@@ -82,7 +130,18 @@ export const baseQueryWithReauth: BaseQueryFn<
           navigateHandler(ROUTE_PATHS.LOGIN);
         }
       }
-    } else if (errorStatus === HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR || errorStatus === HTTP_STATUS_CODES.SERVICE_UNAVAILABLE) {
+    }
+
+    // Transform error for consistent format and add metadata
+    // transformError only returns null if error is undefined, which can't happen here
+    const transformedError = transformError(result.error, endpoint);
+    
+    if (!transformedError) {
+      return result;
+    }
+    
+    // Show global error notifications for specific error types
+    if (errorStatus === HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR || errorStatus === HTTP_STATUS_CODES.SERVICE_UNAVAILABLE) {
       if (globalErrorHandler) {
         globalErrorHandler(ERROR_MESSAGES.SERVER_ERROR);
       }
@@ -91,6 +150,19 @@ export const baseQueryWithReauth: BaseQueryFn<
         globalErrorHandler(ERROR_MESSAGES.NETWORK_ERROR);
       }
     }
+    
+    // Store transformed error in error.data for components to access
+    // ALL RTK Query errors are transformed, so components can rely on transformed data
+    const errorWithTransformedData = {
+      ...result.error,
+      data: transformedError as unknown,
+    } as FetchBaseQueryError;
+    
+    return {
+      error: errorWithTransformedData,
+      data: undefined,
+      meta: result.meta,
+    };
   }
 
   return result;

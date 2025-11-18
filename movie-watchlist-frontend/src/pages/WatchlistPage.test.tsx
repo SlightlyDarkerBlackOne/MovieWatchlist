@@ -174,7 +174,17 @@ describe('WatchlistPage', () => {
       data: undefined,
       isLoading: false,
       isError: true,
-      error: { status: 500, data: { message: 'Failed to load watchlist' } },
+      error: {
+        status: 500,
+        data: {
+          message: 'Failed to load watchlist',
+          status: 500,
+          endpoint: '/api/watchlist',
+          timestamp: Date.now(),
+          originalError: { status: 500, data: { message: 'Failed to load watchlist' } },
+          retryable: false,
+        },
+      },
       refetch: jest.fn(),
     });
 

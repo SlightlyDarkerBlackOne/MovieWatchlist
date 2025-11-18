@@ -23,6 +23,7 @@ import {
   AUTOCOMPLETE_VALUES,
   FORM_SETTINGS
 } from '../../../shared/constants/formConstants';
+import { getErrorMessage } from '../../../shared/lib/errorHandler';
 
 interface ResetPasswordFormProps {
   token: string;
@@ -64,13 +65,7 @@ const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
         setError(result.message || ERROR_MESSAGES.RESET_FAILED);
       }
     } catch (error: unknown) {
-      
-      let errorMessage: string = ERROR_MESSAGES.UNEXPECTED_ERROR;
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      
-      setError(errorMessage);
+      setError(getErrorMessage(error) || ERROR_MESSAGES.UNEXPECTED_ERROR);
     }
   });
 

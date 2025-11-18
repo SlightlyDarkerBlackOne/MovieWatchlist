@@ -17,7 +17,7 @@ jest.mock('../contexts/AuthContext', () => {
 });
 
 // Mock Header component
-jest.mock('../common/Header', () => {
+jest.mock('../../../shared/components/common/Header', () => {
   return function MockHeader() {
     return <div data-testid="mock-header">Header</div>;
   };

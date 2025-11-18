@@ -146,9 +146,30 @@ export const RTK_TAG_TYPES = {
 // HTTP Status Codes
 export const HTTP_STATUS_CODES = {
   UNAUTHORIZED: 401,
-  INTERNAL_SERVER_ERROR: 500,
+  BAD_GATEWAY: 502,
   SERVICE_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  INTERNAL_SERVER_ERROR: 500,
 } as const;
+
+// Retry Configuration
+export const RETRY_CONFIG = {
+  MAX_RETRIES: 3,
+  RETRY_DELAY_BASE_MS: 1000,
+} as const;
+
+// Retryable HTTP Status Codes (5xx errors and service unavailable)
+export const RETRYABLE_STATUS_CODES = [
+  HTTP_STATUS_CODES.INTERNAL_SERVER_ERROR,
+  HTTP_STATUS_CODES.BAD_GATEWAY,
+  HTTP_STATUS_CODES.SERVICE_UNAVAILABLE,
+  HTTP_STATUS_CODES.GATEWAY_TIMEOUT,
+] as const;
+
+// Retryable RTK Query Error Types
+export const RETRYABLE_ERROR_TYPES = [
+  RTK_QUERY_ERROR_STATUS.FETCH_ERROR,
+] as const;
 
 // Route Paths
 export const ROUTE_PATHS = {
