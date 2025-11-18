@@ -1,4 +1,4 @@
-import { MovieSearchResult, MovieDetails, MovieCredits, MovieVideo, Movie, CastMember, CrewMember } from '../model/movie.types';
+import { MovieSearchResult, MovieDetails, MovieCredits, MovieVideo, Movie } from '../model/movie.types';
 import { transformCastMember, transformCrewMember, transformVideo } from '../model/movieAdapters';
 import { API_ENDPOINTS, RTK_TAG_TYPES } from '../../../shared/constants/appConstants';
 import { baseApiSlice } from '../../../shared/api/baseApiSlice';

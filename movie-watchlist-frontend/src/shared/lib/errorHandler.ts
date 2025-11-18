@@ -1,6 +1,6 @@
 import { FetchBaseQueryError } from '@reduxjs/toolkit/query/react';
 import { SerializedError } from '@reduxjs/toolkit';
-import { ERROR_MESSAGES, RTK_QUERY_ERROR_STATUS, ERROR_PROPERTIES, TYPE_OF_VALUES, RETRYABLE_STATUS_CODES, RETRYABLE_ERROR_TYPES, API_ENDPOINT_PATTERNS } from '../constants/appConstants';
+import { ERROR_MESSAGES, RTK_QUERY_ERROR_STATUS, ERROR_PROPERTIES, TYPE_OF_VALUES, API_ENDPOINT_PATTERNS } from '../constants/appConstants';
 import { TransformedApiError } from '../types/error.types';
 import { shouldRetry } from './retryUtils';
 

@@ -1,5 +1,5 @@
 import { FetchBaseQueryError } from '@reduxjs/toolkit/query/react';
-import { RETRY_CONFIG, RETRYABLE_STATUS_CODES, RETRYABLE_ERROR_TYPES, RTK_QUERY_ERROR_STATUS } from '../constants/appConstants';
+import { RETRY_CONFIG, RETRYABLE_STATUS_CODES, RETRYABLE_ERROR_TYPES } from '../constants/appConstants';
 
 export interface RetryOptions {
   maxRetries?: number;

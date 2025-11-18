@@ -61,7 +61,7 @@ const MoviesPage: React.FC = () => {
     } catch {
       successToast.hideMessage();
     }
-  }, [dialog.selectedMovie, dialog.status, dialog.notes, user, addToWatchlist, dialog, successToast]);
+  }, [dialog, user, addToWatchlist, successToast]);
 
   const handleCloseLoginDialog = useCallback(() => {
     setLoginRequiredDialogOpen(false);
