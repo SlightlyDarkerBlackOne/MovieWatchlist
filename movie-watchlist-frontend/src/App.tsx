@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline, CircularProgress, Box } from '@mui/material';
 import AppRoutes from './routes/AppRoutes';
-import { useAuth } from './contexts/AuthContext';
-import { useError } from './contexts/ErrorContext';
-import { appTheme } from './theme';
-import SkipLink from './components/common/SkipLink';
-import { setNavigateHandler, setGlobalErrorHandler } from './store/api/baseApi';
+import { useAuth } from './features/auth/contexts/AuthContext';
+import { useError } from './shared/contexts/ErrorContext';
+import { appTheme } from './shared/theme';
+import SkipLink from './shared/components/common/SkipLink';
+import { setNavigateHandler, setGlobalErrorHandler } from './shared/api/baseApi';
 
 /**
  * App Content Component

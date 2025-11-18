@@ -2,7 +2,7 @@
  * Test fixtures for authentication data
  */
 
-import { User, LoginCredentials, RegisterData, AuthenticationResult } from '../../types/auth.types';
+import { User, LoginCredentials, RegisterData, AuthenticationResult } from '../../features/auth/model/auth.types';
 
 export const mockUser: User = {
   id: 1,

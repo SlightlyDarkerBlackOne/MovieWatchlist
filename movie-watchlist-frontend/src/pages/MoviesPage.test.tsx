@@ -4,27 +4,27 @@
 
 import React from 'react';
 import { screen, waitFor, act } from '@testing-library/react';
-import { render } from '../utils/test-utils';
+import { render } from '../shared/lib/test-utils';
 import MoviesPage from './MoviesPage';
 import { mockMovies } from '../__tests__/fixtures/movieFixtures';
 import { useSearchParams } from 'react-router-dom';
-import * as moviesApi from '../store/api/moviesApi';
-import * as watchlistApi from '../store/api/watchlistApi';
-import { useWatchlistPresence } from '../hooks/useWatchlistPresence';
+import * as moviesApi from '../features/movies/api/moviesApi';
+import * as watchlistApi from '../features/watchlist/api/watchlistApi';
+import { useWatchlistPresence } from '../features/watchlist/hooks/useWatchlistPresence';
 import { TestConstants } from '../__tests__/TestConstants';
 
-jest.mock('../store/api/moviesApi', () => ({
-  ...jest.requireActual('../store/api/moviesApi'),
+jest.mock('../features/movies/api/moviesApi', () => ({
+  ...jest.requireActual('../features/movies/api/moviesApi'),
   useGetPopularMoviesQuery: jest.fn(),
   useSearchMoviesQuery: jest.fn(),
 }));
 
-jest.mock('../store/api/watchlistApi', () => ({
-  ...jest.requireActual('../store/api/watchlistApi'),
+jest.mock('../features/watchlist/api/watchlistApi', () => ({
+  ...jest.requireActual('../features/watchlist/api/watchlistApi'),
   useAddToWatchlistMutation: jest.fn(),
 }));
 
-jest.mock('../hooks/useWatchlistPresence', () => ({
+jest.mock('../features/watchlist/hooks/useWatchlistPresence', () => ({
   useWatchlistPresence: jest.fn(),
 }));
 
@@ -156,12 +156,21 @@ describe('MoviesPage', () => {
   });
 
   it('should display error message on API failure', async () => {
-    const errorMessage = new Error(TestConstants.ErrorMessages.FailedToFetchMovies);
     mockUseGetPopularMoviesQuery.mockReturnValue({
       data: undefined,
       isLoading: false,
       isError: true,
-      error: errorMessage,
+      error: {
+        status: 500,
+        data: {
+          message: TestConstants.ErrorMessages.FailedToFetchMovies,
+          status: 500,
+          endpoint: '/api/movies/popular',
+          timestamp: Date.now(),
+          originalError: { status: 500, data: { message: TestConstants.ErrorMessages.FailedToFetchMovies } },
+          retryable: false,
+        },
+      },
       status: 'rejected',
       refetch: jest.fn(),
     });

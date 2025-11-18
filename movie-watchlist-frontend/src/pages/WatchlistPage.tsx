@@ -11,18 +11,26 @@ import {
   SelectChangeEvent
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { WatchlistGrid } from '../components/watchlist';
-import { WatchlistFilters, WatchlistStats } from '../components/pages';
-import { EditWatchlistItemDialog } from '../components/dialogs';
-import { WatchlistItem, UpdateWatchlistRequest } from '../types/watchlist.types';
-import { useAuth } from '../contexts/AuthContext';
+import { WatchlistGrid } from '../features/watchlist/components';
+import { WatchlistFilters, WatchlistStats } from '../features/watchlist/components';
+import { EditWatchlistItemDialog } from '../features/watchlist/components';
+import { WatchlistItem, UpdateWatchlistRequest } from '../features/watchlist/model/watchlist.types';
+import { useAuth } from '../features/auth/contexts/AuthContext';
 import { 
   useGetWatchlistQuery, 
   useUpdateWatchlistItemMutation, 
   useRemoveFromWatchlistMutation,
-} from '../hooks/useWatchlistOperations';
-import { useWatchlistFilters } from '../hooks/useWatchlistFilters';
-import { ROUTES } from '../constants/routeConstants';
+} from '../features/watchlist/api/watchlistApi';
+import { useWatchlistFilters } from '../features/watchlist/hooks/useWatchlistFilters';
+import { ROUTES } from '../shared/constants/routeConstants';
+import {
+  ERROR_MESSAGES,
+  WATCHLIST_PAGE_TEXT,
+  WATCHLIST_TAB_LABELS,
+  WATCHLIST_FILTER_VALUES,
+  UI_CONSTANTS,
+} from '../shared/constants/appConstants';
+import { getErrorMessage } from '../shared/lib/errorHandler';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -34,10 +42,10 @@ function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
   return (
     <div
-      role="tabpanel"
+      role={UI_CONSTANTS.ARIA_ROLES.TABPANEL}
       hidden={value !== index}
-      id={`watchlist-tabpanel-${index}`}
-      aria-labelledby={`watchlist-tab-${index}`}
+      id={`${UI_CONSTANTS.ID_PREFIXES.WATCHLIST_TABPANEL}${index}`}
+      aria-labelledby={`${UI_CONSTANTS.ID_PREFIXES.WATCHLIST_TAB}${index}`}
       {...other}
     >
       {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
@@ -54,7 +62,7 @@ const WatchlistPage: React.FC = () => {
   const [removeItem] = useRemoveFromWatchlistMutation();
   
   const [activeTab, setActiveTab] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<number | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<number | 'all'>(WATCHLIST_FILTER_VALUES.ALL);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<WatchlistItem | null>(null);
@@ -81,8 +89,7 @@ const WatchlistPage: React.FC = () => {
       
       await updateItem(updatePayload).unwrap();
     } catch (err) {
-      const error = err as Error;
-      setErrorMessage(error.message || 'Failed to update item');
+      setErrorMessage(getErrorMessage(err) || ERROR_MESSAGES.FAILED_TO_UPDATE_ITEM);
     }
   };
 
@@ -111,8 +118,7 @@ const WatchlistPage: React.FC = () => {
       setEditDialogOpen(false);
       setSelectedItem(null);
     } catch (err) {
-      const error = err as Error;
-      setErrorMessage(error.message || 'Failed to update item');
+      setErrorMessage(getErrorMessage(err) || ERROR_MESSAGES.FAILED_TO_UPDATE_ITEM);
     }
   };
 
@@ -122,8 +128,7 @@ const WatchlistPage: React.FC = () => {
     try {
       await removeItem(itemId).unwrap();
     } catch (err) {
-      const error = err as Error;
-      setErrorMessage(error.message || 'Failed to remove item');
+      setErrorMessage(getErrorMessage(err) || ERROR_MESSAGES.FAILED_TO_REMOVE_ITEM);
     }
   };
 
@@ -132,21 +137,21 @@ const WatchlistPage: React.FC = () => {
   };
 
   const handleStatusFilterChange = (event: SelectChangeEvent<number | 'all'>) => {
-    setStatusFilter(event.target.value as number | 'all');
+    setStatusFilter(event.target.value as number | typeof WATCHLIST_FILTER_VALUES.ALL);
   };
 
   if (!user) {
     return (
       <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Alert severity="warning" sx={{ mb: 3 }}>
-          Please log in to view your watchlist.
+        <Alert severity={UI_CONSTANTS.ALERT_SEVERITY.WARNING} sx={{ mb: 3 }}>
+          {WATCHLIST_PAGE_TEXT.LOGIN_REQUIRED}
         </Alert>
         <Button 
           variant="contained" 
           color="primary"
           onClick={() => navigate(ROUTES.LOGIN)}
         >
-          Go to Login
+          {WATCHLIST_PAGE_TEXT.GO_TO_LOGIN}
         </Button>
       </Container>
     );
@@ -157,22 +162,25 @@ const WatchlistPage: React.FC = () => {
       {/* Error Toast */}
       <Snackbar
         open={!!error || !!errorMessage}
-        autoHideDuration={5000}
+        autoHideDuration={UI_CONSTANTS.SNACKBAR.AUTO_HIDE_DURATION}
         onClose={() => setErrorMessage(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ 
+          vertical: UI_CONSTANTS.SNACKBAR.ANCHOR_ORIGIN.VERTICAL_TOP, 
+          horizontal: UI_CONSTANTS.SNACKBAR.ANCHOR_ORIGIN.HORIZONTAL_CENTER 
+        }}
       >
-        <Alert severity="error" variant="filled" sx={{ width: '100%' }} onClose={() => setErrorMessage(null)}>
-          {errorMessage || (error ? String(error) : 'An error occurred')}
+        <Alert severity={UI_CONSTANTS.ALERT_SEVERITY.ERROR} variant="filled" sx={{ width: '100%' }} onClose={() => setErrorMessage(null)}>
+          {errorMessage || (error ? getErrorMessage(error) : ERROR_MESSAGES.AN_ERROR_OCCURRED)}
         </Alert>
       </Snackbar>
 
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <Box sx={{ mb: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-            My Watchlist
+            {WATCHLIST_PAGE_TEXT.TITLE}
           </Typography>
           <Typography variant="body1" color="text.secondary" gutterBottom>
-            Manage your movie collection
+            {WATCHLIST_PAGE_TEXT.SUBTITLE}
           </Typography>
         </Box>
 
@@ -181,20 +189,20 @@ const WatchlistPage: React.FC = () => {
         <WatchlistFilters
           statusFilter={statusFilter}
           onStatusFilterChange={handleStatusFilterChange}
-          itemCount={filteredItems.length}
+          filteredCount={filteredItems.length}
         />
 
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-        <Tabs value={activeTab} onChange={handleTabChange} aria-label="watchlist tabs">
-          <Tab label={`All (${allCount})`} id="watchlist-tab-0" />
+        <Tabs value={activeTab} onChange={handleTabChange} aria-label={UI_CONSTANTS.ARIA_LABELS.WATCHLIST_TABS}>
+          <Tab label={`${WATCHLIST_TAB_LABELS.ALL} (${allCount})`} id={`${UI_CONSTANTS.ID_PREFIXES.WATCHLIST_TAB}0`} />
           <Tab 
-            label={`Favorites (${favoritesCount})`} 
-            id="watchlist-tab-1" 
+            label={`${WATCHLIST_TAB_LABELS.FAVORITES} (${favoritesCount})`} 
+            id={`${UI_CONSTANTS.ID_PREFIXES.WATCHLIST_TAB}1`} 
           />
           <Tab 
-            label={`Watched (${watchedCount})`} 
-            id="watchlist-tab-2" 
+            label={`${WATCHLIST_TAB_LABELS.WATCHED} (${watchedCount})`} 
+            id={`${UI_CONSTANTS.ID_PREFIXES.WATCHLIST_TAB}2`} 
           />
         </Tabs>
       </Box>

@@ -4,9 +4,9 @@ import { Provider } from 'react-redux';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { AuthProvider } from './contexts/AuthContext';
-import { ErrorProvider } from './contexts/ErrorContext';
-import ErrorBoundary from './components/common/ErrorBoundary';
+import { AuthProvider } from './features/auth/contexts/AuthContext';
+import { ErrorProvider } from './shared/contexts/ErrorContext';
+import ErrorBoundary from './shared/components/common/ErrorBoundary';
 import { store } from './store';
 
 const root = ReactDOM.createRoot(

@@ -3,9 +3,10 @@
  */
 
 import { configureStore } from '@reduxjs/toolkit';
-import { watchlistApi } from '../../store/api/watchlistApi';
+import { watchlistApi } from '../../features/watchlist/api/watchlistApi';
+import { baseApiSlice } from '../../shared/api/baseApiSlice';
 import { mockWatchlistItems, mockWatchlistItem } from '../fixtures/watchlistFixtures';
-import { WatchlistStatus } from '../../types/watchlist.types';
+import { WatchlistStatus } from '../../features/watchlist/model/watchlist.types';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { TestConstants } from '../TestConstants';
@@ -22,10 +23,10 @@ describe('Watchlist RTK Query API', () => {
   beforeEach(() => {
     store = configureStore({
       reducer: {
-        [watchlistApi.reducerPath]: watchlistApi.reducer,
+        [baseApiSlice.reducerPath]: baseApiSlice.reducer,
       },
       middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware().concat(watchlistApi.middleware),
+        getDefaultMiddleware().concat(baseApiSlice.middleware),
     });
   });
 

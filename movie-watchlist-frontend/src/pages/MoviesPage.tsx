@@ -1,18 +1,18 @@
 import React, { useCallback } from 'react';
 import { Container } from '@mui/material';
-import { FeaturedMoviesCarousel } from '../components/movies';
-import { SearchResults, PopularMoviesSection } from '../components/pages';
-import { AddToWatchlistDialog } from '../components/dialogs';
-import LoginRequiredDialog from '../components/common/LoginRequiredDialog';
-import SuccessToast from '../components/ui/SuccessToast';
-import { Movie } from '../types/movie.types';
-import { WatchlistStatus } from '../types/watchlist.types';
-import { useAddToWatchlistMutation } from '../hooks/useWatchlistOperations';
-import { useAuth } from '../contexts/AuthContext';
-import { useMovieSearch } from '../hooks/useMovieSearch';
-import { useFeaturedMovies } from '../hooks/useFeaturedMovies';
-import { useAddToWatchlistDialog } from '../hooks/useAddToWatchlistDialog';
-import { useSuccessToast } from '../hooks/useSuccessToast';
+import { FeaturedMoviesCarousel } from '../features/movies/components';
+import { SearchResults, PopularMoviesSection } from '../features/movies/components';
+import { AddToWatchlistDialog } from '../features/watchlist/components';
+import LoginRequiredDialog from '../shared/components/common/LoginRequiredDialog';
+import SuccessToast from '../shared/components/ui/SuccessToast';
+import { Movie } from '../features/movies/model/movie.types';
+import { WatchlistStatus } from '../features/watchlist/model/watchlist.types';
+import { useAddToWatchlistMutation } from '../features/watchlist/api/watchlistApi';
+import { useAuth } from '../features/auth/contexts/AuthContext';
+import { useMovieSearch } from '../features/movies/hooks/useMovieSearch';
+import { useFeaturedMovies } from '../features/movies/hooks/useFeaturedMovies';
+import { useAddToWatchlistDialog } from '../features/watchlist/hooks/useAddToWatchlistDialog';
+import { useSuccessToast } from '../shared/hooks/useSuccessToast';
 
 const MoviesPage: React.FC = () => {
   const { user } = useAuth();
@@ -61,7 +61,7 @@ const MoviesPage: React.FC = () => {
     } catch {
       successToast.hideMessage();
     }
-  }, [dialog.selectedMovie, dialog.status, dialog.notes, user, addToWatchlist, dialog, successToast]);
+  }, [dialog, user, addToWatchlist, successToast]);
 
   const handleCloseLoginDialog = useCallback(() => {
     setLoginRequiredDialogOpen(false);

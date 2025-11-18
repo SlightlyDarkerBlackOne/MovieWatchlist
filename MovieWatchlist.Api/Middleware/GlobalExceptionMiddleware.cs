@@ -1,5 +1,7 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using MovieWatchlist.Api.Constants;
 using MovieWatchlist.Core.Exceptions;
 
@@ -91,6 +93,16 @@ public class GlobalExceptionMiddleware
                 {
                     code = externalEx.ErrorCode,
                     message = externalEx.Message,
+                    timestamp = DateTime.UtcNow
+                }
+            },
+            DbUpdateException dbEx when dbEx.InnerException is PostgresException pgEx && pgEx.SqlState == "23505" => new
+            {
+                statusCode = (int)HttpStatusCode.Conflict,
+                error = new
+                {
+                    code = MiddlewareConstants.ERROR_CODE_CONFLICT,
+                    message = "A resource with this identifier already exists",
                     timestamp = DateTime.UtcNow
                 }
             },

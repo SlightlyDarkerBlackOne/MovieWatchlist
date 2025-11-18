@@ -4,14 +4,14 @@
 
 import React from 'react';
 import { screen, waitFor, fireEvent } from '@testing-library/react';
-import { renderWithMocks } from '../utils/test-utils';
+import { renderWithMocks } from '../shared/lib/test-utils';
 import WatchlistPage from './WatchlistPage';
 import { mockWatchlistItems } from '../__tests__/fixtures/watchlistFixtures';
 import { mockUser } from '../__tests__/fixtures/authFixtures';
-import * as watchlistApi from '../store/api/watchlistApi';
+import * as watchlistApi from '../features/watchlist/api/watchlistApi';
 
-jest.mock('../store/api/watchlistApi', () => ({
-  ...jest.requireActual('../store/api/watchlistApi'),
+jest.mock('../features/watchlist/api/watchlistApi', () => ({
+  ...jest.requireActual('../features/watchlist/api/watchlistApi'),
   useGetWatchlistQuery: jest.fn(),
   useUpdateWatchlistItemMutation: jest.fn(),
   useRemoveFromWatchlistMutation: jest.fn(),
@@ -174,7 +174,17 @@ describe('WatchlistPage', () => {
       data: undefined,
       isLoading: false,
       isError: true,
-      error: { status: 500, data: { message: 'Failed to load watchlist' } },
+      error: {
+        status: 500,
+        data: {
+          message: 'Failed to load watchlist',
+          status: 500,
+          endpoint: '/api/watchlist',
+          timestamp: Date.now(),
+          originalError: { status: 500, data: { message: 'Failed to load watchlist' } },
+          retryable: false,
+        },
+      },
       refetch: jest.fn(),
     });
 

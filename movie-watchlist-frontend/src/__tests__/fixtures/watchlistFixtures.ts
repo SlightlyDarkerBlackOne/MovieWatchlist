@@ -2,7 +2,7 @@
  * Test fixtures for watchlist data
  */
 
-import { WatchlistItem, WatchlistStatus } from '../../types/watchlist.types';
+import { WatchlistItem, WatchlistStatus } from '../../features/watchlist/model/watchlist.types';
 import { mockMovie, mockMovies } from './movieFixtures';
 
 export const mockWatchlistItem: WatchlistItem = {

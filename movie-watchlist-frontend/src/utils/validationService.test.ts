@@ -2,7 +2,7 @@
  * Tests for validation service
  */
 
-import { validationService } from './validationService';
+import { validationService } from '../shared/lib/validationService';
 
 describe('ValidationService', () => {
   describe('validateEmail', () => {
