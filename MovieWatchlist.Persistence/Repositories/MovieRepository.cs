@@ -21,14 +21,13 @@ public class MovieRepository : EfRepository<Movie>, IMovieRepository
 
     /// <summary>
     /// Finds a movie by its TMDB ID asynchronously.
-    /// Uses AsNoTracking() for optimal performance since this is a read-only operation.
+    /// Returns a tracked entity so it can be used in relationships.
     /// </summary>
     /// <param name="tmdbId">The TMDB ID to search for</param>
     /// <returns>The movie if found, null otherwise</returns>
     public async Task<Movie?> GetByTmdbIdAsync(int tmdbId)
     {
         return await _dbSet
-            .AsNoTracking()
             .FirstOrDefaultAsync(m => m.TmdbId == tmdbId);
     }
 

@@ -15,6 +15,7 @@ public static class MiddlewareConstants
     public const string ERROR_CODE_VALIDATION_ERROR = "VALIDATION_ERROR";
     public const string ERROR_CODE_UNAUTHORIZED = "UNAUTHORIZED";
     public const string ERROR_CODE_BAD_REQUEST = "BAD_REQUEST";
+    public const string ERROR_CODE_CONFLICT = "CONFLICT";
     public const string ERROR_CODE_INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR";
     
     // Error Messages
