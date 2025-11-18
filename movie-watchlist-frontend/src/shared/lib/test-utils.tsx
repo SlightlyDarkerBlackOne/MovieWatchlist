@@ -11,9 +11,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { AuthProvider, AuthContextType } from '../../features/auth/contexts/AuthContext';
 import { ErrorProvider } from '../contexts/ErrorContext';
 import { appTheme } from '../theme';
-import { moviesApi } from '../../features/movies/api/moviesApi';
-import { watchlistApi } from '../../features/watchlist/api/watchlistApi';
-import { authApi } from '../../features/auth/api/authApi';
+import { baseApiSlice } from '../api/baseApiSlice';
 
 interface AllProvidersProps {
   children: React.ReactNode;
@@ -22,16 +20,10 @@ interface AllProvidersProps {
 const createTestStore = () => {
   return configureStore({
     reducer: {
-      [moviesApi.reducerPath]: moviesApi.reducer,
-      [watchlistApi.reducerPath]: watchlistApi.reducer,
-      [authApi.reducerPath]: authApi.reducer,
+      [baseApiSlice.reducerPath]: baseApiSlice.reducer,
     },
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware().concat(
-        moviesApi.middleware,
-        watchlistApi.middleware,
-        authApi.middleware
-      ),
+      getDefaultMiddleware().concat(baseApiSlice.middleware),
   });
 };
 

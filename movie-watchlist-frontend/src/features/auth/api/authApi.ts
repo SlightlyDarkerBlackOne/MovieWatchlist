@@ -1,6 +1,5 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithReauth } from '../../../shared/api/baseApi';
-import { API_ENDPOINTS, HTTP_METHODS, RTK_REDUCER_PATHS, RTK_TAG_TYPES, SUCCESS_MESSAGES } from '../../../shared/constants/appConstants';
+import { API_ENDPOINTS, HTTP_METHODS, RTK_TAG_TYPES, SUCCESS_MESSAGES } from '../../../shared/constants/appConstants';
+import { baseApiSlice } from '../../../shared/api/baseApiSlice';
 import {
   LoginCredentials,
   RegisterData,
@@ -20,10 +19,7 @@ interface RegisterResponse {
   expiresAt: string;
 }
 
-export const authApi = createApi({
-  reducerPath: RTK_REDUCER_PATHS.AUTH_API,
-  baseQuery: baseQueryWithReauth,
-  tagTypes: [RTK_TAG_TYPES.AUTH],
+export const authApi = baseApiSlice.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation<AuthenticationResult, LoginCredentials>({
       query: (credentials) => ({

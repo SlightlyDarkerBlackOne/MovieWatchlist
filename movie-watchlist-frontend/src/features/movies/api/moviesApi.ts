@@ -1,8 +1,7 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithReauth } from '../../../shared/api/baseApi';
 import { MovieSearchResult, MovieDetails, MovieCredits, MovieVideo, Movie, CastMember, CrewMember } from '../model/movie.types';
 import { transformCastMember, transformCrewMember, transformVideo } from '../model/movieAdapters';
-import { API_ENDPOINTS, RTK_REDUCER_PATHS, RTK_TAG_TYPES } from '../../../shared/constants/appConstants';
+import { API_ENDPOINTS, RTK_TAG_TYPES } from '../../../shared/constants/appConstants';
+import { baseApiSlice } from '../../../shared/api/baseApiSlice';
 
 interface TmdbCastMemberRaw {
   id: number;
@@ -60,10 +59,7 @@ interface MovieDetailsApiResponse {
   videosJson: TmdbVideoRaw[];
 }
 
-export const moviesApi = createApi({
-  reducerPath: RTK_REDUCER_PATHS.MOVIES_API,
-  baseQuery: baseQueryWithReauth,
-  tagTypes: [RTK_TAG_TYPES.MOVIES, RTK_TAG_TYPES.MOVIE_DETAILS],
+export const moviesApi = baseApiSlice.injectEndpoints({
   endpoints: (builder) => ({
     searchMovies: builder.query<MovieSearchResult, { query: string; page?: number }>({
       query: ({ query, page = 1 }) => ({

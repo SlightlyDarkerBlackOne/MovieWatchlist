@@ -11,9 +11,7 @@ import App from './App';
 import { AuthProvider } from './features/auth/contexts/AuthContext';
 import { ErrorProvider } from './shared/contexts/ErrorContext';
 import { appTheme } from './shared/theme';
-import { moviesApi } from './features/movies/api/moviesApi';
-import { watchlistApi } from './features/watchlist/api/watchlistApi';
-import { authApi } from './features/auth/api/authApi';
+import { baseApiSlice } from './shared/api/baseApiSlice';
 
 // Mock child components to avoid deep rendering
 jest.mock('./routes/AppRoutes', () => {
@@ -37,16 +35,10 @@ jest.mock('./shared/api/baseApi', () => ({
 const createTestStore = () => {
   return configureStore({
     reducer: {
-      [moviesApi.reducerPath]: moviesApi.reducer,
-      [watchlistApi.reducerPath]: watchlistApi.reducer,
-      [authApi.reducerPath]: authApi.reducer,
+      [baseApiSlice.reducerPath]: baseApiSlice.reducer,
     },
     middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware().concat(
-        moviesApi.middleware,
-        watchlistApi.middleware,
-        authApi.middleware
-      ),
+      getDefaultMiddleware().concat(baseApiSlice.middleware),
   });
 };
 

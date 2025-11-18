@@ -4,6 +4,7 @@
 
 import { configureStore } from '@reduxjs/toolkit';
 import { moviesApi } from '../../features/movies/api/moviesApi';
+import { baseApiSlice } from '../../shared/api/baseApiSlice';
 import { mockMovies, mockMovieDetails } from '../fixtures/movieFixtures';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
@@ -20,10 +21,10 @@ describe('Movies RTK Query API', () => {
   beforeEach(() => {
     store = configureStore({
       reducer: {
-        [moviesApi.reducerPath]: moviesApi.reducer,
+        [baseApiSlice.reducerPath]: baseApiSlice.reducer,
       },
       middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware().concat(moviesApi.middleware),
+        getDefaultMiddleware().concat(baseApiSlice.middleware),
     });
   });
 
@@ -243,7 +244,7 @@ describe('Movies RTK Query API', () => {
       );
 
       const state: any = store.getState();
-      const cacheKeys = Object.keys(state[moviesApi.reducerPath].queries);
+      const cacheKeys = Object.keys(state[baseApiSlice.reducerPath].queries);
       
       expect(cacheKeys.length).toBeGreaterThan(0);
     });
@@ -266,7 +267,7 @@ describe('Movies RTK Query API', () => {
       );
 
       const state: any = store.getState();
-      const cacheKeys = Object.keys(state[moviesApi.reducerPath].queries);
+      const cacheKeys = Object.keys(state[baseApiSlice.reducerPath].queries);
       
       expect(cacheKeys.some(key => key.includes('550'))).toBe(true);
     });

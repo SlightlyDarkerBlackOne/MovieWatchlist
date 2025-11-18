@@ -1,12 +1,8 @@
-import { createApi } from '@reduxjs/toolkit/query/react';
-import { baseQueryWithReauth } from '../../../shared/api/baseApi';
 import { WatchlistItem, WatchlistStatistics, AddToWatchlistRequest, UpdateWatchlistRequest } from '../model/watchlist.types';
-import { API_ENDPOINTS, HTTP_METHODS, RTK_REDUCER_PATHS, RTK_TAG_TYPES } from '../../../shared/constants/appConstants';
+import { API_ENDPOINTS, HTTP_METHODS, RTK_TAG_TYPES } from '../../../shared/constants/appConstants';
+import { baseApiSlice } from '../../../shared/api/baseApiSlice';
 
-export const watchlistApi = createApi({
-  reducerPath: RTK_REDUCER_PATHS.WATCHLIST_API,
-  baseQuery: baseQueryWithReauth,
-  tagTypes: [RTK_TAG_TYPES.WATCHLIST, RTK_TAG_TYPES.WATCHLIST_STATS],
+export const watchlistApi = baseApiSlice.injectEndpoints({
   endpoints: (builder) => ({
     getWatchlist: builder.query<WatchlistItem[], void>({
       query: () => API_ENDPOINTS.WATCHLIST.ME,
