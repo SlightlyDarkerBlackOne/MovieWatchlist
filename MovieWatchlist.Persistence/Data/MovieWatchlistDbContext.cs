@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using MovieWatchlist.Core.Models;
 using MovieWatchlist.Core.ValueObjects;
 
@@ -148,11 +149,15 @@ public class MovieWatchlistDbContext : DbContext
                 .HasComment("Last time movie data was updated");
 
             // Configure Genres as JSON array for PostgreSQL
-        entity.Property(e => e.Genres)
-            .HasConversion(
-                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>())
-            .HasComment("Movie genres as JSON array");
+            entity.Property(e => e.Genres)
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                    v => System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>(),
+                    new ValueComparer<string[]>(
+                        (c1, c2) => c1 != null && c2 != null && c1.SequenceEqual(c2),
+                        c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+                        c => c.ToArray()))
+                .HasComment("Movie genres as JSON array");
 
             // Indexes for performance
             entity.HasIndex(e => e.TmdbId)
