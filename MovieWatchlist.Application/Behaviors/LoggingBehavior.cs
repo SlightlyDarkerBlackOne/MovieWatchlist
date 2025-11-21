@@ -1,10 +1,9 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
 using MovieWatchlist.Core.Common;
-using System;
 using System.Text.Json;
 
-namespace MovieWatchlist.Infrastructure.Behaviors;
+namespace MovieWatchlist.Application.Behaviors;
 
 public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
