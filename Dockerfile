@@ -6,8 +6,9 @@ WORKDIR /app
 COPY *.sln ./
 COPY MovieWatchlist.Api/*.csproj ./MovieWatchlist.Api/
 COPY MovieWatchlist.Core/*.csproj ./MovieWatchlist.Core/
+COPY MovieWatchlist.Application/*.csproj ./MovieWatchlist.Application/
 COPY MovieWatchlist.Infrastructure/*.csproj ./MovieWatchlist.Infrastructure/
-COPY MovieWatchlist.Tests/*.csproj ./MovieWatchlist.Tests/
+COPY MovieWatchlist.Persistence/*.csproj ./MovieWatchlist.Persistence/
 
 # Restore dependencies
 RUN dotnet restore
