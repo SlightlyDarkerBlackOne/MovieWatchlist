@@ -10,17 +10,17 @@ COPY MovieWatchlist.Application/*.csproj ./MovieWatchlist.Application/
 COPY MovieWatchlist.Infrastructure/*.csproj ./MovieWatchlist.Infrastructure/
 COPY MovieWatchlist.Persistence/*.csproj ./MovieWatchlist.Persistence/
 
-# Restore dependencies
-RUN dotnet restore
+# Restore dependencies for API project only
+RUN dotnet restore MovieWatchlist.Api/MovieWatchlist.Api.csproj
 
 # Copy all source code
 COPY . .
 
 # Build the application
-RUN dotnet build --configuration Release --no-restore
+RUN dotnet build MovieWatchlist.Api/MovieWatchlist.Api.csproj --configuration Release --no-restore
 
 # Publish the application
-RUN dotnet publish MovieWatchlist.Api --configuration Release --no-build --output /app/publish
+RUN dotnet publish MovieWatchlist.Api/MovieWatchlist.Api.csproj --configuration Release --no-build --output /app/publish
 
 # Use the official .NET 8 runtime image for running
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
