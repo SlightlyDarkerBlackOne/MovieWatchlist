@@ -19,4 +19,12 @@ public static class ConfigurationConstants
     public const string DEFAULT_TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p";
     public const string DEFAULT_FRONTEND_URL = "http://localhost:3000";
     public const string PRODUCTION_FRONTEND_URL = "https://moviewatchlist-frontend-nkol.onrender.com";
+    
+    // CORS Settings
+    public const int CORS_PREFLIGHT_CACHE_HOURS = 24;
+    
+    // Rate Limiting Settings
+    public const int RATE_LIMIT_DEVELOPMENT_MAX_REQUESTS = 100;
+    public const int RATE_LIMIT_PRODUCTION_MAX_REQUESTS = 60;
+    public const int RATE_LIMIT_TIME_WINDOW_MINUTES = 1;
 }

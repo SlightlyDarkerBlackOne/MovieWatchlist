@@ -14,20 +14,18 @@ public static class CorsExtensions
         {
             options.AddPolicy("ReactFrontend", policy =>
             {
+                var origins = new List<string> { ConfigurationConstants.PRODUCTION_FRONTEND_URL };
+                
                 if (environment.IsDevelopment())
                 {
-                    policy.WithOrigins(ConfigurationConstants.DEFAULT_FRONTEND_URL)
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials();
+                    origins.Add(ConfigurationConstants.DEFAULT_FRONTEND_URL);
                 }
-                else
-                {
-                    policy.WithOrigins(ConfigurationConstants.PRODUCTION_FRONTEND_URL)
-                          .AllowAnyHeader()
-                          .AllowAnyMethod()
-                          .AllowCredentials();
-                }
+
+                policy.WithOrigins(origins.ToArray())
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials()
+                      .SetPreflightMaxAge(TimeSpan.FromHours(ConfigurationConstants.CORS_PREFLIGHT_CACHE_HOURS));
             });
         });
 

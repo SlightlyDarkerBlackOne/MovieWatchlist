@@ -1,3 +1,4 @@
+using MovieWatchlist.Api.Constants;
 using MovieWatchlist.Api.Middleware;
 
 namespace MovieWatchlist.Api.Extensions;
@@ -23,11 +24,15 @@ public static class WebApplicationExtensions
 
         if (app.Environment.IsDevelopment())
         {
-            app.UseRateLimiting(maxRequests: 100, timeWindowMinutes: 1);
+            app.UseRateLimiting(
+                maxRequests: ConfigurationConstants.RATE_LIMIT_DEVELOPMENT_MAX_REQUESTS,
+                timeWindowMinutes: ConfigurationConstants.RATE_LIMIT_TIME_WINDOW_MINUTES);
         }
         else
         {
-            app.UseRateLimiting(maxRequests: 10, timeWindowMinutes: 1);
+            app.UseRateLimiting(
+                maxRequests: ConfigurationConstants.RATE_LIMIT_PRODUCTION_MAX_REQUESTS,
+                timeWindowMinutes: ConfigurationConstants.RATE_LIMIT_TIME_WINDOW_MINUTES);
         }
 
         app.UseAuthentication();
